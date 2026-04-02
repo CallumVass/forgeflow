@@ -188,14 +188,6 @@ async function runPrdQa(
   const opts = { cwd, signal, stages, pipeline: "prd-qa", onUpdate };
 
   for (let i = 1; i <= maxIterations; i++) {
-    // Integrator (if QUESTIONS.md exists from previous iteration)
-    if (i > 1 && fs.existsSync(`${cwd}/QUESTIONS.md`)) {
-      stages.push(emptyStage("prd-integrator"));
-      await runAgent("prd-integrator",
-        "Incorporate answers from QUESTIONS.md into PRD.md, then delete QUESTIONS.md.",
-        opts);
-    }
-
     // Critic
     stages.push(emptyStage("prd-critic"));
     const criticResult = await runAgent("prd-critic",
@@ -227,20 +219,19 @@ async function runPrdQa(
       "Read PRD.md and answer all questions in QUESTIONS.md. Write answers inline in QUESTIONS.md.",
       { ...opts, tools: ["read", "write", "edit", "bash", "grep", "find"] });
 
-    // Approval gate — ask user if they want to continue
+    // Integrator — incorporate answers into PRD before approval gate
+    stages.push(emptyStage("prd-integrator"));
+    await runAgent("prd-integrator",
+      "Incorporate answers from QUESTIONS.md into PRD.md, then delete QUESTIONS.md.",
+      opts);
+
+    // Approval gate — PRD is now updated, user decides whether to continue
     if (ctx.hasUI) {
       const ok = await ctx.ui.confirm(
-        `Iteration ${i} complete`,
+        `Iteration ${i} complete — PRD updated`,
         "Continue refining? (No = accept current PRD)"
       );
       if (!ok) {
-        // Final integration
-        if (fs.existsSync(`${cwd}/QUESTIONS.md`)) {
-          stages.push(emptyStage("prd-integrator"));
-          await runAgent("prd-integrator",
-            "Incorporate answers from QUESTIONS.md into PRD.md, then delete QUESTIONS.md.",
-            opts);
-        }
         return {
           content: [{ type: "text" as const, text: "PRD accepted." }],
           details: { pipeline: "prd-qa", stages },
