@@ -8,5 +8,8 @@
     "extensions": ["./extensions"],
     "skills": ["./skills"],
     "agents": ["./agents"]
+  },
+  "devDependencies": {
+    "@mariozechner/pi-coding-agent": "*"
   }
 }

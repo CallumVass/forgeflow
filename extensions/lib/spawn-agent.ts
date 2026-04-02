@@ -1,13 +1,17 @@
 import { spawn } from "node:child_process";
-import { readFileSync, writeFileSync, unlinkSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import type { ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
 
 export interface SpawnAgentOptions {
   tools?: string[];
   model?: string;
   cwd?: string;
   onUpdate?: (text: string) => void;
+  /** Extension command context — used for working message updates */
+  ctx?: ExtensionCommandContext;
+  /** Label shown during progress (e.g., "prd-critic") */
+  label?: string;
 }
 
 export interface AgentResult {
@@ -17,27 +21,14 @@ export interface AgentResult {
 
 /**
  * Resolve an agent definition file bundled with forgeflow.
- * Looks in the agents/ directory relative to this extension.
  */
 function resolveAgentPath(name: string): string {
-  // Navigate from extensions/lib/ up to package root, then into agents/
   const agentsDir = resolve(__dirname, "..", "..", "agents");
   return join(agentsDir, `${name}.md`);
 }
 
 /**
- * Find the pi binary. Uses the same binary that's running the parent process,
- * falling back to "pi" on PATH.
- */
-function findPiBinary(): { command: string; args: string[] } {
-  // If running inside pi, process.argv[0] is node and process.argv[1] is the pi script
-  // Safest: just use "pi" from PATH since it's globally installed
-  return { command: "pi", args: [] };
-}
-
-/**
  * Parse JSON events from pi's --mode json stdout.
- * Each line is a JSON event. We accumulate assistant text from message_end events.
  */
 function parseJsonEvents(
   data: string,
@@ -49,7 +40,6 @@ function parseJsonEvents(
     try {
       const event = JSON.parse(line);
 
-      // message_end contains the full message
       if (event.type === "message_end" && event.message) {
         const msg = event.message;
         if (msg.role === "assistant" && Array.isArray(msg.content)) {
@@ -62,24 +52,19 @@ function parseJsonEvents(
         }
       }
 
-      // Also capture streaming text deltas for progress
       if (event.type === "message_update" && event.content) {
-        // Streaming partial — don't accumulate, just notify
         if (typeof event.content === "string") {
           onUpdate?.(event.content);
         }
       }
     } catch {
-      // Not valid JSON — might be partial line, ignore
+      // partial line, ignore
     }
   }
 }
 
 /**
  * Spawn a Pi sub-agent process and collect its output.
- *
- * The agent runs in JSON mode (--mode json) with no session persistence (--no-session).
- * Its system prompt comes from the agent definition file (--append-system-prompt).
  */
 export async function spawnAgent(
   name: string,
@@ -88,7 +73,6 @@ export async function spawnAgent(
 ): Promise<AgentResult> {
   const agentPath = resolveAgentPath(name);
 
-  // Verify agent file exists
   try {
     readFileSync(agentPath, "utf-8");
   } catch {
@@ -103,12 +87,22 @@ export async function spawnAgent(
     model,
     cwd = process.cwd(),
     onUpdate,
+    ctx,
+    label,
   } = options;
 
-  const pi = findPiBinary();
+  const updateHandler =
+    onUpdate ??
+    (ctx && label
+      ? (text: string) => {
+          if (text.length > 10) {
+            const preview = text.slice(0, 80).replace(/\n/g, " ");
+            ctx.ui.setWorkingMessage(`[${label}] ${preview}...`);
+          }
+        }
+      : undefined);
 
   const args = [
-    ...pi.args,
     "--mode",
     "json",
     "-p",
@@ -125,7 +119,7 @@ export async function spawnAgent(
   }
 
   return new Promise<AgentResult>((resolvePromise) => {
-    const proc = spawn(pi.command, args, {
+    const proc = spawn("pi", args, {
       cwd,
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
@@ -136,7 +130,7 @@ export async function spawnAgent(
     let stderr = "";
 
     proc.stdout.on("data", (chunk: Buffer) => {
-      parseJsonEvents(chunk.toString(), accumulated, onUpdate);
+      parseJsonEvents(chunk.toString(), accumulated, updateHandler);
     });
 
     proc.stderr.on("data", (chunk: Buffer) => {
@@ -144,6 +138,7 @@ export async function spawnAgent(
     });
 
     proc.on("close", (code) => {
+      ctx?.ui.setWorkingMessage();
       const output =
         accumulated.join("\n").trim() || stderr.trim() || "(no output)";
       resolvePromise({
@@ -153,6 +148,7 @@ export async function spawnAgent(
     });
 
     proc.on("error", (err) => {
+      ctx?.ui.setWorkingMessage();
       resolvePromise({
         output: `Failed to spawn agent "${name}": ${err.message}`,
         success: false,
@@ -162,7 +158,7 @@ export async function spawnAgent(
 }
 
 /**
- * Check if a file exists in the current working directory.
+ * Check if a file exists.
  */
 export async function fileExists(
   filePath: string,
