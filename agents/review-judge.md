@@ -26,21 +26,13 @@ For each finding:
 
 ## Output
 
-### If all findings are valid:
-Output the FINDINGS report unchanged.
-
-### If some findings are invalid:
-Output a filtered FINDINGS report containing only validated findings. For each rejected finding, briefly state why:
-
-```markdown
-## Rejected Findings
-
-### [Original Finding N]
-**Reason**: [why it was rejected — phantom code / not actually a bug / anti-pattern / contradicts Finding M]
-```
+### If any findings survive validation:
+Write FINDINGS.md containing only validated findings. For each rejected finding, add a brief rejection reason at the end.
 
 ### If NO findings survive validation:
-Output exactly: `<PASS>`
+Do NOT create FINDINGS.md. Simply state that all findings were filtered.
+
+The orchestrator checks for FINDINGS.md to determine the result — this is the only signal it uses.
 
 ## Rules
 

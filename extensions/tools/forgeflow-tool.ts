@@ -191,25 +191,21 @@ async function runPrdQa(
     // Critic
     stages.push(emptyStage("prd-critic"));
     const criticResult = await runAgent("prd-critic",
-      "Review PRD.md for completeness. If complete, output exactly: <COMPLETE>\nIf not, create QUESTIONS.md with specific questions.",
+      "Review PRD.md for completeness. If it needs refinement, create QUESTIONS.md. If it's complete, do NOT create QUESTIONS.md.",
       { ...opts, tools: ["read", "write", "bash", "grep", "find"] });
 
-    if (criticResult.output.includes("<COMPLETE>")) {
+    // No QUESTIONS.md = critic considers PRD complete
+    if (!fs.existsSync(`${cwd}/QUESTIONS.md`)) {
+      if (criticResult.status === "failed") {
+        return {
+          content: [{ type: "text" as const, text: `Critic failed.\nStderr: ${criticResult.stderr.slice(0, 300)}` }],
+          details: { pipeline: "prd-qa", stages },
+          isError: true,
+        };
+      }
       return {
         content: [{ type: "text" as const, text: "PRD refinement complete. Ready for /create-issues." }],
         details: { pipeline: "prd-qa", stages },
-      };
-    }
-
-    if (!fs.existsSync(`${cwd}/QUESTIONS.md`)) {
-      const criticStage = stages.find((s) => s.name === "prd-critic");
-      const debugInfo = criticStage
-        ? `\nOutput: ${criticStage.output.slice(0, 300)}\nStderr: ${criticStage.stderr.slice(0, 300)}\nExit: ${criticStage.exitCode}`
-        : "";
-      return {
-        content: [{ type: "text" as const, text: `Critic did not create QUESTIONS.md and did not signal completion.${debugInfo}` }],
-        details: { pipeline: "prd-qa", stages },
-        isError: true,
       };
     }
 
@@ -293,11 +289,24 @@ async function runImplement(cwd: string, issue: string, signal: AbortSignal, onU
     };
   }
 
+  // Clean up stale blockers
+  try { fs.unlinkSync(`${cwd}/BLOCKED.md`); } catch {}
+
   // Implementor
   const plan = planResult.output;
   await runAgent("implementor",
-    `Implement the following issue using strict TDD (red-green-refactor).\n\nISSUE: ${issue}\n\nIMPLEMENTATION PLAN:\n${plan}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD following the plan.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit changes.\n\nCONSTRAINTS:\n- Do NOT create or switch branches.\n- If blocked, output: <HALT>`,
+    `Implement the following issue using strict TDD (red-green-refactor).\n\nISSUE: ${issue}\n\nIMPLEMENTATION PLAN:\n${plan}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD following the plan.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit changes.\n\nCONSTRAINTS:\n- Do NOT create or switch branches.\n- If blocked, write BLOCKED.md with the reason and stop.`,
     { ...opts, tools: ["read", "write", "edit", "bash", "grep", "find"] });
+
+  // Check for blocker
+  if (fs.existsSync(`${cwd}/BLOCKED.md`)) {
+    const reason = fs.readFileSync(`${cwd}/BLOCKED.md`, "utf-8");
+    return {
+      content: [{ type: "text" as const, text: `Implementor blocked:\n${reason}` }],
+      details: { pipeline: "implement", stages },
+      isError: true,
+    };
+  }
 
   // Refactorer
   await runAgent("refactorer",
@@ -335,27 +344,35 @@ async function runReview(cwd: string, target: string, signal: AbortSignal, onUpd
     return { content: [{ type: "text" as const, text: "No changes to review." }], details: { pipeline: "review", stages } };
   }
 
+  // Clean up stale findings
+  try { fs.unlinkSync(`${cwd}/FINDINGS.md`); } catch {}
+
   // Code reviewer
-  const reviewResult = await runAgent("code-reviewer",
+  await runAgent("code-reviewer",
     `Review the following diff:\n\n${diff}`,
     { ...opts, tools: ["read", "bash", "grep", "find"] });
 
-  if (reviewResult.output.includes("<PASS>") || reviewResult.output.toLowerCase().includes("no issues found")) {
+  // Code reviewer writes FINDINGS.md if issues found
+  if (!fs.existsSync(`${cwd}/FINDINGS.md`)) {
     stages[1].status = "done";
-    stages[1].output = "<PASS>";
+    stages[1].output = "No findings";
     return { content: [{ type: "text" as const, text: "Review passed — no actionable findings." }], details: { pipeline: "review", stages } };
   }
 
-  // Review judge
+  // Review judge — validates findings, rewrites FINDINGS.md or deletes it
+  const findings = fs.readFileSync(`${cwd}/FINDINGS.md`, "utf-8");
   await runAgent("review-judge",
-    `Validate the following code review findings against the actual code:\n\n${reviewResult.output}`,
-    { ...opts, tools: ["read", "bash", "grep", "find"] });
+    `Validate the following code review findings against the actual code:\n\n${findings}`,
+    { ...opts, tools: ["read", "write", "bash", "grep", "find"] });
 
-  const judgeOutput = stages[1].output;
-  const passed = judgeOutput.includes("<PASS>");
+  // No FINDINGS.md after judge = all filtered
+  if (!fs.existsSync(`${cwd}/FINDINGS.md`)) {
+    return { content: [{ type: "text" as const, text: "Review passed — judge filtered all findings." }], details: { pipeline: "review", stages } };
+  }
 
+  const validatedFindings = fs.readFileSync(`${cwd}/FINDINGS.md`, "utf-8");
   return {
-    content: [{ type: "text" as const, text: passed ? "Review passed — judge filtered all findings." : judgeOutput }],
+    content: [{ type: "text" as const, text: validatedFindings }],
     details: { pipeline: "review", stages },
   };
 }

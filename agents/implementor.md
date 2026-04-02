@@ -89,3 +89,4 @@ If `DESIGN.md` exists in the project root, it is the **styling authority** for a
 - Run the full check suite (tests, lint, typecheck).
 - Fix any failures before committing.
 - Do NOT skip or disable failing tests.
+- If you encounter a blocker you cannot resolve, write BLOCKED.md with the reason and stop. The orchestrator checks for this file.
