@@ -225,13 +225,21 @@ async function runPrdQa(
       "Incorporate answers from QUESTIONS.md into PRD.md, then delete QUESTIONS.md.",
       opts);
 
-    // Approval gate — PRD is now updated, user decides whether to continue
+    // Approval gate — show PRD in editor, user can review/edit then decide
     if (ctx.hasUI) {
-      const ok = await ctx.ui.confirm(
-        `Iteration ${i} complete — PRD updated`,
-        "Continue refining? (No = accept current PRD)"
+      const prdContent = fs.readFileSync(`${cwd}/PRD.md`, "utf-8");
+      const edited = await ctx.ui.editor(`Iteration ${i} — Review PRD (edit or close to continue)`, prdContent);
+
+      // If user edited, write changes back
+      if (edited != null && edited !== prdContent) {
+        fs.writeFileSync(`${cwd}/PRD.md`, edited, "utf-8");
+      }
+
+      const action = await ctx.ui.select(
+        "PRD updated. What next?",
+        ["Continue refining", "Accept PRD"]
       );
-      if (!ok) {
+      if (action === "Accept PRD" || action == null) {
         return {
           content: [{ type: "text" as const, text: "PRD accepted." }],
           details: { pipeline: "prd-qa", stages },
