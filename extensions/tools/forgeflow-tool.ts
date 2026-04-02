@@ -52,6 +52,8 @@ const ForgeflowParams = Type.Object({
   maxIterations: Type.Optional(Type.Number({ description: "Max iterations for prd-qa (default 10)" })),
   issue: Type.Optional(Type.String({ description: "Issue number or description for implement pipeline" })),
   target: Type.Optional(Type.String({ description: "PR number or --branch for review pipeline" })),
+  skipPlan: Type.Optional(Type.Boolean({ description: "Skip planner, implement directly (default false)" })),
+  skipReview: Type.Optional(Type.Boolean({ description: "Skip code review after implementation (default false)" })),
 });
 
 export function registerForgeflowTool(pi: ExtensionAPI) {
@@ -74,7 +76,10 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
         case "create-issues":
           return await runCreateIssues(cwd, signal, onUpdate, ctx);
         case "implement":
-          return await runImplement(cwd, params.issue ?? "", signal, onUpdate, ctx);
+          return await runImplement(cwd, params.issue ?? "", signal, onUpdate, ctx, {
+            skipPlan: params.skipPlan ?? false,
+            skipReview: params.skipReview ?? false,
+          });
         case "review":
           return await runReview(cwd, params.target ?? "", signal, onUpdate, ctx);
         default:
@@ -268,34 +273,44 @@ async function runCreateIssues(cwd: string, signal: AbortSignal, onUpdate: any, 
   };
 }
 
-async function runImplement(cwd: string, issue: string, signal: AbortSignal, onUpdate: any, ctx: any) {
+async function runImplement(
+  cwd: string, issue: string, signal: AbortSignal, onUpdate: any, ctx: any,
+  flags: { skipPlan: boolean; skipReview: boolean } = { skipPlan: false, skipReview: false },
+) {
   if (!issue) {
     return { content: [{ type: "text" as const, text: "No issue specified." }], details: { pipeline: "implement", stages: [] } };
   }
 
-  const stages: StageResult[] = [emptyStage("planner"), emptyStage("implementor"), emptyStage("refactorer")];
+  const stageList: StageResult[] = [];
+  if (!flags.skipPlan) stageList.push(emptyStage("planner"));
+  stageList.push(emptyStage("implementor"), emptyStage("refactorer"));
+  const stages = stageList;
   const opts = { cwd, signal, stages, pipeline: "implement", onUpdate };
 
-  // Planner
-  const planResult = await runAgent("planner",
-    `Plan the implementation for this issue by producing a sequenced list of test cases.\n\nISSUE: ${issue}`,
-    { ...opts, tools: ["read", "bash", "grep", "find"] });
+  let plan = "";
 
-  if (planResult.status === "failed") {
-    return {
-      content: [{ type: "text" as const, text: `Planner failed: ${planResult.output}` }],
-      details: { pipeline: "implement", stages },
-      isError: true,
-    };
+  if (!flags.skipPlan) {
+    const planResult = await runAgent("planner",
+      `Plan the implementation for this issue by producing a sequenced list of test cases.\n\nISSUE: ${issue}`,
+      { ...opts, tools: ["read", "bash", "grep", "find"] });
+
+    if (planResult.status === "failed") {
+      return {
+        content: [{ type: "text" as const, text: `Planner failed: ${planResult.output}` }],
+        details: { pipeline: "implement", stages },
+        isError: true,
+      };
+    }
+    plan = planResult.output;
   }
 
   // Clean up stale blockers
   try { fs.unlinkSync(`${cwd}/BLOCKED.md`); } catch {}
 
   // Implementor
-  const plan = planResult.output;
+  const planSection = plan ? `\n\nIMPLEMENTATION PLAN:\n${plan}` : "";
   await runAgent("implementor",
-    `Implement the following issue using strict TDD (red-green-refactor).\n\nISSUE: ${issue}\n\nIMPLEMENTATION PLAN:\n${plan}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD following the plan.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit changes.\n\nCONSTRAINTS:\n- Do NOT create or switch branches.\n- If blocked, write BLOCKED.md with the reason and stop.`,
+    `Implement the following issue using strict TDD (red-green-refactor).\n\nISSUE: ${issue}${planSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit changes.\n\nCONSTRAINTS:\n- Do NOT create or switch branches.\n- If blocked, write BLOCKED.md with the reason and stop.`,
     { ...opts, tools: ["read", "write", "edit", "bash", "grep", "find"] });
 
   // Check for blocker

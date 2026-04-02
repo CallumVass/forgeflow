@@ -26,14 +26,24 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
   });
 
   pi.registerCommand("implement", {
-    description: "Plan → implement → refactor an issue using TDD",
+    description: "Plan → implement → refactor an issue using TDD. Flags: --skip-plan, --skip-review",
     handler: async (args) => {
-      if (!args.trim()) {
-        pi.sendUserMessage("I need an issue number or description to implement. Usage: /implement <issue#>");
+      const skipPlan = args.includes("--skip-plan");
+      const skipReview = args.includes("--skip-review");
+      const issue = args.replace(/--skip-plan/g, "").replace(/--skip-review/g, "").trim();
+
+      if (!issue) {
+        pi.sendUserMessage("I need an issue number or description to implement. Usage: /implement <issue#> [--skip-plan] [--skip-review]");
         return;
       }
+
+      const flags = [
+        skipPlan ? ', skipPlan: true' : '',
+        skipReview ? ', skipReview: true' : '',
+      ].join('');
+
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "implement" and issue "${args.trim()}" to implement it using TDD.`
+        `Use the forgeflow tool with pipeline "implement", issue "${issue}"${flags} to implement it using TDD.`
       );
     },
   });
