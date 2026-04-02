@@ -190,14 +190,14 @@ async function runPrdQa(
   for (let i = 1; i <= maxIterations; i++) {
     // Integrator (if QUESTIONS.md exists from previous iteration)
     if (i > 1 && fs.existsSync(`${cwd}/QUESTIONS.md`)) {
-      stages.push(emptyStage("integrator"));
+      stages.push(emptyStage("prd-integrator"));
       await runAgent("prd-integrator",
         "Incorporate answers from QUESTIONS.md into PRD.md, then delete QUESTIONS.md.",
         opts);
     }
 
     // Critic
-    stages.push(emptyStage("critic"));
+    stages.push(emptyStage("prd-critic"));
     const criticResult = await runAgent("prd-critic",
       "Review PRD.md for completeness. If complete, output exactly: <COMPLETE>\nIf not, create QUESTIONS.md with specific questions.",
       { ...opts, tools: ["read", "write", "bash", "grep", "find"] });
@@ -210,15 +210,19 @@ async function runPrdQa(
     }
 
     if (!fs.existsSync(`${cwd}/QUESTIONS.md`)) {
+      const criticStage = stages.find((s) => s.name === "prd-critic");
+      const debugInfo = criticStage
+        ? `\nOutput: ${criticStage.output.slice(0, 300)}\nStderr: ${criticStage.stderr.slice(0, 300)}\nExit: ${criticStage.exitCode}`
+        : "";
       return {
-        content: [{ type: "text" as const, text: "Critic did not create QUESTIONS.md and did not signal completion." }],
+        content: [{ type: "text" as const, text: `Critic did not create QUESTIONS.md and did not signal completion.${debugInfo}` }],
         details: { pipeline: "prd-qa", stages },
         isError: true,
       };
     }
 
     // Architect
-    stages.push(emptyStage("architect"));
+    stages.push(emptyStage("prd-architect"));
     await runAgent("prd-architect",
       "Read PRD.md and answer all questions in QUESTIONS.md. Write answers inline in QUESTIONS.md.",
       { ...opts, tools: ["read", "write", "edit", "bash", "grep", "find"] });
@@ -232,7 +236,7 @@ async function runPrdQa(
       if (!ok) {
         // Final integration
         if (fs.existsSync(`${cwd}/QUESTIONS.md`)) {
-          stages.push(emptyStage("integrator"));
+          stages.push(emptyStage("prd-integrator"));
           await runAgent("prd-integrator",
             "Incorporate answers from QUESTIONS.md into PRD.md, then delete QUESTIONS.md.",
             opts);
