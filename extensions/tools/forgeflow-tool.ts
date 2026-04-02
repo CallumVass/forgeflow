@@ -328,24 +328,28 @@ async function runImplement(
     "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit if changed.",
     { ...opts, tools: ["read", "write", "edit", "bash", "grep", "find"] });
 
+  // Review (unless skipped)
+  if (!flags.skipReview) {
+    const reviewResult = await runReviewInline(cwd, signal, onUpdate, ctx, stages);
+    if (reviewResult.isError) {
+      return { ...reviewResult, details: { pipeline: "implement", stages } };
+    }
+  }
+
   return {
     content: [{ type: "text" as const, text: "Implementation complete." }],
     details: { pipeline: "implement", stages },
   };
 }
 
-async function runReview(cwd: string, target: string, signal: AbortSignal, onUpdate: any, ctx: any) {
-  const stages: StageResult[] = [emptyStage("code-reviewer"), emptyStage("review-judge")];
-  const opts = { cwd, signal, stages, pipeline: "review", onUpdate };
-
-  // Get diff
-  let diffCmd = "git diff main...HEAD";
-  if (target.match(/^\d+$/)) diffCmd = `gh pr diff ${target}`;
-  else if (target.startsWith("--branch")) {
-    const branch = target.replace("--branch", "").trim() || "HEAD";
-    diffCmd = `git diff main...${branch}`;
-  }
-
+/**
+ * Shared review logic — used by both standalone /review and chained from /implement.
+ * Appends code-reviewer + review-judge stages to the provided stages array.
+ */
+async function runReviewInline(
+  cwd: string, signal: AbortSignal, onUpdate: any, ctx: any,
+  stages: StageResult[], diffCmd = "git diff main...HEAD", pipeline = "review",
+): Promise<{ content: { type: "text"; text: string }[]; isError?: boolean }> {
   const { spawn } = require("node:child_process");
   const diff = await new Promise<string>((resolve) => {
     const proc = spawn("bash", ["-c", diffCmd], { cwd, stdio: ["ignore", "pipe", "pipe"] });
@@ -356,38 +360,49 @@ async function runReview(cwd: string, target: string, signal: AbortSignal, onUpd
   });
 
   if (!diff) {
-    return { content: [{ type: "text" as const, text: "No changes to review." }], details: { pipeline: "review", stages } };
+    return { content: [{ type: "text", text: "No changes to review." }] };
   }
+
+  const opts = { cwd, signal, stages, pipeline, onUpdate };
 
   // Clean up stale findings
   try { fs.unlinkSync(`${cwd}/FINDINGS.md`); } catch {}
 
   // Code reviewer
+  stages.push(emptyStage("code-reviewer"));
   await runAgent("code-reviewer",
     `Review the following diff:\n\n${diff}`,
-    { ...opts, tools: ["read", "bash", "grep", "find"] });
+    { ...opts, tools: ["read", "write", "bash", "grep", "find"] });
 
-  // Code reviewer writes FINDINGS.md if issues found
   if (!fs.existsSync(`${cwd}/FINDINGS.md`)) {
-    stages[1].status = "done";
-    stages[1].output = "No findings";
-    return { content: [{ type: "text" as const, text: "Review passed — no actionable findings." }], details: { pipeline: "review", stages } };
+    return { content: [{ type: "text", text: "Review passed — no actionable findings." }] };
   }
 
-  // Review judge — validates findings, rewrites FINDINGS.md or deletes it
+  // Review judge
+  stages.push(emptyStage("review-judge"));
   const findings = fs.readFileSync(`${cwd}/FINDINGS.md`, "utf-8");
   await runAgent("review-judge",
     `Validate the following code review findings against the actual code:\n\n${findings}`,
     { ...opts, tools: ["read", "write", "bash", "grep", "find"] });
 
-  // No FINDINGS.md after judge = all filtered
   if (!fs.existsSync(`${cwd}/FINDINGS.md`)) {
-    return { content: [{ type: "text" as const, text: "Review passed — judge filtered all findings." }], details: { pipeline: "review", stages } };
+    return { content: [{ type: "text", text: "Review passed — judge filtered all findings." }] };
   }
 
   const validatedFindings = fs.readFileSync(`${cwd}/FINDINGS.md`, "utf-8");
-  return {
-    content: [{ type: "text" as const, text: validatedFindings }],
-    details: { pipeline: "review", stages },
-  };
+  return { content: [{ type: "text", text: validatedFindings }], isError: true };
+}
+
+async function runReview(cwd: string, target: string, signal: AbortSignal, onUpdate: any, ctx: any) {
+  const stages: StageResult[] = [];
+
+  let diffCmd = "git diff main...HEAD";
+  if (target.match(/^\d+$/)) diffCmd = `gh pr diff ${target}`;
+  else if (target.startsWith("--branch")) {
+    const branch = target.replace("--branch", "").trim() || "HEAD";
+    diffCmd = `git diff main...${branch}`;
+  }
+
+  const result = await runReviewInline(cwd, signal, onUpdate, ctx, stages, diffCmd);
+  return { ...result, details: { pipeline: "review", stages } };
 }
