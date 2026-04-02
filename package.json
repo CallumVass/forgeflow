@@ -1,0 +1,12 @@
+{
+  "name": "forgeflow",
+  "version": "0.1.0",
+  "description": "Agentic software delivery pipeline for Pi — PRD refinement, issue creation, TDD implementation, and code review.",
+  "keywords": ["pi-package"],
+  "license": "MIT",
+  "pi": {
+    "extensions": ["./extensions"],
+    "skills": ["./skills"],
+    "agents": ["./agents"]
+  }
+}
