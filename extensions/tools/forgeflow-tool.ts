@@ -620,6 +620,7 @@ async function runImplementAll(
 async function runReviewInline(
   cwd: string, signal: AbortSignal, onUpdate: any, ctx: any,
   stages: StageResult[], diffCmd = "git diff main...HEAD", pipeline = "review",
+  options: { prNumber?: string; interactive?: boolean } = {},
 ): Promise<{ content: { type: "text"; text: string }[]; isError?: boolean }> {
   const diff = await new Promise<string>((resolve) => {
     const proc = nodeSpawn("bash", ["-c", diffCmd], { cwd, stdio: ["ignore", "pipe", "pipe"] });
@@ -660,6 +661,81 @@ async function runReviewInline(
   }
 
   const validatedFindings = fs.readFileSync(`${cwd}/FINDINGS.md`, "utf-8");
+
+  // Interactive mode with PR: show findings and proposed gh commands for approval
+  if (options.interactive && options.prNumber) {
+    const repo = await exec("gh repo view --json nameWithOwner --jq .nameWithOwner", cwd);
+    const prNum = options.prNumber;
+
+    const proposalPrompt = `You have validated code review findings for PR #${prNum} in ${repo}.
+
+FINDINGS:
+${validatedFindings}
+
+Generate ready-to-run \`gh api\` commands to post each finding as a PR review comment. One command per finding.
+
+Format each as:
+
+**Finding N** — path/to/file.ts:LINE
+
+\`\`\`bash
+gh api repos/${repo}/pulls/${prNum}/comments \\
+  --method POST \\
+  --field body="<comment>" \\
+  --field commit_id="$(gh pr view ${prNum} --repo ${repo} --json headRefOid -q .headRefOid)" \\
+  --field path="path/to/file.ts" \\
+  --field line=LINE \\
+  --field side="RIGHT"
+\`\`\`
+
+Comment tone rules:
+- Write like a teammate, not an auditor. Casual, brief, direct.
+- 1-2 short sentences max. Lead with the suggestion, not the problem.
+- Use "might be worth..." / "could we..." / "what about..." / "small thing:"
+- No em dashes, no "Consider...", no "Note that...", no hedging filler.
+- Use GitHub \`\`\`suggestion\`\`\` blocks when proposing code changes.
+- Only generate commands for findings with a specific file + line.
+
+After the comments, add the review decision command:
+
+\`\`\`bash
+gh pr review ${prNum} --request-changes --body "Left a few comments" --repo ${repo}
+\`\`\`
+
+Output ONLY the commands, no other text.`;
+
+    stages.push(emptyStage("propose-comments"));
+    await runAgent("review-judge", proposalPrompt,
+      { cwd, signal, stages, pipeline, onUpdate, tools: ["read", "bash", "grep", "find"] });
+
+    const commentStage = stages.find((s) => s.name === "propose-comments");
+    const proposedCommands = commentStage?.output || "";
+
+    if (proposedCommands && ctx.hasUI) {
+      const reviewed = await ctx.ui.editor(
+        `Review PR comments for PR #${prNum} (edit or close to skip)`,
+        `${validatedFindings}\n\n---\n\nProposed commands (run these to post):\n\n${proposedCommands}`,
+      );
+
+      if (reviewed != null) {
+        const action = await ctx.ui.select(
+          "Post these review comments?",
+          ["Post comments", "Skip"],
+        );
+        if (action === "Post comments") {
+          // Extract and run gh api commands
+          const commands = reviewed.match(/```bash\n([\s\S]*?)```/g) || [];
+          for (const block of commands) {
+            const cmd = block.replace(/```bash\n/, "").replace(/```$/, "").trim();
+            if (cmd.startsWith("gh ")) {
+              await exec(cmd, cwd);
+            }
+          }
+        }
+      }
+    }
+  }
+
   return { content: [{ type: "text", text: validatedFindings }], isError: true };
 }
 
@@ -667,12 +743,23 @@ async function runReview(cwd: string, target: string, signal: AbortSignal, onUpd
   const stages: StageResult[] = [];
 
   let diffCmd = "git diff main...HEAD";
-  if (target.match(/^\d+$/)) diffCmd = `gh pr diff ${target}`;
-  else if (target.startsWith("--branch")) {
+  let prNumber: string | undefined;
+
+  if (target.match(/^\d+$/)) {
+    diffCmd = `gh pr diff ${target}`;
+    prNumber = target;
+  } else if (target.startsWith("--branch")) {
     const branch = target.replace("--branch", "").trim() || "HEAD";
     diffCmd = `git diff main...${branch}`;
+  } else {
+    // Try to detect PR from current branch
+    const pr = await exec("gh pr view --json number --jq .number 2>/dev/null", cwd);
+    if (pr && pr !== "") prNumber = pr;
   }
 
-  const result = await runReviewInline(cwd, signal, onUpdate, ctx, stages, diffCmd);
+  const result = await runReviewInline(cwd, signal, onUpdate, ctx, stages, diffCmd, {
+    prNumber,
+    interactive: ctx.hasUI,
+  });
   return { ...result, details: { pipeline: "review", stages } };
 }
