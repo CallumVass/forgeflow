@@ -408,6 +408,39 @@ async function runImplement(
       };
     }
     plan = planResult.output;
+
+    // Interactive mode: let user review/edit the plan before proceeding
+    if (ctx.hasUI && plan) {
+      const edited = await ctx.ui.editor(`Review implementation plan for ${issueLabel}`, plan);
+      if (edited != null && edited !== plan) {
+        plan = edited;
+      }
+
+      const action = await ctx.ui.select(
+        "Plan ready. What next?",
+        ["Approve and implement", "Cancel"]
+      );
+      if (action === "Cancel" || action == null) {
+        return {
+          content: [{ type: "text" as const, text: "Implementation cancelled." }],
+          details: { pipeline: "implement", stages },
+        };
+      }
+    }
+  }
+
+  // Interactive mode: create feature branch if not already on one
+  if (ctx.hasUI && resolved.branch) {
+    const currentBranch = await exec("git branch --show-current", cwd);
+    if (currentBranch !== resolved.branch) {
+      // Check if branch exists, create or checkout
+      const branchExists = await exec(`git rev-parse --verify ${resolved.branch} 2>/dev/null && echo yes || echo no`, cwd);
+      if (branchExists === "yes") {
+        await exec(`git checkout ${resolved.branch}`, cwd);
+      } else {
+        await exec(`git checkout -b ${resolved.branch}`, cwd);
+      }
+    }
   }
 
   // Clean up stale blockers
