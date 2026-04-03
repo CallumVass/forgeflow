@@ -186,15 +186,51 @@ export async function runAgent(
   }
 }
 
+function getLastToolCall(messages: Message[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    // biome-ignore lint/style/noNonNullAssertion: index within bounds
+    const msg = messages[i]!;
+    if (msg.role === "assistant") {
+      const parts = msg.content as AnyCtx[];
+      for (let j = parts.length - 1; j >= 0; j--) {
+        const part = parts[j];
+        if (part?.type === "toolCall") {
+          const name = part.name as string;
+          const args = (part.arguments ?? {}) as Record<string, unknown>;
+          switch (name) {
+            case "bash": {
+              const cmd = ((args.command as string) || "").slice(0, 60);
+              return cmd ? `$ ${cmd}` : name;
+            }
+            case "read":
+            case "write":
+            case "edit":
+              return `${name} ${(args.file_path ?? args.path ?? "") as string}`;
+            case "grep":
+              return `grep /${(args.pattern as string) ?? ""}/`;
+            case "find":
+              return `find ${(args.pattern as string) ?? ""}`;
+            default:
+              return name;
+          }
+        }
+      }
+    }
+  }
+  return "";
+}
+
 function emitUpdate(options: { stages: StageResult[]; pipeline: string; onUpdate?: OnUpdate }) {
   if (!options.onUpdate) return;
 
   const running = options.stages.find((s) => s.status === "running");
-  const text = running
-    ? `[${running.name}] running...`
-    : options.stages.every((s) => s.status === "done")
-      ? "Pipeline complete"
-      : "Processing...";
+  let text: string;
+  if (running) {
+    const lastTool = getLastToolCall(running.messages);
+    text = lastTool ? `[${running.name}] ${lastTool}` : `[${running.name}] running...`;
+  } else {
+    text = options.stages.every((s) => s.status === "done") ? "Pipeline complete" : "Processing...";
+  }
 
   options.onUpdate({
     content: [{ type: "text", text }],

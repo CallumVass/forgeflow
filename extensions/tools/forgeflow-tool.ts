@@ -4,7 +4,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { runAgent } from "./run-agent";
-import { type AnyCtx, emptyStage, getFinalOutput, type PipelineDetails, type StageResult } from "./types";
+import { type AnyCtx, emptyStage, getFinalOutput, type PipelineDetails, type StageResult, sumUsage } from "./types";
 
 type DisplayItem = { type: "text"; text: string } | { type: "toolCall"; name: string; args: Record<string, unknown> };
 
@@ -104,35 +104,40 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
       const cwd = ctx.cwd as string;
       const sig = signal ?? new AbortController().signal;
 
-      switch (params.pipeline) {
-        case "prd-qa":
-          return await runPrdQa(cwd, params.maxIterations ?? 10, sig, onUpdate, ctx);
-        case "create-issues":
-          return await runCreateIssues(cwd, sig, onUpdate, ctx);
-        case "create-issue":
-          return await runCreateIssue(cwd, params.issue ?? "", sig, onUpdate, ctx);
-        case "implement":
-          return await runImplement(cwd, params.issue ?? "", sig, onUpdate, ctx, {
-            skipPlan: params.skipPlan ?? false,
-            skipReview: params.skipReview ?? false,
-          });
-        case "implement-all":
-          return await runImplementAll(cwd, sig, onUpdate, ctx, {
-            skipPlan: params.skipPlan ?? false,
-            skipReview: params.skipReview ?? false,
-          });
-        case "review":
-          return await runReview(cwd, params.target ?? "", sig, onUpdate, ctx);
-        default:
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Unknown pipeline: ${params.pipeline}. Use: prd-qa, create-issues, implement, review`,
-              },
-            ],
-            details: { pipeline: params.pipeline, stages: [] } as PipelineDetails,
-          };
+      try {
+        switch (params.pipeline) {
+          case "prd-qa":
+            return await runPrdQa(cwd, params.maxIterations ?? 10, sig, onUpdate, ctx);
+          case "create-issues":
+            return await runCreateIssues(cwd, sig, onUpdate, ctx);
+          case "create-issue":
+            return await runCreateIssue(cwd, params.issue ?? "", sig, onUpdate, ctx);
+          case "implement":
+            return await runImplement(cwd, params.issue ?? "", sig, onUpdate, ctx, {
+              skipPlan: params.skipPlan ?? false,
+              skipReview: params.skipReview ?? false,
+            });
+          case "implement-all":
+            return await runImplementAll(cwd, sig, onUpdate, ctx, {
+              skipPlan: params.skipPlan ?? false,
+              skipReview: params.skipReview ?? false,
+            });
+          case "review":
+            return await runReview(cwd, params.target ?? "", sig, onUpdate, ctx);
+          default:
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Unknown pipeline: ${params.pipeline}. Use: prd-qa, create-issues, implement, review`,
+                },
+              ],
+              details: { pipeline: params.pipeline, stages: [] } as PipelineDetails,
+            };
+        }
+      } finally {
+        setForgeflowStatus(ctx, undefined);
+        setForgeflowWidget(ctx, undefined);
       }
     },
 
@@ -249,6 +254,34 @@ function exec(cmd: string, cwd: string): Promise<string> {
     proc.on("close", () => resolve(out.trim()));
     proc.on("error", () => resolve(""));
   });
+}
+
+function setForgeflowStatus(ctx: AnyCtx, text: string | undefined): void {
+  if (ctx.hasUI) ctx.ui.setStatus("forgeflow", text);
+}
+
+function setForgeflowWidget(ctx: AnyCtx, lines: string[] | undefined): void {
+  if (ctx.hasUI) ctx.ui.setWidget("forgeflow", lines);
+}
+
+function updateProgressWidget(
+  ctx: AnyCtx,
+  progress: Map<number, { title: string; status: string }>,
+  totalCost: number,
+): void {
+  let done = 0;
+  for (const [, info] of progress) {
+    if (info.status === "done") done++;
+  }
+  let header = `implement-all · ${done}/${progress.size}`;
+  if (totalCost > 0) header += ` · $${totalCost.toFixed(2)}`;
+  const lines: string[] = [header];
+  for (const [num, info] of progress) {
+    const icon = info.status === "done" ? "✓" : info.status === "running" ? "⟳" : info.status === "failed" ? "✗" : "○";
+    const title = info.title.length > 50 ? `${info.title.slice(0, 50)}...` : info.title;
+    lines.push(`  ${icon} #${num} ${title}`);
+  }
+  setForgeflowWidget(ctx, lines);
 }
 
 /**
@@ -513,6 +546,12 @@ async function runImplement(
   }
 
   const issueLabel = resolved.number ? `#${resolved.number}: ${resolved.title}` : resolved.title;
+
+  // Status line for standalone /implement (implement-all manages its own)
+  if (!flags.autonomous && resolved.number) {
+    setForgeflowStatus(ctx, `#${resolved.number} ${resolved.title} · ${resolved.branch}`);
+  }
+
   const issueContext = resolved.number
     ? `Issue #${resolved.number}: ${resolved.title}\n\n${resolved.body}`
     : resolved.body;
@@ -672,6 +711,7 @@ interface IssueInfo {
 function getReadyIssues(issues: IssueInfo[], completed: Set<number>): number[] {
   return issues
     .filter((issue) => {
+      if (completed.has(issue.number)) return false; // already done (guards against API eventual consistency)
       const parts = issue.body.split("## Dependencies");
       if (parts.length < 2) return true; // no deps section
       const depSection = parts[1]?.split("\n## ")[0] ?? "";
@@ -689,6 +729,7 @@ async function runImplementAll(
   flags: { skipPlan: boolean; skipReview: boolean },
 ) {
   const allStages: StageResult[] = [];
+  const issueProgress = new Map<number, { title: string; status: "pending" | "running" | "done" | "failed" }>();
 
   // Seed completed set with already-closed issues
   const closedJson = await exec(
@@ -725,6 +766,13 @@ async function runImplementAll(
       };
     }
 
+    // Track all known issues in progress widget
+    for (const issue of issues) {
+      if (!issueProgress.has(issue.number)) {
+        issueProgress.set(issue.number, { title: issue.title, status: "pending" });
+      }
+    }
+
     // Find ready issues (deps satisfied)
     const ready = getReadyIssues(issues, completed);
     if (ready.length === 0) {
@@ -739,19 +787,32 @@ async function runImplementAll(
 
     // biome-ignore lint/style/noNonNullAssertion: ready is non-empty (checked above)
     const issueNum = ready[0]!;
+    const issueTitle = issues.find((i) => i.number === issueNum)?.title ?? `#${issueNum}`;
+
+    // Update status + widget
+    issueProgress.set(issueNum, { title: issueTitle, status: "running" });
+    setForgeflowStatus(
+      ctx,
+      `implement-all · ${completed.size}/${completed.size + issues.length} · #${issueNum} ${issueTitle}`,
+    );
+    updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
 
     // Run implement for this issue (reuses full implement pipeline)
     allStages.push(emptyStage(`implement-${issueNum}`));
     const implResult = await runImplement(cwd, String(issueNum), signal, onUpdate, ctx, { ...flags, autonomous: true });
 
-    // Update stage status
+    // Accumulate usage from detailed stages into the container stage
     const implStage = allStages.find((s) => s.name === `implement-${issueNum}`);
     if (implStage) {
       implStage.status = implResult.isError ? "failed" : "done";
       implStage.output = implResult.content[0]?.type === "text" ? implResult.content[0].text : "";
+      const detailedStages = (implResult as AnyCtx).details?.stages as StageResult[] | undefined;
+      if (detailedStages) implStage.usage = sumUsage(detailedStages);
     }
 
     if (implResult.isError) {
+      issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
+      updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
       return {
         content: [
           {
@@ -780,6 +841,8 @@ async function runImplementAll(
         if (prState === "MERGED") {
           completed.add(issueNum);
         } else {
+          issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
+          updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
           return {
             content: [{ type: "text" as const, text: `Failed to merge PR #${prNum} for issue #${issueNum}.` }],
             details: { pipeline: "implement-all", stages: allStages },
@@ -788,12 +851,22 @@ async function runImplementAll(
         }
       }
     } else {
+      issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
+      updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
       return {
         content: [{ type: "text" as const, text: `No PR found for issue #${issueNum} after implementation.` }],
         details: { pipeline: "implement-all", stages: allStages },
         isError: true,
       };
     }
+
+    // Mark done and update widget
+    issueProgress.set(issueNum, { title: issueTitle, status: "done" });
+    setForgeflowStatus(
+      ctx,
+      `implement-all · ${completed.size}/${completed.size + issues.length - 1} · $${sumUsage(allStages).cost.toFixed(2)}`,
+    );
+    updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
   }
 
   return {

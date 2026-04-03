@@ -58,3 +58,16 @@ export function getFinalOutput(messages: Message[]): string {
   }
   return "";
 }
+
+export function sumUsage(stages: StageResult[]): UsageStats {
+  const total = emptyUsage();
+  for (const s of stages) {
+    total.input += s.usage.input;
+    total.output += s.usage.output;
+    total.cacheRead += s.usage.cacheRead;
+    total.cacheWrite += s.usage.cacheWrite;
+    total.cost += s.usage.cost;
+    total.turns += s.usage.turns;
+  }
+  return total;
+}
