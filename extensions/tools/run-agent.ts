@@ -5,7 +5,7 @@ import * as path from "node:path";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
 import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
-import { type PipelineDetails, type StageResult, emptyStage, emptyUsage } from "./types";
+import { emptyStage, type PipelineDetails, type StageResult } from "./types";
 
 type OnUpdate = (partial: AgentToolResult<PipelineDetails>) => void;
 
@@ -51,8 +51,9 @@ export async function runAgent(
   },
 ): Promise<StageResult> {
   const agentPath = resolveAgentPath(agentName);
-  const stage = options.stages.find((s) => s.name === agentName && s.status === "pending")
-    ?? options.stages.find((s) => s.name === agentName);
+  const stage =
+    options.stages.find((s) => s.name === agentName && s.status === "pending") ??
+    options.stages.find((s) => s.name === agentName);
 
   if (!stage) {
     const s = emptyStage(agentName);
@@ -92,7 +93,11 @@ export async function runAgent(
       const processLine = (line: string) => {
         if (!line.trim()) return;
         let event: any;
-        try { event = JSON.parse(line); } catch { return; }
+        try {
+          event = JSON.parse(line);
+        } catch {
+          return;
+        }
 
         if (event.type === "message_end" && event.message) {
           const msg = event.message as Message;
@@ -140,7 +145,9 @@ export async function runAgent(
       if (options.signal) {
         const kill = () => {
           proc.kill("SIGTERM");
-          setTimeout(() => { if (!proc.killed) proc.kill("SIGKILL"); }, 5000);
+          setTimeout(() => {
+            if (!proc.killed) proc.kill("SIGKILL");
+          }, 5000);
         };
         if (options.signal.aborted) kill();
         else options.signal.addEventListener("abort", kill, { once: true });
@@ -152,10 +159,13 @@ export async function runAgent(
 
     // Extract final text output
     for (let i = stage.messages.length - 1; i >= 0; i--) {
-      const msg = stage.messages[i];
+      const msg = stage.messages[i]!;
       if (msg.role === "assistant") {
         for (const part of msg.content) {
-          if (part.type === "text") { stage.output = part.text; break; }
+          if (typeof part === "object" && "type" in part && part.type === "text" && "text" in part) {
+            stage.output = part.text as string;
+            break;
+          }
         }
         if (stage.output) break;
       }
@@ -164,8 +174,14 @@ export async function runAgent(
     emitUpdate(options);
     return stage;
   } finally {
-    if (tmpFile) try { fs.unlinkSync(tmpFile); } catch {}
-    if (tmpDir) try { fs.rmdirSync(tmpDir); } catch {}
+    if (tmpFile)
+      try {
+        fs.unlinkSync(tmpFile);
+      } catch {}
+    if (tmpDir)
+      try {
+        fs.rmdirSync(tmpDir);
+      } catch {}
   }
 }
 

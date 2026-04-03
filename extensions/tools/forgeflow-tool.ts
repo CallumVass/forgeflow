@@ -1,12 +1,24 @@
-import * as fs from "node:fs";
 import { spawn as nodeSpawn } from "node:child_process";
+import * as fs from "node:fs";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { Container, Markdown, Spacer, Text, type Component } from "@mariozechner/pi-tui";
+import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
-import { type PipelineDetails, type StageResult, emptyStage, getFinalOutput } from "./types";
 import { runAgent } from "./run-agent";
+import { emptyStage, getFinalOutput, type PipelineDetails, type StageResult } from "./types";
 
-type DisplayItem = { type: "text"; text: string } | { type: "toolCall"; name: string; args: Record<string, any> };
+type DisplayItem = { type: "text"; text: string } | { type: "toolCall"; name: string; args: Record<string, unknown> };
+
+interface ForgeflowInput {
+  pipeline: string;
+  maxIterations?: number;
+  issue?: string;
+  target?: string;
+  skipPlan?: boolean;
+  skipReview?: boolean;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyCtx = any;
 
 function getDisplayItems(messages: any[]): DisplayItem[] {
   const items: DisplayItem[] = [];
@@ -21,26 +33,36 @@ function getDisplayItems(messages: any[]): DisplayItem[] {
   return items;
 }
 
-function formatToolCallShort(name: string, args: Record<string, any>, fg: (c: any, t: string) => string): string {
+function formatToolCallShort(
+  name: string,
+  args: Record<string, unknown>,
+  fg: (c: string, t: string) => string,
+): string {
   switch (name) {
     case "bash": {
       const cmd = (args.command as string) || "...";
-      return fg("muted", "$ ") + fg("toolOutput", cmd.length > 60 ? cmd.slice(0, 60) + "..." : cmd);
+      return fg("muted", "$ ") + fg("toolOutput", cmd.length > 60 ? `${cmd.slice(0, 60)}...` : cmd);
     }
-    case "read": return fg("muted", "read ") + fg("accent", (args.file_path || args.path || "...") as string);
-    case "write": return fg("muted", "write ") + fg("accent", (args.file_path || args.path || "...") as string);
-    case "edit": return fg("muted", "edit ") + fg("accent", (args.file_path || args.path || "...") as string);
-    case "grep": return fg("muted", "grep ") + fg("accent", `/${args.pattern || ""}/`);
-    case "find": return fg("muted", "find ") + fg("accent", (args.pattern || "*") as string);
-    default: return fg("accent", name);
+    case "read":
+      return fg("muted", "read ") + fg("accent", (args.file_path || args.path || "...") as string);
+    case "write":
+      return fg("muted", "write ") + fg("accent", (args.file_path || args.path || "...") as string);
+    case "edit":
+      return fg("muted", "edit ") + fg("accent", (args.file_path || args.path || "...") as string);
+    case "grep":
+      return fg("muted", "grep ") + fg("accent", `/${args.pattern || ""}/`);
+    case "find":
+      return fg("muted", "find ") + fg("accent", (args.pattern || "*") as string);
+    default:
+      return fg("accent", name);
   }
 }
 
 function formatUsage(usage: { input: number; output: number; cost: number; turns: number }, model?: string): string {
   const parts: string[] = [];
   if (usage.turns) parts.push(`${usage.turns}t`);
-  if (usage.input) parts.push(`↑${usage.input < 1000 ? usage.input : Math.round(usage.input / 1000) + "k"}`);
-  if (usage.output) parts.push(`↓${usage.output < 1000 ? usage.output : Math.round(usage.output / 1000) + "k"}`);
+  if (usage.input) parts.push(`↑${usage.input < 1000 ? usage.input : `${Math.round(usage.input / 1000)}k`}`);
+  if (usage.output) parts.push(`↓${usage.output < 1000 ? usage.output : `${Math.round(usage.output / 1000)}k`}`);
   if (usage.cost) parts.push(`$${usage.cost.toFixed(4)}`);
   if (model) parts.push(model);
   return parts.join(" ");
@@ -48,10 +70,15 @@ function formatUsage(usage: { input: number; output: number; cost: number; turns
 
 const ForgeflowParams = Type.Object({
   pipeline: Type.String({
-    description: 'Which pipeline to run: "prd-qa", "create-issues", "create-issue", "implement", "implement-all", or "review"',
+    description:
+      'Which pipeline to run: "prd-qa", "create-issues", "create-issue", "implement", "implement-all", or "review"',
   }),
   maxIterations: Type.Optional(Type.Number({ description: "Max iterations for prd-qa (default 10)" })),
-  issue: Type.Optional(Type.String({ description: "Issue number or description for implement pipeline, or feature idea for create-issue" })),
+  issue: Type.Optional(
+    Type.String({
+      description: "Issue number or description for implement pipeline, or feature idea for create-issue",
+    }),
+  ),
   target: Type.Optional(Type.String({ description: "PR number or --branch for review pipeline" })),
   skipPlan: Type.Optional(Type.Boolean({ description: "Skip planner, implement directly (default false)" })),
   skipReview: Type.Optional(Type.Boolean({ description: "Skip code review after implementation (default false)" })),
@@ -67,39 +94,53 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
       "implement-all (loop through all open issues autonomously), review (deterministic checks→code review→judge).",
       "Each pipeline spawns specialized sub-agents with isolated context.",
     ].join(" "),
-    parameters: ForgeflowParams,
+    parameters: ForgeflowParams as AnyCtx,
 
-    async execute(_toolCallId, params, signal, onUpdate, ctx) {
-      const cwd = ctx.cwd;
+    async execute(
+      _toolCallId: string,
+      _params: unknown,
+      signal: AbortSignal | undefined,
+      onUpdate: AnyCtx,
+      ctx: AnyCtx,
+    ) {
+      const params = _params as ForgeflowInput;
+      const cwd = ctx.cwd as string;
+      const sig = signal ?? new AbortController().signal;
 
       switch (params.pipeline) {
         case "prd-qa":
-          return await runPrdQa(cwd, params.maxIterations ?? 10, signal, onUpdate, ctx);
+          return await runPrdQa(cwd, params.maxIterations ?? 10, sig, onUpdate, ctx);
         case "create-issues":
-          return await runCreateIssues(cwd, signal, onUpdate, ctx);
+          return await runCreateIssues(cwd, sig, onUpdate, ctx);
         case "create-issue":
-          return await runCreateIssue(cwd, params.issue ?? "", signal, onUpdate, ctx);
+          return await runCreateIssue(cwd, params.issue ?? "", sig, onUpdate, ctx);
         case "implement":
-          return await runImplement(cwd, params.issue ?? "", signal, onUpdate, ctx, {
+          return await runImplement(cwd, params.issue ?? "", sig, onUpdate, ctx, {
             skipPlan: params.skipPlan ?? false,
             skipReview: params.skipReview ?? false,
           });
         case "implement-all":
-          return await runImplementAll(cwd, signal, onUpdate, ctx, {
+          return await runImplementAll(cwd, sig, onUpdate, ctx, {
             skipPlan: params.skipPlan ?? false,
             skipReview: params.skipReview ?? false,
           });
         case "review":
-          return await runReview(cwd, params.target ?? "", signal, onUpdate, ctx);
+          return await runReview(cwd, params.target ?? "", sig, onUpdate, ctx);
         default:
           return {
-            content: [{ type: "text", text: `Unknown pipeline: ${params.pipeline}. Use: prd-qa, create-issues, implement, review` }],
+            content: [
+              {
+                type: "text",
+                text: `Unknown pipeline: ${params.pipeline}. Use: prd-qa, create-issues, implement, review`,
+              },
+            ],
             details: { pipeline: params.pipeline, stages: [] } as PipelineDetails,
           };
       }
     },
 
-    renderCall(args, theme) {
+    renderCall(_args: unknown, theme: AnyCtx) {
+      const args = _args as ForgeflowInput;
       const pipeline = args.pipeline || "?";
       let text = theme.fg("toolTitle", theme.bold("forgeflow ")) + theme.fg("accent", pipeline);
       if (args.issue) text += theme.fg("dim", ` #${args.issue}`);
@@ -108,7 +149,7 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
       return new Text(text, 0, 0);
     },
 
-    renderResult(result, { expanded }, theme) {
+    renderResult(result: AnyCtx, { expanded }: { expanded: boolean }, theme: AnyCtx) {
       const details = result.details as PipelineDetails | undefined;
       if (!details || details.stages.length === 0) {
         const text = result.content[0];
@@ -117,26 +158,32 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
 
       if (expanded) {
         const container = new Container();
-        container.addChild(new Text(
-          theme.fg("toolTitle", theme.bold("forgeflow ")) + theme.fg("accent", details.pipeline),
-          0, 0
-        ));
+        container.addChild(
+          new Text(theme.fg("toolTitle", theme.bold("forgeflow ")) + theme.fg("accent", details.pipeline), 0, 0),
+        );
         container.addChild(new Spacer(1));
 
         for (const stage of details.stages) {
-          const icon = stage.status === "done" ? theme.fg("success", "✓")
-            : stage.status === "running" ? theme.fg("warning", "⟳")
-            : stage.status === "failed" ? theme.fg("error", "✗")
-            : theme.fg("muted", "○");
+          const icon =
+            stage.status === "done"
+              ? theme.fg("success", "✓")
+              : stage.status === "running"
+                ? theme.fg("warning", "⟳")
+                : stage.status === "failed"
+                  ? theme.fg("error", "✗")
+                  : theme.fg("muted", "○");
           container.addChild(new Text(`${icon} ${theme.fg("toolTitle", theme.bold(stage.name))}`, 0, 0));
 
           const items = getDisplayItems(stage.messages);
           for (const item of items) {
             if (item.type === "toolCall") {
-              container.addChild(new Text(
-                "  " + theme.fg("muted", "→ ") + formatToolCallShort(item.name, item.args, theme.fg.bind(theme)),
-                0, 0
-              ));
+              container.addChild(
+                new Text(
+                  `  ${theme.fg("muted", "→ ")}${formatToolCallShort(item.name, item.args, theme.fg.bind(theme))}`,
+                  0,
+                  0,
+                ),
+              );
             }
           }
 
@@ -162,10 +209,14 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
       // Collapsed view
       let text = theme.fg("toolTitle", theme.bold("forgeflow ")) + theme.fg("accent", details.pipeline);
       for (const stage of details.stages) {
-        const icon = stage.status === "done" ? theme.fg("success", "✓")
-          : stage.status === "running" ? theme.fg("warning", "⟳")
-          : stage.status === "failed" ? theme.fg("error", "✗")
-          : theme.fg("muted", "○");
+        const icon =
+          stage.status === "done"
+            ? theme.fg("success", "✓")
+            : stage.status === "running"
+              ? theme.fg("warning", "⟳")
+              : stage.status === "failed"
+                ? theme.fg("error", "✗")
+                : theme.fg("muted", "○");
 
         text += `\n  ${icon} ${theme.fg("toolTitle", stage.name)}`;
 
@@ -174,7 +225,7 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
           const last = items.filter((i) => i.type === "toolCall").slice(-3);
           for (const item of last) {
             if (item.type === "toolCall") {
-              text += "\n    " + theme.fg("muted", "→ ") + formatToolCallShort(item.name, item.args, theme.fg.bind(theme));
+              text += `\n    ${theme.fg("muted", "→ ")}${formatToolCallShort(item.name, item.args, theme.fg.bind(theme))}`;
             }
           }
         } else if (stage.status === "done" || stage.status === "failed") {
@@ -195,7 +246,9 @@ function exec(cmd: string, cwd: string): Promise<string> {
   return new Promise((resolve) => {
     const proc = nodeSpawn("bash", ["-c", cmd], { cwd, stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
-    proc.stdout.on("data", (d: Buffer) => { out += d.toString(); });
+    proc.stdout.on("data", (d: Buffer) => {
+      out += d.toString();
+    });
     proc.on("close", () => resolve(out.trim()));
     proc.on("error", () => resolve(""));
   });
@@ -205,16 +258,25 @@ function exec(cmd: string, cwd: string): Promise<string> {
  * Run review and fix any findings via implementor. Returns true if findings were found and fixed.
  */
 async function reviewAndFix(
-  cwd: string, signal: AbortSignal, onUpdate: any, ctx: any, stages: StageResult[], pipeline = "implement",
+  cwd: string,
+  signal: AbortSignal,
+  onUpdate: AnyCtx,
+  ctx: AnyCtx,
+  stages: StageResult[],
+  pipeline = "implement",
 ): Promise<void> {
   const reviewResult = await runReviewInline(cwd, signal, onUpdate, ctx, stages);
   if (reviewResult.isError) {
     const findings = reviewResult.content[0]?.type === "text" ? reviewResult.content[0].text : "";
     stages.push(emptyStage("fix-findings"));
-    await runAgent("implementor",
+    await runAgent(
+      "implementor",
       `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
-      { cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL });
-    try { fs.unlinkSync(`${cwd}/FINDINGS.md`); } catch {}
+      { cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL },
+    );
+    try {
+      fs.unlinkSync(`${cwd}/FINDINGS.md`);
+    } catch {}
   }
 }
 
@@ -222,13 +284,20 @@ async function reviewAndFix(
  * Run refactorer then review+fix. Shared by fresh implementation and resume-from-branch paths.
  */
 async function refactorAndReview(
-  cwd: string, signal: AbortSignal, onUpdate: any, ctx: any, stages: StageResult[],
-  skipReview: boolean, pipeline = "implement",
+  cwd: string,
+  signal: AbortSignal,
+  onUpdate: AnyCtx,
+  ctx: AnyCtx,
+  stages: StageResult[],
+  skipReview: boolean,
+  pipeline = "implement",
 ): Promise<void> {
   stages.push(emptyStage("refactorer"));
-  await runAgent("refactorer",
+  await runAgent(
+    "refactorer",
     "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit if changed.",
-    { cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL });
+    { cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL },
+  );
 
   if (!skipReview) {
     await reviewAndFix(cwd, signal, onUpdate, ctx, stages, pipeline);
@@ -273,7 +342,7 @@ async function resolveIssue(cwd: string, issueArg?: string): Promise<ResolvedIss
   let issueNum: number;
 
   if (issueArg && /^\d+$/.test(issueArg)) {
-    issueNum = parseInt(issueArg);
+    issueNum = parseInt(issueArg, 10);
   } else if (issueArg) {
     // Non-numeric arg — pass through as description (original behavior)
     return { number: 0, title: issueArg, body: issueArg, branch: "" };
@@ -283,38 +352,40 @@ async function resolveIssue(cwd: string, issueArg?: string): Promise<ResolvedIss
     const match = branch.match(/(?:feat\/)?issue-(\d+)/);
 
     if (match) {
-      issueNum = parseInt(match[1]);
+      issueNum = parseInt(match[1]!, 10);
     } else {
       return `On branch "${branch}" — can't detect issue number. Use /implement <issue#>.`;
     }
   }
 
   // Fetch issue details
-  const issueJson = await exec(
-    `gh issue view ${issueNum} --json number,title,body`,
-    cwd,
-  );
+  const issueJson = await exec(`gh issue view ${issueNum} --json number,title,body`, cwd);
   if (!issueJson) return `Could not fetch issue #${issueNum}.`;
 
   let issue: { number: number; title: string; body: string };
-  try { issue = JSON.parse(issueJson); } catch { return `Could not parse issue #${issueNum}.`; }
+  try {
+    issue = JSON.parse(issueJson);
+  } catch {
+    return `Could not parse issue #${issueNum}.`;
+  }
 
   const branch = `feat/issue-${issueNum}`;
 
   // Check for existing PR
   const prJson = await exec(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
-  const existingPR = prJson && prJson !== "null" ? parseInt(prJson) : undefined;
+  const existingPR = prJson && prJson !== "null" ? parseInt(prJson, 10) : undefined;
 
   return { ...issue, branch, existingPR };
 }
 
 // ─── Pipeline implementations ───────────────────────────────────────
 
-async function runPrdQa(
-  cwd: string, maxIterations: number, signal: AbortSignal, onUpdate: any, ctx: any
-) {
+async function runPrdQa(cwd: string, maxIterations: number, signal: AbortSignal, onUpdate: AnyCtx, ctx: AnyCtx) {
   if (!fs.existsSync(`${cwd}/PRD.md`)) {
-    return { content: [{ type: "text" as const, text: "PRD.md not found." }], details: { pipeline: "prd-qa", stages: [] } };
+    return {
+      content: [{ type: "text" as const, text: "PRD.md not found." }],
+      details: { pipeline: "prd-qa", stages: [] },
+    };
   }
 
   const stages: StageResult[] = [];
@@ -323,9 +394,11 @@ async function runPrdQa(
   for (let i = 1; i <= maxIterations; i++) {
     // Critic
     stages.push(emptyStage("prd-critic"));
-    const criticResult = await runAgent("prd-critic",
+    const criticResult = await runAgent(
+      "prd-critic",
       "Review PRD.md for completeness. If it needs refinement, create QUESTIONS.md. If it's complete, do NOT create QUESTIONS.md.",
-      { ...opts, tools: TOOLS_NO_EDIT });
+      { ...opts, tools: TOOLS_NO_EDIT },
+    );
 
     // No QUESTIONS.md = critic considers PRD complete
     if (!fs.existsSync(`${cwd}/QUESTIONS.md`)) {
@@ -344,15 +417,19 @@ async function runPrdQa(
 
     // Architect
     stages.push(emptyStage("prd-architect"));
-    await runAgent("prd-architect",
+    await runAgent(
+      "prd-architect",
       "Read PRD.md and answer all questions in QUESTIONS.md. Write answers inline in QUESTIONS.md.",
-      { ...opts, tools: TOOLS_ALL });
+      { ...opts, tools: TOOLS_ALL },
+    );
 
     // Integrator — incorporate answers into PRD before approval gate
     stages.push(emptyStage("prd-integrator"));
-    await runAgent("prd-integrator",
+    await runAgent(
+      "prd-integrator",
       "Incorporate answers from QUESTIONS.md into PRD.md, then delete QUESTIONS.md.",
-      opts);
+      opts,
+    );
 
     // Approval gate — show PRD in editor, user can review/edit then decide
     if (ctx.hasUI) {
@@ -364,10 +441,7 @@ async function runPrdQa(
         fs.writeFileSync(`${cwd}/PRD.md`, edited, "utf-8");
       }
 
-      const action = await ctx.ui.select(
-        "PRD updated. What next?",
-        ["Continue refining", "Accept PRD"]
-      );
+      const action = await ctx.ui.select("PRD updated. What next?", ["Continue refining", "Accept PRD"]);
       if (action === "Accept PRD" || action == null) {
         return {
           content: [{ type: "text" as const, text: "PRD accepted." }],
@@ -383,16 +457,18 @@ async function runPrdQa(
   };
 }
 
-async function runCreateIssue(cwd: string, idea: string, signal: AbortSignal, onUpdate: any, ctx: any) {
+async function runCreateIssue(cwd: string, idea: string, signal: AbortSignal, onUpdate: AnyCtx, _ctx: AnyCtx) {
   if (!idea) {
-    return { content: [{ type: "text" as const, text: "No feature idea provided." }], details: { pipeline: "create-issue", stages: [] } };
+    return {
+      content: [{ type: "text" as const, text: "No feature idea provided." }],
+      details: { pipeline: "create-issue", stages: [] },
+    };
   }
 
   const stages: StageResult[] = [emptyStage("single-issue-creator")];
   const opts = { cwd, signal, stages, pipeline: "create-issue", onUpdate };
 
-  await runAgent("single-issue-creator", idea,
-    { ...opts, tools: TOOLS_NO_EDIT });
+  await runAgent("single-issue-creator", idea, { ...opts, tools: TOOLS_NO_EDIT });
 
   return {
     content: [{ type: "text" as const, text: "Issue created." }],
@@ -400,17 +476,22 @@ async function runCreateIssue(cwd: string, idea: string, signal: AbortSignal, on
   };
 }
 
-async function runCreateIssues(cwd: string, signal: AbortSignal, onUpdate: any, ctx: any) {
+async function runCreateIssues(cwd: string, signal: AbortSignal, onUpdate: AnyCtx, _ctx: AnyCtx) {
   if (!fs.existsSync(`${cwd}/PRD.md`)) {
-    return { content: [{ type: "text" as const, text: "PRD.md not found." }], details: { pipeline: "create-issues", stages: [] } };
+    return {
+      content: [{ type: "text" as const, text: "PRD.md not found." }],
+      details: { pipeline: "create-issues", stages: [] },
+    };
   }
 
   const stages: StageResult[] = [emptyStage("issue-creator")];
   const opts = { cwd, signal, stages, pipeline: "create-issues", onUpdate };
 
-  await runAgent("issue-creator",
+  await runAgent(
+    "issue-creator",
     "Decompose PRD.md into vertical-slice GitHub issues. Read the issue-template skill for the standard format.",
-    { ...opts, tools: TOOLS_NO_EDIT });
+    { ...opts, tools: TOOLS_NO_EDIT },
+  );
 
   return {
     content: [{ type: "text" as const, text: "Issue creation complete." }],
@@ -419,7 +500,11 @@ async function runCreateIssues(cwd: string, signal: AbortSignal, onUpdate: any, 
 }
 
 async function runImplement(
-  cwd: string, issueArg: string, signal: AbortSignal, onUpdate: any, ctx: any,
+  cwd: string,
+  issueArg: string,
+  signal: AbortSignal,
+  onUpdate: AnyCtx,
+  ctx: AnyCtx,
   flags: { skipPlan: boolean; skipReview: boolean; autonomous?: boolean } = { skipPlan: false, skipReview: false },
 ) {
   const interactive = ctx.hasUI && !flags.autonomous;
@@ -429,9 +514,7 @@ async function runImplement(
     return { content: [{ type: "text" as const, text: resolved }], details: { pipeline: "implement", stages: [] } };
   }
 
-  const issueLabel = resolved.number
-    ? `#${resolved.number}: ${resolved.title}`
-    : resolved.title;
+  const issueLabel = resolved.number ? `#${resolved.number}: ${resolved.title}` : resolved.title;
   const issueContext = resolved.number
     ? `Issue #${resolved.number}: ${resolved.title}\n\n${resolved.body}`
     : resolved.body;
@@ -451,11 +534,14 @@ async function runImplement(
 
   if (resolved.branch) {
     // Check if branch exists with commits but no PR (killed before push)
-    const branchExists = await exec(`git rev-parse --verify ${resolved.branch} 2>/dev/null && echo yes || echo no`, cwd);
+    const branchExists = await exec(
+      `git rev-parse --verify ${resolved.branch} 2>/dev/null && echo yes || echo no`,
+      cwd,
+    );
     if (branchExists === "yes") {
       await ensureBranch(cwd, resolved.branch);
       const ahead = await exec(`git rev-list main..${resolved.branch} --count`, cwd);
-      if (parseInt(ahead) > 0) {
+      if (parseInt(ahead, 10) > 0) {
         // Has commits — push and create PR
         await exec(`git push -u origin ${resolved.branch}`, cwd);
         const closeRef = resolved.number ? `Closes #${resolved.number}` : "";
@@ -481,9 +567,11 @@ async function runImplement(
   let plan = "";
 
   if (!flags.skipPlan) {
-    const planResult = await runAgent("planner",
+    const planResult = await runAgent(
+      "planner",
       `Plan the implementation for this issue by producing a sequenced list of test cases.\n\n${issueContext}`,
-      { ...opts, tools: TOOLS_READONLY });
+      { ...opts, tools: TOOLS_READONLY },
+    );
 
     if (planResult.status === "failed") {
       return {
@@ -501,10 +589,7 @@ async function runImplement(
         plan = edited;
       }
 
-      const action = await ctx.ui.select(
-        "Plan ready. What next?",
-        ["Approve and implement", "Cancel"]
-      );
+      const action = await ctx.ui.select("Plan ready. What next?", ["Approve and implement", "Cancel"]);
       if (action === "Cancel" || action == null) {
         return {
           content: [{ type: "text" as const, text: "Implementation cancelled." }],
@@ -523,18 +608,28 @@ async function runImplement(
   }
 
   // Clean up stale blockers
-  try { fs.unlinkSync(`${cwd}/BLOCKED.md`); } catch {}
+  try {
+    fs.unlinkSync(`${cwd}/BLOCKED.md`);
+  } catch {}
 
   // Implementor
   const planSection = plan ? `\n\nIMPLEMENTATION PLAN:\n${plan}` : "";
-  const branchNote = resolved.branch ? `\n- You should be on branch: ${resolved.branch} — do NOT create or switch branches.` : "\n- Do NOT create or switch branches.";
+  const branchNote = resolved.branch
+    ? `\n- You should be on branch: ${resolved.branch} — do NOT create or switch branches.`
+    : "\n- Do NOT create or switch branches.";
   const prNote = resolved.existingPR ? `\n- PR #${resolved.existingPR} already exists for this branch.` : "";
-  const closeNote = resolved.number ? `\n- The PR body MUST include 'Closes #${resolved.number}' so the issue auto-closes on merge.` : "";
-  const unresolvedNote = flags.autonomous ? `\n- If the plan has unresolved questions, resolve them yourself using sensible defaults. Do NOT stop and wait.` : "";
+  const closeNote = resolved.number
+    ? `\n- The PR body MUST include 'Closes #${resolved.number}' so the issue auto-closes on merge.`
+    : "";
+  const unresolvedNote = flags.autonomous
+    ? `\n- If the plan has unresolved questions, resolve them yourself using sensible defaults. Do NOT stop and wait.`
+    : "";
 
-  await runAgent("implementor",
+  await runAgent(
+    "implementor",
     `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit, push, and create a PR.\n\nCONSTRAINTS:${branchNote}${prNote}${closeNote}${unresolvedNote}\n- If blocked, write BLOCKED.md with the reason and stop.`,
-    { ...opts, tools: TOOLS_ALL });
+    { ...opts, tools: TOOLS_ALL },
+  );
 
   // Check for blocker
   if (fs.existsSync(`${cwd}/BLOCKED.md`)) {
@@ -557,34 +652,42 @@ async function runImplement(
 
 // ─── Implement-all loop ─────────────────────────────────────────────
 
-interface IssueInfo { number: number; title: string; body: string; }
+interface IssueInfo {
+  number: number;
+  title: string;
+  body: string;
+}
 
 /**
  * Get issue numbers whose dependencies (referenced as #N in ## Dependencies section) are satisfied.
  */
 function getReadyIssues(issues: IssueInfo[], completed: Set<number>): number[] {
-  return issues.filter((issue) => {
-    const depMatch = issue.body.split("## Dependencies");
-    if (depMatch.length < 2) return true; // no deps section
-    const depSection = depMatch[1].split("\n## ")[0];
-    const deps = [...depSection.matchAll(/#(\d+)/g)].map((m) => parseInt(m[1]));
-    return deps.every((d) => completed.has(d));
-  }).map((i) => i.number);
+  return issues
+    .filter((issue) => {
+      const parts = issue.body.split("## Dependencies");
+      if (parts.length < 2) return true; // no deps section
+      const depSection = parts[1]?.split("\n## ")[0] ?? "";
+      const deps = [...depSection.matchAll(/#(\d+)/g)].map((m) => parseInt(m[1] ?? "0", 10));
+      return deps.every((d) => completed.has(d));
+    })
+    .map((i) => i.number);
 }
 
 async function runImplementAll(
-  cwd: string, signal: AbortSignal, onUpdate: any, ctx: any,
+  cwd: string,
+  signal: AbortSignal,
+  onUpdate: AnyCtx,
+  ctx: AnyCtx,
   flags: { skipPlan: boolean; skipReview: boolean },
 ) {
   const allStages: StageResult[] = [];
 
   // Seed completed set with already-closed issues
   const closedJson = await exec(
-    `gh issue list --state closed --label "auto-generated" --json number --jq '.[].number'`, cwd,
+    `gh issue list --state closed --label "auto-generated" --json number --jq '.[].number'`,
+    cwd,
   );
-  const completed = new Set<number>(
-    closedJson ? closedJson.split("\n").filter(Boolean).map(Number) : [],
-  );
+  const completed = new Set<number>(closedJson ? closedJson.split("\n").filter(Boolean).map(Number) : []);
 
   let iteration = 0;
   const maxIterations = 50; // safety cap
@@ -597,10 +700,15 @@ async function runImplementAll(
 
     // Fetch open issues
     const issuesJson = await exec(
-      `gh issue list --state open --label "auto-generated" --json number,title,body --jq 'sort_by(.number)'`, cwd,
+      `gh issue list --state open --label "auto-generated" --json number,title,body --jq 'sort_by(.number)'`,
+      cwd,
     );
     let issues: IssueInfo[];
-    try { issues = JSON.parse(issuesJson || "[]"); } catch { issues = []; }
+    try {
+      issues = JSON.parse(issuesJson || "[]");
+    } catch {
+      issues = [];
+    }
 
     if (issues.length === 0) {
       return {
@@ -613,14 +721,15 @@ async function runImplementAll(
     const ready = getReadyIssues(issues, completed);
     if (ready.length === 0) {
       return {
-        content: [{ type: "text" as const, text: `${issues.length} issues remain but all have unresolved dependencies.` }],
+        content: [
+          { type: "text" as const, text: `${issues.length} issues remain but all have unresolved dependencies.` },
+        ],
         details: { pipeline: "implement-all", stages: allStages },
         isError: true,
       };
     }
 
-    const issueNum = ready[0];
-    const issue = issues.find((i) => i.number === issueNum)!;
+    const issueNum = ready[0]!;
 
     // Run implement for this issue (reuses full implement pipeline)
     allStages.push(emptyStage(`implement-${issueNum}`));
@@ -635,7 +744,12 @@ async function runImplementAll(
 
     if (implResult.isError) {
       return {
-        content: [{ type: "text" as const, text: `Failed on issue #${issueNum}: ${implResult.content[0]?.type === "text" ? implResult.content[0].text : "unknown error"}` }],
+        content: [
+          {
+            type: "text" as const,
+            text: `Failed on issue #${issueNum}: ${implResult.content[0]?.type === "text" ? implResult.content[0].text : "unknown error"}`,
+          },
+        ],
         details: { pipeline: "implement-all", stages: allStages },
         isError: true,
       };
@@ -684,8 +798,13 @@ async function runImplementAll(
  * Appends code-reviewer + review-judge stages to the provided stages array.
  */
 async function runReviewInline(
-  cwd: string, signal: AbortSignal, onUpdate: any, ctx: any,
-  stages: StageResult[], diffCmd = "git diff main...HEAD", pipeline = "review",
+  cwd: string,
+  signal: AbortSignal,
+  onUpdate: AnyCtx,
+  ctx: AnyCtx,
+  stages: StageResult[],
+  diffCmd = "git diff main...HEAD",
+  pipeline = "review",
   options: { prNumber?: string; interactive?: boolean } = {},
 ): Promise<{ content: { type: "text"; text: string }[]; isError?: boolean }> {
   const diff = await exec(diffCmd, cwd);
@@ -697,13 +816,13 @@ async function runReviewInline(
   const opts = { cwd, signal, stages, pipeline, onUpdate };
 
   // Clean up stale findings
-  try { fs.unlinkSync(`${cwd}/FINDINGS.md`); } catch {}
+  try {
+    fs.unlinkSync(`${cwd}/FINDINGS.md`);
+  } catch {}
 
   // Code reviewer
   stages.push(emptyStage("code-reviewer"));
-  await runAgent("code-reviewer",
-    `Review the following diff:\n\n${diff}`,
-    { ...opts, tools: TOOLS_NO_EDIT });
+  await runAgent("code-reviewer", `Review the following diff:\n\n${diff}`, { ...opts, tools: TOOLS_NO_EDIT });
 
   if (!fs.existsSync(`${cwd}/FINDINGS.md`)) {
     return { content: [{ type: "text", text: "Review passed — no actionable findings." }] };
@@ -712,9 +831,11 @@ async function runReviewInline(
   // Review judge
   stages.push(emptyStage("review-judge"));
   const findings = fs.readFileSync(`${cwd}/FINDINGS.md`, "utf-8");
-  await runAgent("review-judge",
+  await runAgent(
+    "review-judge",
     `Validate the following code review findings against the actual code:\n\n${findings}`,
-    { ...opts, tools: TOOLS_NO_EDIT });
+    { ...opts, tools: TOOLS_NO_EDIT },
+  );
 
   if (!fs.existsSync(`${cwd}/FINDINGS.md`)) {
     return { content: [{ type: "text", text: "Review passed — judge filtered all findings." }] };
@@ -765,8 +886,7 @@ gh pr review ${prNum} --request-changes --body "Left a few comments" --repo ${re
 Output ONLY the commands, no other text.`;
 
     stages.push(emptyStage("propose-comments"));
-    await runAgent("review-judge", proposalPrompt,
-      { cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_READONLY });
+    await runAgent("review-judge", proposalPrompt, { cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_READONLY });
 
     const commentStage = stages.find((s) => s.name === "propose-comments");
     const proposedCommands = commentStage?.output || "";
@@ -778,15 +898,15 @@ Output ONLY the commands, no other text.`;
       );
 
       if (reviewed != null) {
-        const action = await ctx.ui.select(
-          "Post these review comments?",
-          ["Post comments", "Skip"],
-        );
+        const action = await ctx.ui.select("Post these review comments?", ["Post comments", "Skip"]);
         if (action === "Post comments") {
           // Extract and run gh api commands
           const commands = reviewed.match(/```bash\n([\s\S]*?)```/g) || [];
           for (const block of commands) {
-            const cmd = block.replace(/```bash\n/, "").replace(/```$/, "").trim();
+            const cmd = block
+              .replace(/```bash\n/, "")
+              .replace(/```$/, "")
+              .trim();
             if (cmd.startsWith("gh ")) {
               await exec(cmd, cwd);
             }
@@ -799,7 +919,7 @@ Output ONLY the commands, no other text.`;
   return { content: [{ type: "text", text: validatedFindings }], isError: true };
 }
 
-async function runReview(cwd: string, target: string, signal: AbortSignal, onUpdate: any, ctx: any) {
+async function runReview(cwd: string, target: string, signal: AbortSignal, onUpdate: AnyCtx, ctx: AnyCtx) {
   const stages: StageResult[] = [];
 
   let diffCmd = "git diff main...HEAD";
@@ -817,7 +937,7 @@ async function runReview(cwd: string, target: string, signal: AbortSignal, onUpd
     if (pr && pr !== "") prNumber = pr;
   }
 
-  const result = await runReviewInline(cwd, signal, onUpdate, ctx, stages, diffCmd, {
+  const result = await runReviewInline(cwd, signal, onUpdate, ctx, stages, diffCmd, "review", {
     prNumber,
     interactive: ctx.hasUI,
   });

@@ -2,14 +2,30 @@
   "name": "forgeflow",
   "version": "0.1.0",
   "description": "Agentic software delivery pipeline for Pi — PRD refinement, issue creation, TDD implementation, and code review.",
-  "keywords": ["pi-package"],
+  "keywords": [
+    "pi-package"
+  ],
   "license": "MIT",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check extensions/",
+    "lint:fix": "biome check --fix extensions/",
+    "check": "tsc --noEmit && biome check extensions/"
+  },
   "pi": {
-    "extensions": ["./extensions"],
-    "skills": ["./skills"],
-    "agents": ["./agents"]
+    "extensions": [
+      "./extensions"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "agents": [
+      "./agents"
+    ]
   },
   "devDependencies": {
-    "@mariozechner/pi-coding-agent": "*"
+    "@biomejs/biome": "^2.4.10",
+    "@mariozechner/pi-coding-agent": "*",
+    "typescript": "^6.0.2"
   }
 }

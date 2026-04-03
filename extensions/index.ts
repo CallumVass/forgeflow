@@ -4,11 +4,11 @@ import { registerForgeflowTool } from "./tools/forgeflow-tool";
 function parseImplFlags(args: string) {
   const skipPlan = args.includes("--skip-plan");
   const skipReview = args.includes("--skip-review");
-  const rest = args.replace(/--skip-plan/g, "").replace(/--skip-review/g, "").trim();
-  const flags = [
-    skipPlan ? ", skipPlan: true" : "",
-    skipReview ? ", skipReview: true" : "",
-  ].join("");
+  const rest = args
+    .replace(/--skip-plan/g, "")
+    .replace(/--skip-review/g, "")
+    .trim();
+  const flags = [skipPlan ? ", skipPlan: true" : "", skipReview ? ", skipReview: true" : ""].join("");
   return { rest, flags };
 }
 
@@ -20,9 +20,9 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
   pi.registerCommand("prd-qa", {
     description: "Refine PRD.md via critic → architect → integrator loop",
     handler: async (args) => {
-      const maxIter = parseInt(args) || 10;
+      const maxIter = parseInt(args, 10) || 10;
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "prd-qa" and maxIterations ${maxIter} to refine the PRD.`
+        `Use the forgeflow tool with pipeline "prd-qa" and maxIterations ${maxIter} to refine the PRD.`,
       );
     },
   });
@@ -31,7 +31,7 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
     description: "Decompose PRD.md into vertical-slice GitHub issues",
     handler: async () => {
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "create-issues" to decompose the PRD into GitHub issues.`
+        `Use the forgeflow tool with pipeline "create-issues" to decompose the PRD into GitHub issues.`,
       );
     },
   });
@@ -44,7 +44,7 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
         return;
       }
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "create-issue" and issue "${args.trim()}" to create a GitHub issue.`
+        `Use the forgeflow tool with pipeline "create-issue" and issue "${args.trim()}" to create a GitHub issue.`,
       );
     },
   });
@@ -56,23 +56,24 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
 
       if (issue) {
         pi.sendUserMessage(
-          `Use the forgeflow tool with pipeline "implement", issue "${issue}"${flags}. Implement using TDD.`
+          `Use the forgeflow tool with pipeline "implement", issue "${issue}"${flags}. Implement using TDD.`,
         );
       } else {
         pi.sendUserMessage(
-          `Use the forgeflow tool with pipeline "implement"${flags}. No issue number provided — the tool will detect it from the current branch. Do NOT ask for an issue number. Implement using TDD.`
+          `Use the forgeflow tool with pipeline "implement"${flags}. No issue number provided — the tool will detect it from the current branch. Do NOT ask for an issue number. Implement using TDD.`,
         );
       }
     },
   });
 
   pi.registerCommand("implement-all", {
-    description: "Loop through all open auto-generated issues: implement, review, merge. Flags: --skip-plan, --skip-review",
+    description:
+      "Loop through all open auto-generated issues: implement, review, merge. Flags: --skip-plan, --skip-review",
     handler: async (args) => {
       const { flags } = parseImplFlags(args);
 
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "implement-all"${flags}. This processes all open auto-generated issues in dependency order: for each issue, create branch, plan, implement via TDD, refactor, review, create PR, merge, then move to the next. Do NOT ask for confirmation — run autonomously.`
+        `Use the forgeflow tool with pipeline "implement-all"${flags}. This processes all open auto-generated issues in dependency order: for each issue, create branch, plan, implement via TDD, refactor, review, create PR, merge, then move to the next. Do NOT ask for confirmation — run autonomously.`,
       );
     },
   });
@@ -82,7 +83,7 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
     handler: async (args) => {
       const target = args.trim() || "";
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "review"${target ? ` and target "${target}"` : ""} to review the code.`
+        `Use the forgeflow tool with pipeline "review"${target ? ` and target "${target}"` : ""} to review the code.`,
       );
     },
   });

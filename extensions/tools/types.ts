@@ -43,10 +43,12 @@ export function emptyStage(name: string): StageResult {
 
 export function getFinalOutput(messages: Message[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
+    const msg = messages[i]!;
     if (msg.role === "assistant") {
       for (const part of msg.content) {
-        if (part.type === "text") return part.text;
+        if (typeof part === "object" && "type" in part && part.type === "text" && "text" in part) {
+          return part.text as string;
+        }
       }
     }
   }
