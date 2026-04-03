@@ -25,10 +25,10 @@ export async function runDiscoverSkills(
   // Install mode needs write access, discover mode is read-only
   const tools = isInstall ? TOOLS_ALL : TOOLS_NO_EDIT;
 
-  await runAgent("skill-discoverer", task, { ...opts, tools });
+  const result = await runAgent("skill-discoverer", task, { ...opts, tools });
 
   return {
-    content: [{ type: "text" as const, text: "Skill discovery complete." }],
+    content: [{ type: "text" as const, text: result.output || "No skills found." }],
     details: { pipeline: "discover-skills", stages },
   };
 }
