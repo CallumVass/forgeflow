@@ -51,7 +51,7 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
       ].join('');
 
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "implement"${issue ? `, issue "${issue}"` : ''}${flags} to implement it using TDD.`
+        `Use the forgeflow tool with pipeline "implement"${issue ? `, issue "${issue}"` : ''}${flags}. ${!issue ? 'Do NOT ask for an issue number — the tool auto-detects it.' : ''} Implement using TDD.`
       );
     },
   });
