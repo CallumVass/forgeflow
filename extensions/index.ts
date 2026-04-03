@@ -87,6 +87,13 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
       );
     },
   });
+
+  pi.registerCommand("architecture", {
+    description: "Analyze codebase for architectural friction and create RFC issues",
+    handler: async () => {
+      pi.sendUserMessage(`Use the forgeflow tool with pipeline "architecture" to analyze the codebase architecture.`);
+    },
+  });
 };
 
 export default extension;

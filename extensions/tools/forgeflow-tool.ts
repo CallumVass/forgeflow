@@ -1,6 +1,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
+import { runArchitecture } from "./pipelines/architecture.js";
 import { runCreateIssue, runCreateIssues } from "./pipelines/create-issues.js";
 import { runImplement } from "./pipelines/implement.js";
 import { runImplementAll } from "./pipelines/implement-all.js";
@@ -75,7 +76,7 @@ function formatUsage(usage: { input: number; output: number; cost: number; turns
 const ForgeflowParams = Type.Object({
   pipeline: Type.String({
     description:
-      'Which pipeline to run: "prd-qa", "create-issues", "create-issue", "implement", "implement-all", or "review"',
+      'Which pipeline to run: "prd-qa", "create-issues", "create-issue", "implement", "implement-all", "review", or "architecture"',
   }),
   maxIterations: Type.Optional(Type.Number({ description: "Max iterations for prd-qa (default 10)" })),
   issue: Type.Optional(
@@ -95,7 +96,8 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
     description: [
       "Run forgeflow pipelines: prd-qa (refine PRD), create-issues (decompose PRD into GitHub issues),",
       "create-issue (single issue from a feature idea), implement (plan→TDD→refactor a single issue),",
-      "implement-all (loop through all open issues autonomously), review (deterministic checks→code review→judge).",
+      "implement-all (loop through all open issues autonomously), review (deterministic checks→code review→judge),",
+      "architecture (analyze codebase for structural friction→create RFC issues).",
       "Each pipeline spawns specialized sub-agents with isolated context.",
     ].join(" "),
     parameters: ForgeflowParams as AnyCtx,
@@ -131,6 +133,8 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
             });
           case "review":
             return await runReview(cwd, params.target ?? "", sig, onUpdate, ctx);
+          case "architecture":
+            return await runArchitecture(cwd, sig, onUpdate, ctx);
           default:
             return {
               content: [
