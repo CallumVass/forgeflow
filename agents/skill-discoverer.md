@@ -13,6 +13,14 @@ Search for relevant skills and **recommend only** — do NOT install anything.
 1. **Analyze the project** — scan the codebase to understand the tech stack (languages, frameworks, libraries, config files). Be thorough: check package.json, go.mod, Cargo.toml, *.csproj, pyproject.toml, Gemfile, docker-compose, CI config, etc.
 2. **Check existing plugins** — read `<cwd>/.forgeflow/plugins/*/PLUGIN.md` to see what's already installed. Do not recommend already-installed plugins.
 3. **Search skills.sh** — run `npx skills@latest find "<query>"` for each technology/framework you identified. Run multiple searches to cover the stack. The output includes `owner/repo@skill` identifiers and install counts — extract both.
+
+   Search broadly — don't just search for the framework name. Also search for:
+   - **Language-level patterns** (e.g. "csharp", "golang", "typescript")
+   - **Domain patterns relevant to the project** (e.g. "REST API", "authentication", "database migrations", "API design")
+   - **Architecture patterns you see in the code** (e.g. "clean architecture", "CQRS", "repository pattern", "middleware")
+   - **Specific libraries** you find in the dependency manifest (e.g. "entity framework", "dapper", "serilog")
+
+   Aim for 5-8 searches to get good coverage.
 4. **Present recommendations** — your ENTIRE final text output must follow EXACTLY this structure. No other format is acceptable. No bullet lists. No prose summaries. No "Why these" sections. ONLY the table and the install command.
 
 ## Required Output Format (follow EXACTLY)
