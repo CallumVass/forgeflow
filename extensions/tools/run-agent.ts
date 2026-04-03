@@ -48,12 +48,14 @@ export async function runAgent(
     stages: StageResult[];
     pipeline: string;
     onUpdate?: OnUpdate;
+    stageName?: string;
   },
 ): Promise<StageResult> {
   const agentPath = resolveAgentPath(agentName);
+  const lookupName = options.stageName ?? agentName;
   const stage =
-    options.stages.find((s) => s.name === agentName && s.status === "pending") ??
-    options.stages.find((s) => s.name === agentName);
+    options.stages.find((s) => s.name === lookupName && s.status === "pending") ??
+    options.stages.find((s) => s.name === lookupName);
 
   if (!stage) {
     const s = emptyStage(agentName);

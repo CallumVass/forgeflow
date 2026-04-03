@@ -25,7 +25,7 @@ async function reviewAndFix(
     await runAgent(
       "implementor",
       `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
-      { cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL },
+      { cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL, stageName: "fix-findings" },
     );
     cleanSignal(cwd, "findings");
   }
@@ -265,13 +265,29 @@ export async function runImplement(
   await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
 
   // Ensure PR exists — agent may have skipped or failed `gh pr create`
+  let prNumber = "";
   if (resolved.branch) {
     await exec(`git push -u origin ${resolved.branch}`, cwd);
-    const existingPR = await exec(`gh pr list --head "${resolved.branch}" --json number --jq '.[0].number'`, cwd);
-    if (!existingPR || existingPR === "null") {
+    prNumber = await exec(`gh pr list --head "${resolved.branch}" --json number --jq '.[0].number'`, cwd);
+    if (!prNumber || prNumber === "null") {
       const prBody = isGitHub ? `Closes #${resolved.number}` : `Jira: ${resolved.key}`;
       await exec(`gh pr create --title "${resolved.title}" --body "${prBody}" --head ${resolved.branch}`, cwd);
+      prNumber = await exec(`gh pr list --head "${resolved.branch}" --json number --jq '.[0].number'`, cwd);
     }
+  }
+
+  // Squash-merge, delete branch, update local main (skip when called from implement-all)
+  if (!flags.autonomous && prNumber && prNumber !== "null") {
+    const mergeStage = emptyStage("merge");
+    stages.push(mergeStage);
+    await exec(`gh pr merge ${prNumber} --squash --delete-branch`, cwd);
+    await exec("git checkout main && git pull", cwd);
+    mergeStage.status = "done";
+    mergeStage.output = `Merged PR #${prNumber}`;
+    onUpdate?.({
+      content: [{ type: "text", text: "Pipeline complete" }],
+      details: { pipeline: "implement", stages },
+    });
   }
 
   return {
