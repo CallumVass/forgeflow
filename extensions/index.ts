@@ -8,8 +8,49 @@ function parseImplFlags(args: string) {
     .replace(/--skip-plan/g, "")
     .replace(/--skip-review/g, "")
     .trim();
+
+  // First token = issue, rest = custom prompt (strip surrounding quotes if present)
+  const firstSpace = rest.indexOf(" ");
+  const issue = firstSpace === -1 ? rest : rest.slice(0, firstSpace);
+  const customPrompt =
+    firstSpace === -1
+      ? ""
+      : rest
+          .slice(firstSpace + 1)
+          .trim()
+          .replace(/^"(.*)"$/, "$1");
+
   const flags = [skipPlan ? ", skipPlan: true" : "", skipReview ? ", skipReview: true" : ""].join("");
-  return { rest, flags };
+  return { issue, customPrompt, flags };
+}
+
+function parseReviewArgs(args: string) {
+  const trimmed = args.trim();
+  if (!trimmed) return { target: "", customPrompt: "" };
+
+  // Handle --branch <name> as a two-token target
+  if (trimmed.startsWith("--branch")) {
+    const afterFlag = trimmed.replace(/^--branch\s*/, "").trim();
+    const firstSpace = afterFlag.indexOf(" ");
+    if (firstSpace === -1) return { target: `--branch ${afterFlag}`, customPrompt: "" };
+    return {
+      target: `--branch ${afterFlag.slice(0, firstSpace)}`,
+      customPrompt: afterFlag
+        .slice(firstSpace + 1)
+        .trim()
+        .replace(/^"(.*)"$/, "$1"),
+    };
+  }
+
+  const firstSpace = trimmed.indexOf(" ");
+  if (firstSpace === -1) return { target: trimmed, customPrompt: "" };
+  return {
+    target: trimmed.slice(0, firstSpace),
+    customPrompt: trimmed
+      .slice(firstSpace + 1)
+      .trim()
+      .replace(/^"(.*)"$/, "$1"),
+  };
 }
 
 const extension: (pi: ExtensionAPI) => void = (pi) => {
@@ -50,17 +91,19 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
   });
 
   pi.registerCommand("implement", {
-    description: "Implement a single issue using TDD. Usage: /implement <issue#> [--skip-plan] [--skip-review]",
+    description:
+      "Implement a single issue using TDD. Usage: /implement <issue#|JIRA-KEY> [custom prompt] [--skip-plan] [--skip-review]",
     handler: async (args) => {
-      const { rest: issue, flags } = parseImplFlags(args);
+      const { issue, customPrompt, flags } = parseImplFlags(args);
+      const promptPart = customPrompt ? `, customPrompt: "${customPrompt}"` : "";
 
       if (issue) {
         pi.sendUserMessage(
-          `Use the forgeflow tool with pipeline "implement", issue "${issue}"${flags}. Implement using TDD.`,
+          `Use the forgeflow tool with pipeline "implement", issue "${issue}"${promptPart}${flags}. Implement using TDD.`,
         );
       } else {
         pi.sendUserMessage(
-          `Use the forgeflow tool with pipeline "implement"${flags}. No issue number provided — the tool will detect it from the current branch. Do NOT ask for an issue number. Implement using TDD.`,
+          `Use the forgeflow tool with pipeline "implement"${promptPart}${flags}. No issue number provided — the tool will detect it from the current branch. Do NOT ask for an issue number. Implement using TDD.`,
         );
       }
     },
@@ -79,11 +122,12 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
   });
 
   pi.registerCommand("review", {
-    description: "Run code review: deterministic checks → reviewer → judge",
+    description: "Run code review: deterministic checks → reviewer → judge. Usage: /review [target] [custom prompt]",
     handler: async (args) => {
-      const target = args.trim() || "";
+      const { target, customPrompt } = parseReviewArgs(args);
+      const promptPart = customPrompt ? `, customPrompt: "${customPrompt}"` : "";
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "review"${target ? ` and target "${target}"` : ""} to review the code.`,
+        `Use the forgeflow tool with pipeline "review"${target ? ` and target "${target}"` : ""}${promptPart} to review the code.`,
       );
     },
   });

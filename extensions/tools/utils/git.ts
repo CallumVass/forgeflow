@@ -1,12 +1,26 @@
 import { exec } from "./exec.js";
 
 export interface ResolvedIssue {
-  number: number;
+  source: "github" | "jira";
+  key: string; // "42" for GH, "CUS-123" for Jira
+  number: number; // GH issue number, 0 for Jira
   title: string;
   body: string;
   branch: string;
   existingPR?: number;
 }
+
+function slugify(text: string, maxLen = 40): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, maxLen)
+    .replace(/-$/, "");
+}
+
+const JIRA_KEY_RE = /^[A-Z]+-\d+$/;
+const JIRA_BRANCH_RE = /feat\/([A-Z]+-\d+)/;
 
 /**
  * Checkout a branch, creating it if it doesn't exist.
@@ -24,31 +38,45 @@ export async function ensureBranch(cwd: string, branch: string): Promise<void> {
 
 /**
  * Resolve which issue to implement:
- * 1. Explicit issue number provided → fetch it
- * 2. On a feature branch (feat/issue-N) → extract N
- * 3. On main → pick next open auto-generated issue
- *
- * Also checks for existing branch/PR.
+ * 1. Jira key (CUS-123) → fetch from jira-cli
+ * 2. Numeric GitHub issue → fetch from gh
+ * 3. On a feature branch → extract from branch name
  */
 export async function resolveIssue(cwd: string, issueArg?: string): Promise<ResolvedIssue | string> {
-  let issueNum: number;
-
-  if (issueArg && /^\d+$/.test(issueArg)) {
-    issueNum = parseInt(issueArg, 10);
-  } else if (issueArg) {
-    return { number: 0, title: issueArg, body: issueArg, branch: "" };
-  } else {
-    const branch = await exec("git branch --show-current", cwd);
-    const match = branch.match(/(?:feat\/)?issue-(\d+)/);
-
-    if (match) {
-      // biome-ignore lint/style/noNonNullAssertion: match[1] guaranteed by regex
-      issueNum = parseInt(match[1]!, 10);
-    } else {
-      return `On branch "${branch}" — can't detect issue number. Use /implement <issue#>.`;
-    }
+  // Explicit Jira key
+  if (issueArg && JIRA_KEY_RE.test(issueArg)) {
+    return resolveJiraIssue(cwd, issueArg);
   }
 
+  // Explicit GitHub issue number
+  if (issueArg && /^\d+$/.test(issueArg)) {
+    return resolveGitHubIssue(cwd, parseInt(issueArg, 10));
+  }
+
+  // Free-text description (not a number or Jira key)
+  if (issueArg) {
+    return { source: "github", key: "", number: 0, title: issueArg, body: issueArg, branch: "" };
+  }
+
+  // Detect from branch name
+  const branch = await exec("git branch --show-current", cwd);
+
+  const jiraMatch = branch.match(JIRA_BRANCH_RE);
+  if (jiraMatch) {
+    // biome-ignore lint/style/noNonNullAssertion: match[1] guaranteed by regex
+    return resolveJiraIssue(cwd, jiraMatch[1]!, branch);
+  }
+
+  const ghMatch = branch.match(/(?:feat\/)?issue-(\d+)/);
+  if (ghMatch) {
+    // biome-ignore lint/style/noNonNullAssertion: match[1] guaranteed by regex
+    return resolveGitHubIssue(cwd, parseInt(ghMatch[1]!, 10));
+  }
+
+  return `On branch "${branch}" — can't detect issue. Use /implement <issue#> or /implement <JIRA-KEY>.`;
+}
+
+async function resolveGitHubIssue(cwd: string, issueNum: number): Promise<ResolvedIssue | string> {
   const issueJson = await exec(`gh issue view ${issueNum} --json number,title,body`, cwd);
   if (!issueJson) return `Could not fetch issue #${issueNum}.`;
 
@@ -63,5 +91,42 @@ export async function resolveIssue(cwd: string, issueArg?: string): Promise<Reso
   const prJson = await exec(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
   const existingPR = prJson && prJson !== "null" ? parseInt(prJson, 10) : undefined;
 
-  return { ...issue, branch, existingPR };
+  return { source: "github", key: String(issueNum), ...issue, branch, existingPR };
+}
+
+async function resolveJiraIssue(
+  cwd: string,
+  jiraKey: string,
+  existingBranch?: string,
+): Promise<ResolvedIssue | string> {
+  const raw = await exec(`jira issue view ${jiraKey} --raw`, cwd);
+  if (!raw) return `Could not fetch Jira issue ${jiraKey}.`;
+
+  // biome-ignore lint/suspicious/noExplicitAny: Jira JSON shape varies by instance
+  let data: any;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return `Could not parse Jira issue ${jiraKey}.`;
+  }
+
+  const fields = data.fields ?? {};
+  const title = fields.summary ?? jiraKey;
+
+  // Build body from available Jira fields
+  const bodyParts: string[] = [];
+  if (fields.description) bodyParts.push(fields.description);
+  if (fields.acceptance_criteria) bodyParts.push(`## Acceptance Criteria\n${fields.acceptance_criteria}`);
+  if (fields.status?.name) bodyParts.push(`**Status:** ${fields.status.name}`);
+  if (fields.priority?.name) bodyParts.push(`**Priority:** ${fields.priority.name}`);
+  if (fields.story_points != null) bodyParts.push(`**Story Points:** ${fields.story_points}`);
+  if (fields.sprint?.name) bodyParts.push(`**Sprint:** ${fields.sprint.name}`);
+
+  const body = bodyParts.join("\n\n");
+  const branch = existingBranch ?? `feat/${jiraKey}-${slugify(title)}`;
+
+  const prJson = await exec(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
+  const existingPR = prJson && prJson !== "null" ? parseInt(prJson, 10) : undefined;
+
+  return { source: "jira", key: jiraKey, number: 0, title, body, branch, existingPR };
 }

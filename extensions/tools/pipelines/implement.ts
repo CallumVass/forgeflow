@@ -61,7 +61,10 @@ export async function runImplement(
   signal: AbortSignal,
   onUpdate: AnyCtx,
   ctx: AnyCtx,
-  flags: { skipPlan: boolean; skipReview: boolean; autonomous?: boolean } = { skipPlan: false, skipReview: false },
+  flags: { skipPlan: boolean; skipReview: boolean; autonomous?: boolean; customPrompt?: string } = {
+    skipPlan: false,
+    skipReview: false,
+  },
 ) {
   const interactive = ctx.hasUI && !flags.autonomous;
   const resolved = await resolveIssue(cwd, issueArg || undefined);
@@ -69,16 +72,20 @@ export async function runImplement(
     return { content: [{ type: "text" as const, text: resolved }], details: { pipeline: "implement", stages: [] } };
   }
 
-  const issueLabel = resolved.number ? `#${resolved.number}: ${resolved.title}` : resolved.title;
+  const isGitHub = resolved.source === "github" && resolved.number > 0;
+  const issueLabel = isGitHub ? `#${resolved.number}: ${resolved.title}` : `${resolved.key}: ${resolved.title}`;
 
   // Status line for standalone /implement (implement-all manages its own)
-  if (!flags.autonomous && resolved.number) {
-    setForgeflowStatus(ctx, `#${resolved.number} ${resolved.title} · ${resolved.branch}`);
+  if (!flags.autonomous && (resolved.number || resolved.key)) {
+    const tag = isGitHub ? `#${resolved.number}` : resolved.key;
+    setForgeflowStatus(ctx, `${tag} ${resolved.title} · ${resolved.branch}`);
   }
 
-  const issueContext = resolved.number
+  const issueContext = isGitHub
     ? `Issue #${resolved.number}: ${resolved.title}\n\n${resolved.body}`
-    : resolved.body;
+    : `Jira ${resolved.key}: ${resolved.title}\n\n${resolved.body}`;
+
+  const customPromptSection = flags.customPrompt ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${flags.customPrompt}` : "";
 
   // --- Resumability: skip to review if work already exists ---
   if (resolved.existingPR) {
@@ -102,8 +109,8 @@ export async function runImplement(
       const ahead = await exec(`git rev-list main..${resolved.branch} --count`, cwd);
       if (parseInt(ahead, 10) > 0) {
         await exec(`git push -u origin ${resolved.branch}`, cwd);
-        const closeRef = resolved.number ? `Closes #${resolved.number}` : "";
-        await exec(`gh pr create --title "${resolved.title}" --body "${closeRef}" --head ${resolved.branch}`, cwd);
+        const prBody = isGitHub ? `Closes #${resolved.number}` : `Jira: ${resolved.key}`;
+        await exec(`gh pr create --title "${resolved.title}" --body "${prBody}" --head ${resolved.branch}`, cwd);
 
         const stages: StageResult[] = [];
         await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
@@ -128,7 +135,7 @@ export async function runImplement(
   if (!flags.skipPlan) {
     const planResult = await runAgent(
       "planner",
-      `Plan the implementation for this issue by producing a sequenced list of test cases.\n\n${issueContext}`,
+      `Plan the implementation for this issue by producing a sequenced list of test cases.\n\n${issueContext}${customPromptSection}`,
       { ...opts, tools: TOOLS_READONLY },
     );
 
@@ -201,16 +208,16 @@ export async function runImplement(
     ? `\n- You should be on branch: ${resolved.branch} — do NOT create or switch branches.`
     : "\n- Do NOT create or switch branches.";
   const prNote = resolved.existingPR ? `\n- PR #${resolved.existingPR} already exists for this branch.` : "";
-  const closeNote = resolved.number
+  const closeNote = isGitHub
     ? `\n- The PR body MUST include 'Closes #${resolved.number}' so the issue auto-closes on merge.`
-    : "";
+    : `\n- The PR body should reference Jira issue ${resolved.key}.`;
   const unresolvedNote = flags.autonomous
     ? `\n- If the plan has unresolved questions, resolve them yourself using sensible defaults. Do NOT stop and wait.`
     : "";
 
   await runAgent(
     "implementor",
-    `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit, push, and create a PR.\n\nCONSTRAINTS:${branchNote}${prNote}${closeNote}${unresolvedNote}\n- If blocked, write BLOCKED.md with the reason and stop.`,
+    `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}${customPromptSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit, push, and create a PR.\n\nCONSTRAINTS:${branchNote}${prNote}${closeNote}${unresolvedNote}\n- If blocked, write BLOCKED.md with the reason and stop.`,
     { ...opts, tools: TOOLS_ALL },
   );
 
@@ -232,8 +239,8 @@ export async function runImplement(
     await exec(`git push -u origin ${resolved.branch}`, cwd);
     const existingPR = await exec(`gh pr list --head "${resolved.branch}" --json number --jq '.[0].number'`, cwd);
     if (!existingPR || existingPR === "null") {
-      const closeRef = resolved.number ? `Closes #${resolved.number}` : "";
-      await exec(`gh pr create --title "${resolved.title}" --body "${closeRef}" --head ${resolved.branch}`, cwd);
+      const prBody = isGitHub ? `Closes #${resolved.number}` : `Jira: ${resolved.key}`;
+      await exec(`gh pr create --title "${resolved.title}" --body "${prBody}" --head ${resolved.branch}`, cwd);
     }
   }
 

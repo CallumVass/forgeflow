@@ -16,7 +16,7 @@ export async function runReviewInline(
   stages: StageResult[],
   diffCmd = "git diff main...HEAD",
   pipeline = "review",
-  options: { prNumber?: string; interactive?: boolean } = {},
+  options: { prNumber?: string; interactive?: boolean; customPrompt?: string } = {},
 ): Promise<{ content: { type: "text"; text: string }[]; isError?: boolean }> {
   const diff = await exec(diffCmd, cwd);
 
@@ -25,13 +25,19 @@ export async function runReviewInline(
   }
 
   const opts = { cwd, signal, stages, pipeline, onUpdate };
+  const extraInstructions = options.customPrompt
+    ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${options.customPrompt}`
+    : "";
 
   // Clean up stale findings
   cleanSignal(cwd, "findings");
 
   // Code reviewer
   stages.push(emptyStage("code-reviewer"));
-  await runAgent("code-reviewer", `Review the following diff:\n\n${diff}`, { ...opts, tools: TOOLS_NO_EDIT });
+  await runAgent("code-reviewer", `Review the following diff:\n\n${diff}${extraInstructions}`, {
+    ...opts,
+    tools: TOOLS_NO_EDIT,
+  });
 
   if (!signalExists(cwd, "findings")) {
     return { content: [{ type: "text", text: "Review passed — no actionable findings." }] };
@@ -127,7 +133,14 @@ Output ONLY the commands, no other text.`;
   return { content: [{ type: "text", text: validatedFindings }], isError: true };
 }
 
-export async function runReview(cwd: string, target: string, signal: AbortSignal, onUpdate: AnyCtx, ctx: AnyCtx) {
+export async function runReview(
+  cwd: string,
+  target: string,
+  signal: AbortSignal,
+  onUpdate: AnyCtx,
+  ctx: AnyCtx,
+  customPrompt?: string,
+) {
   const stages: StageResult[] = [];
 
   let diffCmd = "git diff main...HEAD";
@@ -148,6 +161,7 @@ export async function runReview(cwd: string, target: string, signal: AbortSignal
   const result = await runReviewInline(cwd, signal, onUpdate, ctx, stages, diffCmd, "review", {
     prNumber,
     interactive: ctx.hasUI,
+    customPrompt,
   });
   return { ...result, details: { pipeline: "review", stages } };
 }

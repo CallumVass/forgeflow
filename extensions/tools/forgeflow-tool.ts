@@ -21,6 +21,7 @@ interface ForgeflowInput {
   target?: string;
   skipPlan?: boolean;
   skipReview?: boolean;
+  customPrompt?: string;
 }
 
 function getDisplayItems(messages: AnyCtx[]): DisplayItem[] {
@@ -87,6 +88,9 @@ const ForgeflowParams = Type.Object({
   target: Type.Optional(Type.String({ description: "PR number or --branch for review pipeline" })),
   skipPlan: Type.Optional(Type.Boolean({ description: "Skip planner, implement directly (default false)" })),
   skipReview: Type.Optional(Type.Boolean({ description: "Skip code review after implementation (default false)" })),
+  customPrompt: Type.Optional(
+    Type.String({ description: "Additional user instructions passed to agents (e.g. 'check the openapi spec')" }),
+  ),
 });
 
 export function registerForgeflowTool(pi: ExtensionAPI) {
@@ -125,6 +129,7 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
             return await runImplement(cwd, params.issue ?? "", sig, onUpdate, ctx, {
               skipPlan: params.skipPlan ?? false,
               skipReview: params.skipReview ?? false,
+              customPrompt: params.customPrompt,
             });
           case "implement-all":
             return await runImplementAll(cwd, sig, onUpdate, ctx, {
@@ -132,7 +137,7 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
               skipReview: params.skipReview ?? false,
             });
           case "review":
-            return await runReview(cwd, params.target ?? "", sig, onUpdate, ctx);
+            return await runReview(cwd, params.target ?? "", sig, onUpdate, ctx, params.customPrompt);
           case "architecture":
             return await runArchitecture(cwd, sig, onUpdate, ctx);
           default:
@@ -156,7 +161,10 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
       const args = _args as ForgeflowInput;
       const pipeline = args.pipeline || "?";
       let text = theme.fg("toolTitle", theme.bold("forgeflow ")) + theme.fg("accent", pipeline);
-      if (args.issue) text += theme.fg("dim", ` #${args.issue}`);
+      if (args.issue) {
+        const prefix = /^[A-Z]+-\d+$/.test(args.issue) ? " " : " #";
+        text += theme.fg("dim", `${prefix}${args.issue}`);
+      }
       if (args.target) text += theme.fg("dim", ` ${args.target}`);
       if (args.maxIterations) text += theme.fg("muted", ` (max ${args.maxIterations})`);
       return new Text(text, 0, 0);
