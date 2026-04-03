@@ -558,7 +558,7 @@ async function runImplement(
   // --- Fresh implementation ---
   const stageList: StageResult[] = [];
   if (!flags.skipPlan) stageList.push(emptyStage("planner"));
-  stageList.push(emptyStage("implementor"), emptyStage("refactorer"));
+  stageList.push(emptyStage("implementor"));
   const stages = stageList;
   const opts = { cwd, signal, stages, pipeline: "implement", onUpdate };
 
