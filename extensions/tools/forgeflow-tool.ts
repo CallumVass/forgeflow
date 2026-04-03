@@ -641,6 +641,14 @@ async function runImplement(
   if (resolved.branch) {
     const currentBranch = await exec("git branch --show-current", cwd);
     if (currentBranch === "main" || currentBranch === "master") {
+      const dirty = await exec("git status --porcelain", cwd);
+      if (dirty) {
+        return {
+          content: [{ type: "text" as const, text: `Cannot switch to ${resolved.branch} — working tree is dirty. Please commit or stash your changes first.` }],
+          details: { pipeline: "implement", stages: [] },
+          isError: true,
+        };
+      }
       await ensureBranch(cwd, resolved.branch);
     }
   }
