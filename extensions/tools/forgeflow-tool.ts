@@ -47,10 +47,10 @@ function formatUsage(usage: { input: number; output: number; cost: number; turns
 
 const ForgeflowParams = Type.Object({
   pipeline: Type.String({
-    description: 'Which pipeline to run: "prd-qa", "create-issues", "implement", or "review"',
+    description: 'Which pipeline to run: "prd-qa", "create-issues", "create-issue", "implement", or "review"',
   }),
   maxIterations: Type.Optional(Type.Number({ description: "Max iterations for prd-qa (default 10)" })),
-  issue: Type.Optional(Type.String({ description: "Issue number or description for implement pipeline" })),
+  issue: Type.Optional(Type.String({ description: "Issue number or description for implement pipeline, or feature idea for create-issue" })),
   target: Type.Optional(Type.String({ description: "PR number or --branch for review pipeline" })),
   skipPlan: Type.Optional(Type.Boolean({ description: "Skip planner, implement directly (default false)" })),
   skipReview: Type.Optional(Type.Boolean({ description: "Skip code review after implementation (default false)" })),
@@ -62,7 +62,7 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
     label: "Forgeflow",
     description: [
       "Run forgeflow pipelines: prd-qa (refine PRD), create-issues (decompose PRD into GitHub issues),",
-      "implement (plan→TDD→refactor an issue), review (deterministic checks→code review→judge).",
+      "create-issue (single issue from a feature idea), implement (plan→TDD→refactor an issue), review (deterministic checks→code review→judge).",
       "Each pipeline spawns specialized sub-agents with isolated context.",
     ].join(" "),
     parameters: ForgeflowParams,
@@ -75,6 +75,8 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
           return await runPrdQa(cwd, params.maxIterations ?? 10, signal, onUpdate, ctx);
         case "create-issues":
           return await runCreateIssues(cwd, signal, onUpdate, ctx);
+        case "create-issue":
+          return await runCreateIssue(cwd, params.issue ?? "", signal, onUpdate, ctx);
         case "implement":
           return await runImplement(cwd, params.issue ?? "", signal, onUpdate, ctx, {
             skipPlan: params.skipPlan ?? false,
@@ -252,6 +254,23 @@ async function runPrdQa(
   return {
     content: [{ type: "text" as const, text: `PRD refinement did not complete after ${maxIterations} iterations.` }],
     details: { pipeline: "prd-qa", stages },
+  };
+}
+
+async function runCreateIssue(cwd: string, idea: string, signal: AbortSignal, onUpdate: any, ctx: any) {
+  if (!idea) {
+    return { content: [{ type: "text" as const, text: "No feature idea provided." }], details: { pipeline: "create-issue", stages: [] } };
+  }
+
+  const stages: StageResult[] = [emptyStage("single-issue-creator")];
+  const opts = { cwd, signal, stages, pipeline: "create-issue", onUpdate };
+
+  await runAgent("single-issue-creator", idea,
+    { ...opts, tools: ["read", "write", "bash", "grep", "find"] });
+
+  return {
+    content: [{ type: "text" as const, text: "Issue created." }],
+    details: { pipeline: "create-issue", stages },
   };
 }
 

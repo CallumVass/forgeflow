@@ -25,6 +25,19 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
     },
   });
 
+  pi.registerCommand("create-issue", {
+    description: "Create a single GitHub issue from a feature idea",
+    handler: async (args) => {
+      if (!args.trim()) {
+        pi.sendUserMessage('I need a feature idea. Usage: /create-issue "Add user authentication"');
+        return;
+      }
+      pi.sendUserMessage(
+        `Use the forgeflow tool with pipeline "create-issue" and issue "${args.trim()}" to create a GitHub issue.`
+      );
+    },
+  });
+
   pi.registerCommand("implement", {
     description: "Plan → implement → refactor an issue using TDD. Flags: --skip-plan, --skip-review",
     handler: async (args) => {
