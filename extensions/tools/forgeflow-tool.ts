@@ -650,6 +650,14 @@ async function runImplement(
         };
       }
       await ensureBranch(cwd, resolved.branch);
+      const afterBranch = await exec("git branch --show-current", cwd);
+      if (afterBranch !== resolved.branch) {
+        return {
+          content: [{ type: "text" as const, text: `Failed to switch to ${resolved.branch} (still on ${afterBranch}). Check git state and retry.` }],
+          details: { pipeline: "implement", stages: [] },
+          isError: true,
+        };
+      }
     }
   }
 
