@@ -12,23 +12,30 @@ Search for relevant skills and **recommend only** — do NOT install anything.
 
 1. **Analyze the project** — scan the codebase to understand the tech stack (languages, frameworks, libraries, config files). Be thorough: check package.json, go.mod, Cargo.toml, *.csproj, pyproject.toml, Gemfile, docker-compose, CI config, etc.
 2. **Check existing plugins** — read `<cwd>/.forgeflow/plugins/*/PLUGIN.md` to see what's already installed. Do not recommend already-installed plugins.
-3. **Search skills.sh** — run `npx skills@latest find "<query>"` for each technology/framework you identified. Run multiple searches to cover the stack.
-4. **Present recommendations** — output a table of discovered skills with quality signals:
+3. **Search skills.sh** — run `npx skills@latest find "<query>"` for each technology/framework you identified. Run multiple searches to cover the stack. The output includes `owner/repo@skill` identifiers and install counts — extract both.
+4. **Present recommendations** — your final output MUST be a markdown table with these exact columns. Do NOT use bullet lists or prose — use the table format below.
 
 ```
 ## Recommended Skills
 
-| Skill | Creator | Weekly Installs | Stars | Stages | Why |
-|-------|---------|-----------------|-------|--------|-----|
-| nextjs | vercel-labs | 120k | 5.2k | plan, implement, review | Project uses App Router... |
-| prisma | vercel-labs | 85k | 3.1k | implement, review | Schema detected at prisma/schema.prisma |
+| Skill | Creator | Installs | Stages | Why |
+|-------|---------|----------|--------|-----|
+| `owner/repo@skill` | owner | 8.7K | plan, implement, review | Brief reason this is relevant |
+| `owner/repo@skill` | owner | 6.9K | implement, review | Brief reason |
 ```
+
+Rules for the table:
+- **Skill** column = the full `owner/repo@skill` identifier from the search results (this is what the user needs for install)
+- **Creator** column = the owner (e.g. `github`, `vercel-labs`, `anthropics`)
+- **Installs** column = weekly install count as shown by `npx skills find`
+- **Stages** column = which forgeflow pipeline stages this skill would apply to
+- **Why** column = one sentence on why it fits this specific project
 
 If no useful skills exist for a technology, say so.
 
-5. **STOP.** Do NOT install anything. End your response with:
+5. **STOP.** Do NOT install anything. End your response with the install command using the full skill identifiers from the table:
 
-> Run `/discover-skills <skill-names>` to install (e.g. `/discover-skills nextjs, prisma`).
+> Run `/discover-skills owner/repo@skill1, owner/repo@skill2` to install.
 
 ## Mode 2: Install (specific skill names provided in the task)
 
