@@ -59,13 +59,13 @@ In interactive mode, you review/edit the PRD after each iteration and choose to 
 /implement                    # detects issue from branch name (e.g. feat/issue-42)
 ```
 
-Implements a single issue:
+Implements a single issue (interactive — shows plan for approval):
 1. **Planner** — reads issue + codebase, outputs sequenced test cases
-2. *Plan approval* — in interactive mode, you review/edit the plan before proceeding
-3. *Branch creation* — creates `feat/issue-<N>` if on main
+2. **Plan approval** — you review/edit the plan before proceeding
+3. **Branch creation** — creates `feat/issue-<N>` if on main
 4. **Implementor** — strict TDD (red-green-refactor), commits, pushes, creates PR
 5. **Refactorer** — deduplication and pattern extraction
-6. **Code reviewer + Judge** — checklist-driven review with evidence validation
+6. **Code reviewer + Judge** — if findings, implementor fixes them automatically
 
 ### Implement all
 
@@ -74,8 +74,8 @@ Implements a single issue:
 /implement-all --skip-plan --skip-review
 ```
 
-Loops through all open `auto-generated` issues in dependency order. For each issue:
-1. Runs the full `/implement` pipeline
+Autonomous loop through all open `auto-generated` issues in dependency order. For each issue:
+1. Runs the full `/implement` pipeline (skips plan approval)
 2. Merges the PR (squash + delete branch)
 3. Returns to main and picks the next ready issue
 
@@ -89,7 +89,21 @@ Stops on failure or when all issues are done.
 /review --branch feat/thing
 ```
 
-Runs code-reviewer (checklist-driven, evidence-required) then review-judge (filters noise, validates findings).
+Runs code-reviewer → review-judge. If findings survive validation and a PR is detected, proposes `gh api` commands to post inline review comments. You approve before anything is posted.
+
+## How it composes
+
+Each pipeline builds on the one below it:
+
+```
+/implement-all
+  └─ /implement (autonomous, per issue)
+       ├─ planner → implementor → refactorer
+       └─ /review (findings → implementor fixes them)
+            └─ code-reviewer → review-judge
+```
+
+`/review` is the base. `/implement` adds TDD + fix loop. `/implement-all` adds the issue loop + merge.
 
 ## Agents
 
