@@ -1,0 +1,182 @@
+import type { AnyCtx, StageResult } from "../types.js";
+import { emptyStage, sumUsage } from "../types.js";
+import { exec } from "../utils/exec.js";
+import { setForgeflowStatus, updateProgressWidget } from "../utils/ui.js";
+import { runImplement } from "./implement.js";
+
+interface IssueInfo {
+  number: number;
+  title: string;
+  body: string;
+}
+
+/**
+ * Get issue numbers whose dependencies (referenced as #N in ## Dependencies section) are satisfied.
+ */
+function getReadyIssues(issues: IssueInfo[], completed: Set<number>): number[] {
+  return issues
+    .filter((issue) => {
+      if (completed.has(issue.number)) return false;
+      const parts = issue.body.split("## Dependencies");
+      if (parts.length < 2) return true;
+      const depSection = parts[1]?.split("\n## ")[0] ?? "";
+      const deps = [...depSection.matchAll(/#(\d+)/g)].map((m) => parseInt(m[1] ?? "0", 10));
+      return deps.every((d) => completed.has(d));
+    })
+    .map((i) => i.number);
+}
+
+export async function runImplementAll(
+  cwd: string,
+  signal: AbortSignal,
+  onUpdate: AnyCtx,
+  ctx: AnyCtx,
+  flags: { skipPlan: boolean; skipReview: boolean },
+) {
+  const allStages: StageResult[] = [];
+  const issueProgress = new Map<number, { title: string; status: "pending" | "running" | "done" | "failed" }>();
+
+  // Seed completed set with already-closed issues
+  const closedJson = await exec(
+    `gh issue list --state closed --label "auto-generated" --json number --jq '.[].number'`,
+    cwd,
+  );
+  const completed = new Set<number>(closedJson ? closedJson.split("\n").filter(Boolean).map(Number) : []);
+
+  let iteration = 0;
+  const maxIterations = 50;
+
+  while (iteration++ < maxIterations) {
+    if (signal.aborted) break;
+
+    // Return to main and pull
+    await exec("git checkout main && git pull --rebase", cwd);
+
+    // Fetch open issues
+    const issuesJson = await exec(
+      `gh issue list --state open --label "auto-generated" --json number,title,body --jq 'sort_by(.number)'`,
+      cwd,
+    );
+    let issues: IssueInfo[];
+    try {
+      issues = JSON.parse(issuesJson || "[]");
+    } catch {
+      issues = [];
+    }
+
+    if (issues.length === 0) {
+      return {
+        content: [{ type: "text" as const, text: "All issues implemented." }],
+        details: { pipeline: "implement-all", stages: allStages },
+      };
+    }
+
+    // Track all known issues in progress widget
+    for (const issue of issues) {
+      if (!issueProgress.has(issue.number)) {
+        issueProgress.set(issue.number, { title: issue.title, status: "pending" });
+      }
+    }
+
+    // Find ready issues (deps satisfied)
+    const ready = getReadyIssues(issues, completed);
+    if (ready.length === 0) {
+      return {
+        content: [
+          { type: "text" as const, text: `${issues.length} issues remain but all have unresolved dependencies.` },
+        ],
+        details: { pipeline: "implement-all", stages: allStages },
+        isError: true,
+      };
+    }
+
+    // biome-ignore lint/style/noNonNullAssertion: ready is non-empty (checked above)
+    const issueNum = ready[0]!;
+    const issueTitle = issues.find((i) => i.number === issueNum)?.title ?? `#${issueNum}`;
+
+    // Update status + widget
+    issueProgress.set(issueNum, { title: issueTitle, status: "running" });
+    setForgeflowStatus(
+      ctx,
+      `implement-all · ${completed.size}/${completed.size + issues.length} · #${issueNum} ${issueTitle}`,
+    );
+    updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
+
+    // Run implement for this issue
+    allStages.push(emptyStage(`implement-${issueNum}`));
+    const implResult = await runImplement(cwd, String(issueNum), signal, onUpdate, ctx, {
+      ...flags,
+      autonomous: true,
+    });
+
+    // Accumulate usage from detailed stages into the container stage
+    const implStage = allStages.find((s) => s.name === `implement-${issueNum}`);
+    if (implStage) {
+      implStage.status = implResult.isError ? "failed" : "done";
+      implStage.output = implResult.content[0]?.type === "text" ? implResult.content[0].text : "";
+      const detailedStages = (implResult as AnyCtx).details?.stages as StageResult[] | undefined;
+      if (detailedStages) implStage.usage = sumUsage(detailedStages);
+    }
+
+    if (implResult.isError) {
+      issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
+      updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Failed on issue #${issueNum}: ${implResult.content[0]?.type === "text" ? implResult.content[0].text : "unknown error"}`,
+          },
+        ],
+        details: { pipeline: "implement-all", stages: allStages },
+        isError: true,
+      };
+    }
+
+    // Check for PR and merge
+    const branch = `feat/issue-${issueNum}`;
+    await exec("git checkout main && git pull --rebase", cwd);
+    const prNum = await exec(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
+
+    if (prNum && prNum !== "null") {
+      const mergeResult = await exec(`gh pr merge ${prNum} --squash --delete-branch`, cwd);
+      if (mergeResult.includes("Merged") || mergeResult === "") {
+        completed.add(issueNum);
+      } else {
+        const prState = await exec(`gh pr view ${prNum} --json state --jq '.state'`, cwd);
+        if (prState === "MERGED") {
+          completed.add(issueNum);
+        } else {
+          issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
+          updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
+          return {
+            content: [{ type: "text" as const, text: `Failed to merge PR #${prNum} for issue #${issueNum}.` }],
+            details: { pipeline: "implement-all", stages: allStages },
+            isError: true,
+          };
+        }
+      }
+    } else {
+      issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
+      updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
+      return {
+        content: [{ type: "text" as const, text: `No PR found for issue #${issueNum} after implementation.` }],
+        details: { pipeline: "implement-all", stages: allStages },
+        isError: true,
+      };
+    }
+
+    // Mark done and update widget
+    issueProgress.set(issueNum, { title: issueTitle, status: "done" });
+    setForgeflowStatus(
+      ctx,
+      `implement-all · ${completed.size}/${completed.size + issues.length - 1} · $${sumUsage(allStages).cost.toFixed(2)}`,
+    );
+    updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
+  }
+
+  return {
+    content: [{ type: "text" as const, text: `Reached max iterations (${maxIterations}).` }],
+    details: { pipeline: "implement-all", stages: allStages },
+  };
+}
