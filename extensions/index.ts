@@ -58,6 +58,18 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
   registerForgeflowTool(pi);
 
   // Thin command wrappers — steer the LLM to call the forgeflow tool
+  pi.registerCommand("continue", {
+    description:
+      'Update PRD with Done/Next based on codebase state, QA the Next section, then create issues. Usage: /continue ["description of next phase"]',
+    handler: async (args) => {
+      const trimmed = args.trim().replace(/^"(.*)"$/, "$1");
+      const descPart = trimmed ? `, issue="${trimmed}"` : "";
+      pi.sendUserMessage(
+        `Call the forgeflow tool now with these exact parameters: pipeline="continue"${descPart}. Do not interpret the description — pass it as-is.`,
+      );
+    },
+  });
+
   pi.registerCommand("prd-qa", {
     description: "Refine PRD.md via critic → architect → integrator loop",
     handler: async (args) => {

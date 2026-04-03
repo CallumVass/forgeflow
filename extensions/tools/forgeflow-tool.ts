@@ -2,6 +2,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { runArchitecture } from "./pipelines/architecture.js";
+import { runContinue } from "./pipelines/continue.js";
 import { runCreateIssue, runCreateIssues } from "./pipelines/create-issues.js";
 import { runDiscoverSkills } from "./pipelines/discover-skills.js";
 import { runImplement } from "./pipelines/implement.js";
@@ -78,7 +79,7 @@ function formatUsage(usage: { input: number; output: number; cost: number; turns
 const ForgeflowParams = Type.Object({
   pipeline: Type.String({
     description:
-      'Which pipeline to run: "prd-qa", "create-issues", "create-issue", "implement", "implement-all", "review", "architecture", or "discover-skills"',
+      'Which pipeline to run: "continue", "prd-qa", "create-issues", "create-issue", "implement", "implement-all", "review", "architecture", or "discover-skills"',
   }),
   maxIterations: Type.Optional(Type.Number({ description: "Max iterations for prd-qa (default 10)" })),
   issue: Type.Optional(
@@ -99,7 +100,8 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
     name: "forgeflow",
     label: "Forgeflow",
     description: [
-      "Run forgeflow pipelines: prd-qa (refine PRD), create-issues (decompose PRD into GitHub issues),",
+      "Run forgeflow pipelines: continue (update PRD Done/Next→QA→create issues for next phase),",
+      "prd-qa (refine PRD), create-issues (decompose PRD into GitHub issues),",
       "create-issue (single issue from a feature idea), implement (plan→TDD→refactor a single issue),",
       "implement-all (loop through all open issues autonomously), review (deterministic checks→code review→judge),",
       "architecture (analyze codebase for structural friction→create RFC issues).",
@@ -120,6 +122,8 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
 
       try {
         switch (params.pipeline) {
+          case "continue":
+            return await runContinue(cwd, params.issue ?? "", params.maxIterations ?? 10, sig, onUpdate, ctx);
           case "prd-qa":
             return await runPrdQa(cwd, params.maxIterations ?? 10, sig, onUpdate, ctx);
           case "create-issues":
