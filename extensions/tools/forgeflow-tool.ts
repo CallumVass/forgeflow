@@ -470,7 +470,15 @@ async function runImplement(
   if (!flags.skipReview) {
     const reviewResult = await runReviewInline(cwd, signal, onUpdate, ctx, stages);
     if (reviewResult.isError) {
-      return { ...reviewResult, details: { pipeline: "implement", stages } };
+      // Fix findings
+      const findings = reviewResult.content[0]?.type === "text" ? reviewResult.content[0].text : "";
+      stages.push(emptyStage("fix-findings"));
+      await runAgent("implementor",
+        `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
+        { cwd, signal, stages, pipeline: "implement", onUpdate, tools: ["read", "write", "edit", "bash", "grep", "find"] });
+
+      // Clean up FINDINGS.md after fixing
+      try { fs.unlinkSync(`${cwd}/FINDINGS.md`); } catch {}
     }
   }
 
