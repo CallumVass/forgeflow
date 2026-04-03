@@ -39,7 +39,7 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
   });
 
   pi.registerCommand("implement", {
-    description: "Plan → implement → refactor an issue using TDD. Flags: --skip-plan, --skip-review",
+    description: "Implement a single issue using TDD. Usage: /implement <issue#> [--skip-plan] [--skip-review]",
     handler: async (args) => {
       const skipPlan = args.includes("--skip-plan");
       const skipReview = args.includes("--skip-review");
@@ -50,8 +50,32 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
         skipReview ? ', skipReview: true' : '',
       ].join('');
 
+      if (issue) {
+        pi.sendUserMessage(
+          `Use the forgeflow tool with pipeline "implement", issue "${issue}"${flags}. Implement using TDD.`
+        );
+      } else {
+        // No arg — tool will detect from branch name
+        pi.sendUserMessage(
+          `Use the forgeflow tool with pipeline "implement"${flags}. No issue number provided — the tool will detect it from the current branch. Do NOT ask for an issue number. Implement using TDD.`
+        );
+      }
+    },
+  });
+
+  pi.registerCommand("implement-all", {
+    description: "Loop through all open auto-generated issues: implement, review, merge. Flags: --skip-plan, --skip-review",
+    handler: async (args) => {
+      const skipPlan = args.includes("--skip-plan");
+      const skipReview = args.includes("--skip-review");
+
+      const flags = [
+        skipPlan ? ', skipPlan: true' : '',
+        skipReview ? ', skipReview: true' : '',
+      ].join('');
+
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "implement"${issue ? `, issue "${issue}"` : ''}${flags}. ${!issue ? 'Do NOT ask for an issue number — the tool auto-detects it.' : ''} Implement using TDD.`
+        `Use the forgeflow tool with pipeline "implement-all"${flags}. This processes all open auto-generated issues in dependency order: for each issue, create branch, plan, implement via TDD, refactor, review, create PR, merge, then move to the next. Do NOT ask for confirmation — run autonomously.`
       );
     },
   });

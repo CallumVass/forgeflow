@@ -48,7 +48,7 @@ function formatUsage(usage: { input: number; output: number; cost: number; turns
 
 const ForgeflowParams = Type.Object({
   pipeline: Type.String({
-    description: 'Which pipeline to run: "prd-qa", "create-issues", "create-issue", "implement", or "review"',
+    description: 'Which pipeline to run: "prd-qa", "create-issues", "create-issue", "implement", "implement-all", or "review"',
   }),
   maxIterations: Type.Optional(Type.Number({ description: "Max iterations for prd-qa (default 10)" })),
   issue: Type.Optional(Type.String({ description: "Issue number or description for implement pipeline, or feature idea for create-issue" })),
@@ -63,7 +63,8 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
     label: "Forgeflow",
     description: [
       "Run forgeflow pipelines: prd-qa (refine PRD), create-issues (decompose PRD into GitHub issues),",
-      "create-issue (single issue from a feature idea), implement (plan→TDD→refactor an issue), review (deterministic checks→code review→judge).",
+      "create-issue (single issue from a feature idea), implement (plan→TDD→refactor a single issue),",
+      "implement-all (loop through all open issues autonomously), review (deterministic checks→code review→judge).",
       "Each pipeline spawns specialized sub-agents with isolated context.",
     ].join(" "),
     parameters: ForgeflowParams,
@@ -80,6 +81,11 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
           return await runCreateIssue(cwd, params.issue ?? "", signal, onUpdate, ctx);
         case "implement":
           return await runImplement(cwd, params.issue ?? "", signal, onUpdate, ctx, {
+            skipPlan: params.skipPlan ?? false,
+            skipReview: params.skipReview ?? false,
+          });
+        case "implement-all":
+          return await runImplementAll(cwd, signal, onUpdate, ctx, {
             skipPlan: params.skipPlan ?? false,
             skipReview: params.skipReview ?? false,
           });
@@ -220,22 +226,12 @@ async function resolveIssue(cwd: string, issueArg?: string): Promise<ResolvedIss
     // Non-numeric arg — pass through as description (original behavior)
     return { number: 0, title: issueArg, body: issueArg, branch: "" };
   } else {
-    // No arg — detect from branch or pick next open issue
+    // No arg — detect from branch name
     const branch = await exec("git branch --show-current", cwd);
     const match = branch.match(/(?:feat\/)?issue-(\d+)/);
 
     if (match) {
       issueNum = parseInt(match[1]);
-    } else if (branch === "main" || branch === "master") {
-      // Pick next open auto-generated issue
-      const next = await exec(
-        `gh issue list --state open --label "auto-generated" --json number --jq 'sort_by(.number) | .[0].number'`,
-        cwd,
-      );
-      if (!next || next === "null") {
-        return "No open auto-generated issues found.";
-      }
-      issueNum = parseInt(next);
     } else {
       return `On branch "${branch}" — can't detect issue number. Use /implement <issue#>.`;
     }
@@ -429,11 +425,10 @@ async function runImplement(
     }
   }
 
-  // Interactive mode: create feature branch if not already on one
-  if (ctx.hasUI && resolved.branch) {
+  // Create/checkout feature branch if on main
+  if (resolved.branch) {
     const currentBranch = await exec("git branch --show-current", cwd);
-    if (currentBranch !== resolved.branch) {
-      // Check if branch exists, create or checkout
+    if (currentBranch === "main" || currentBranch === "master") {
       const branchExists = await exec(`git rev-parse --verify ${resolved.branch} 2>/dev/null && echo yes || echo no`, cwd);
       if (branchExists === "yes") {
         await exec(`git checkout ${resolved.branch}`, cwd);
@@ -482,6 +477,130 @@ async function runImplement(
   return {
     content: [{ type: "text" as const, text: `Implementation of ${issueLabel} complete.` }],
     details: { pipeline: "implement", stages },
+  };
+}
+
+// ─── Implement-all loop ─────────────────────────────────────────────
+
+interface IssueInfo { number: number; title: string; body: string; }
+
+/**
+ * Get issue numbers whose dependencies (referenced as #N in ## Dependencies section) are satisfied.
+ */
+function getReadyIssues(issues: IssueInfo[], completed: Set<number>): number[] {
+  return issues.filter((issue) => {
+    const depMatch = issue.body.split("## Dependencies");
+    if (depMatch.length < 2) return true; // no deps section
+    const depSection = depMatch[1].split("\n## ")[0];
+    const deps = [...depSection.matchAll(/#(\d+)/g)].map((m) => parseInt(m[1]));
+    return deps.every((d) => completed.has(d));
+  }).map((i) => i.number);
+}
+
+async function runImplementAll(
+  cwd: string, signal: AbortSignal, onUpdate: any, ctx: any,
+  flags: { skipPlan: boolean; skipReview: boolean },
+) {
+  const allStages: StageResult[] = [];
+
+  // Seed completed set with already-closed issues
+  const closedJson = await exec(
+    `gh issue list --state closed --label "auto-generated" --json number --jq '.[].number'`, cwd,
+  );
+  const completed = new Set<number>(
+    closedJson ? closedJson.split("\n").filter(Boolean).map(Number) : [],
+  );
+
+  let iteration = 0;
+  const maxIterations = 50; // safety cap
+
+  while (iteration++ < maxIterations) {
+    if (signal.aborted) break;
+
+    // Return to main and pull
+    await exec("git checkout main && git pull --rebase", cwd);
+
+    // Fetch open issues
+    const issuesJson = await exec(
+      `gh issue list --state open --label "auto-generated" --json number,title,body --jq 'sort_by(.number)'`, cwd,
+    );
+    let issues: IssueInfo[];
+    try { issues = JSON.parse(issuesJson || "[]"); } catch { issues = []; }
+
+    if (issues.length === 0) {
+      return {
+        content: [{ type: "text" as const, text: "All issues implemented." }],
+        details: { pipeline: "implement-all", stages: allStages },
+      };
+    }
+
+    // Find ready issues (deps satisfied)
+    const ready = getReadyIssues(issues, completed);
+    if (ready.length === 0) {
+      return {
+        content: [{ type: "text" as const, text: `${issues.length} issues remain but all have unresolved dependencies.` }],
+        details: { pipeline: "implement-all", stages: allStages },
+        isError: true,
+      };
+    }
+
+    const issueNum = ready[0];
+    const issue = issues.find((i) => i.number === issueNum)!;
+
+    // Run implement for this issue (reuses full implement pipeline)
+    allStages.push(emptyStage(`implement-${issueNum}`));
+    const implResult = await runImplement(cwd, String(issueNum), signal, onUpdate, ctx, flags);
+
+    // Update stage status
+    const implStage = allStages.find((s) => s.name === `implement-${issueNum}`);
+    if (implStage) {
+      implStage.status = implResult.isError ? "failed" : "done";
+      implStage.output = implResult.content[0]?.type === "text" ? implResult.content[0].text : "";
+    }
+
+    if (implResult.isError) {
+      return {
+        content: [{ type: "text" as const, text: `Failed on issue #${issueNum}: ${implResult.content[0]?.type === "text" ? implResult.content[0].text : "unknown error"}` }],
+        details: { pipeline: "implement-all", stages: allStages },
+        isError: true,
+      };
+    }
+
+    // Check for PR and merge
+    const branch = `feat/issue-${issueNum}`;
+    await exec("git checkout main && git pull --rebase", cwd);
+    const prNum = await exec(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
+
+    if (prNum && prNum !== "null") {
+      const mergeResult = await exec(`gh pr merge ${prNum} --squash --delete-branch`, cwd);
+      if (mergeResult.includes("Merged") || mergeResult === "") {
+        // gh pr merge returns empty on success in some versions
+        completed.add(issueNum);
+      } else {
+        // Try to check if it actually merged
+        const prState = await exec(`gh pr view ${prNum} --json state --jq '.state'`, cwd);
+        if (prState === "MERGED") {
+          completed.add(issueNum);
+        } else {
+          return {
+            content: [{ type: "text" as const, text: `Failed to merge PR #${prNum} for issue #${issueNum}.` }],
+            details: { pipeline: "implement-all", stages: allStages },
+            isError: true,
+          };
+        }
+      }
+    } else {
+      return {
+        content: [{ type: "text" as const, text: `No PR found for issue #${issueNum} after implementation.` }],
+        details: { pipeline: "implement-all", stages: allStages },
+        isError: true,
+      };
+    }
+  }
+
+  return {
+    content: [{ type: "text" as const, text: `Reached max iterations (${maxIterations}).` }],
+    details: { pipeline: "implement-all", stages: allStages },
   };
 }
 
