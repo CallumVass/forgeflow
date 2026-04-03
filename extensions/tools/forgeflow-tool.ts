@@ -322,7 +322,7 @@ async function refactorAndReview(
   skipReview: boolean,
   pipeline = "implement",
 ): Promise<void> {
-  stages.push(emptyStage("refactorer"));
+  if (!stages.some((s) => s.name === "refactorer")) stages.push(emptyStage("refactorer"));
   await runAgent(
     "refactorer",
     "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit and push if changed.",
@@ -598,6 +598,7 @@ async function runImplement(
   const stageList: StageResult[] = [];
   if (!flags.skipPlan) stageList.push(emptyStage("planner"));
   stageList.push(emptyStage("implementor"));
+  stageList.push(emptyStage("refactorer"));
   const stages = stageList;
   const opts = { cwd, signal, stages, pipeline: "implement", onUpdate };
 
