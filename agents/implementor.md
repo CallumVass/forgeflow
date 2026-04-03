@@ -83,6 +83,12 @@ If `DESIGN.md` exists in the project root, it is the **styling authority** for a
 **Without a Stitch project ID:**
 - Use DESIGN.md tokens (colors, typography, spacing, component patterns) directly.
 
+## Domain Plugins
+
+Scan `<cwd>/.forgeflow/plugins/*/PLUGIN.md` for plugins matching the `implement` stage. Read the plugins skill for the full matching algorithm.
+
+For each matched plugin, read the plugin body and follow its guidance — framework-specific idioms, API patterns, common pitfalls, and conventions for the project's tech stack.
+
 ## Before Committing
 
 - **Reachability check**: Every new module, class, or function you created must be imported and called from production code — not just from tests. Trace from the entry point to your new code.

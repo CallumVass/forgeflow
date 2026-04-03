@@ -68,6 +68,12 @@ Copy Stitch Tailwind classes verbatim — do NOT translate to inline styles.
 - <anything ambiguous in the issue or codebase that the implementor should clarify before starting>
 ```
 
+## Domain Plugins
+
+Scan `<cwd>/.forgeflow/plugins/*/PLUGIN.md` for plugins matching the `plan` stage. Read the plugins skill for the full matching algorithm.
+
+For each matched plugin, read the plugin body and incorporate its guidance into your plan — framework-specific test strategies, routing conventions, or "test X before Y" ordering that the implementor should follow.
+
 ## Rules
 
 - **Hard cap: 12 test entries per issue.** If you're listing more, you're over-testing — group related guards into single entries and drop trivial variations.
