@@ -1,4 +1,5 @@
 import * as fs from "node:fs";
+import { spawn as nodeSpawn } from "node:child_process";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text, type Component } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
@@ -182,6 +183,83 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
   });
 }
 
+// ─── Helpers ────────────────────────────────────────────────────────
+
+function exec(cmd: string, cwd: string): Promise<string> {
+  return new Promise((resolve) => {
+    const proc = nodeSpawn("bash", ["-c", cmd], { cwd, stdio: ["ignore", "pipe", "pipe"] });
+    let out = "";
+    proc.stdout.on("data", (d: Buffer) => { out += d.toString(); });
+    proc.on("close", () => resolve(out.trim()));
+    proc.on("error", () => resolve(""));
+  });
+}
+
+interface ResolvedIssue {
+  number: number;
+  title: string;
+  body: string;
+  branch: string;
+  existingPR?: number;
+}
+
+/**
+ * Resolve which issue to implement:
+ * 1. Explicit issue number provided → fetch it
+ * 2. On a feature branch (feat/issue-N) → extract N
+ * 3. On main → pick next open auto-generated issue
+ *
+ * Also checks for existing branch/PR.
+ */
+async function resolveIssue(cwd: string, issueArg?: string): Promise<ResolvedIssue | string> {
+  let issueNum: number;
+
+  if (issueArg && /^\d+$/.test(issueArg)) {
+    issueNum = parseInt(issueArg);
+  } else if (issueArg) {
+    // Non-numeric arg — pass through as description (original behavior)
+    return { number: 0, title: issueArg, body: issueArg, branch: "" };
+  } else {
+    // No arg — detect from branch or pick next open issue
+    const branch = await exec("git branch --show-current", cwd);
+    const match = branch.match(/(?:feat\/)?issue-(\d+)/);
+
+    if (match) {
+      issueNum = parseInt(match[1]);
+    } else if (branch === "main" || branch === "master") {
+      // Pick next open auto-generated issue
+      const next = await exec(
+        `gh issue list --state open --label "auto-generated" --json number --jq 'sort_by(.number) | .[0].number'`,
+        cwd,
+      );
+      if (!next || next === "null") {
+        return "No open auto-generated issues found.";
+      }
+      issueNum = parseInt(next);
+    } else {
+      return `On branch "${branch}" — can't detect issue number. Use /implement <issue#>.`;
+    }
+  }
+
+  // Fetch issue details
+  const issueJson = await exec(
+    `gh issue view ${issueNum} --json number,title,body`,
+    cwd,
+  );
+  if (!issueJson) return `Could not fetch issue #${issueNum}.`;
+
+  let issue: { number: number; title: string; body: string };
+  try { issue = JSON.parse(issueJson); } catch { return `Could not parse issue #${issueNum}.`; }
+
+  const branch = `feat/issue-${issueNum}`;
+
+  // Check for existing PR
+  const prJson = await exec(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
+  const existingPR = prJson && prJson !== "null" ? parseInt(prJson) : undefined;
+
+  return { ...issue, branch, existingPR };
+}
+
 // ─── Pipeline implementations ───────────────────────────────────────
 
 async function runPrdQa(
@@ -293,12 +371,21 @@ async function runCreateIssues(cwd: string, signal: AbortSignal, onUpdate: any, 
 }
 
 async function runImplement(
-  cwd: string, issue: string, signal: AbortSignal, onUpdate: any, ctx: any,
+  cwd: string, issueArg: string, signal: AbortSignal, onUpdate: any, ctx: any,
   flags: { skipPlan: boolean; skipReview: boolean } = { skipPlan: false, skipReview: false },
 ) {
-  if (!issue) {
-    return { content: [{ type: "text" as const, text: "No issue specified." }], details: { pipeline: "implement", stages: [] } };
+  // Resolve issue: explicit arg, branch detection, or next open issue
+  const resolved = await resolveIssue(cwd, issueArg || undefined);
+  if (typeof resolved === "string") {
+    return { content: [{ type: "text" as const, text: resolved }], details: { pipeline: "implement", stages: [] } };
   }
+
+  const issueLabel = resolved.number
+    ? `#${resolved.number}: ${resolved.title}`
+    : resolved.title;
+  const issueContext = resolved.number
+    ? `Issue #${resolved.number}: ${resolved.title}\n\n${resolved.body}`
+    : resolved.body;
 
   const stageList: StageResult[] = [];
   if (!flags.skipPlan) stageList.push(emptyStage("planner"));
@@ -310,7 +397,7 @@ async function runImplement(
 
   if (!flags.skipPlan) {
     const planResult = await runAgent("planner",
-      `Plan the implementation for this issue by producing a sequenced list of test cases.\n\nISSUE: ${issue}`,
+      `Plan the implementation for this issue by producing a sequenced list of test cases.\n\n${issueContext}`,
       { ...opts, tools: ["read", "bash", "grep", "find"] });
 
     if (planResult.status === "failed") {
@@ -328,8 +415,12 @@ async function runImplement(
 
   // Implementor
   const planSection = plan ? `\n\nIMPLEMENTATION PLAN:\n${plan}` : "";
+  const branchNote = resolved.branch ? `\n- You should be on branch: ${resolved.branch} — do NOT create or switch branches.` : "\n- Do NOT create or switch branches.";
+  const prNote = resolved.existingPR ? `\n- PR #${resolved.existingPR} already exists for this branch.` : "";
+  const closeNote = resolved.number ? `\n- The PR body MUST include 'Closes #${resolved.number}' so the issue auto-closes on merge.` : "";
+
   await runAgent("implementor",
-    `Implement the following issue using strict TDD (red-green-refactor).\n\nISSUE: ${issue}${planSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit changes.\n\nCONSTRAINTS:\n- Do NOT create or switch branches.\n- If blocked, write BLOCKED.md with the reason and stop.`,
+    `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit changes.\n\nCONSTRAINTS:${branchNote}${prNote}${closeNote}\n- If blocked, write BLOCKED.md with the reason and stop.`,
     { ...opts, tools: ["read", "write", "edit", "bash", "grep", "find"] });
 
   // Check for blocker
@@ -356,7 +447,7 @@ async function runImplement(
   }
 
   return {
-    content: [{ type: "text" as const, text: "Implementation complete." }],
+    content: [{ type: "text" as const, text: `Implementation of ${issueLabel} complete.` }],
     details: { pipeline: "implement", stages },
   };
 }
@@ -369,9 +460,8 @@ async function runReviewInline(
   cwd: string, signal: AbortSignal, onUpdate: any, ctx: any,
   stages: StageResult[], diffCmd = "git diff main...HEAD", pipeline = "review",
 ): Promise<{ content: { type: "text"; text: string }[]; isError?: boolean }> {
-  const { spawn } = require("node:child_process");
   const diff = await new Promise<string>((resolve) => {
-    const proc = spawn("bash", ["-c", diffCmd], { cwd, stdio: ["ignore", "pipe", "pipe"] });
+    const proc = nodeSpawn("bash", ["-c", diffCmd], { cwd, stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
     proc.stdout.on("data", (d: Buffer) => { out += d.toString(); });
     proc.on("close", () => resolve(out.trim()));

@@ -45,18 +45,13 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
       const skipReview = args.includes("--skip-review");
       const issue = args.replace(/--skip-plan/g, "").replace(/--skip-review/g, "").trim();
 
-      if (!issue) {
-        pi.sendUserMessage("I need an issue number or description to implement. Usage: /implement <issue#> [--skip-plan] [--skip-review]");
-        return;
-      }
-
       const flags = [
         skipPlan ? ', skipPlan: true' : '',
         skipReview ? ', skipReview: true' : '',
       ].join('');
 
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "implement", issue "${issue}"${flags} to implement it using TDD.`
+        `Use the forgeflow tool with pipeline "implement"${issue ? `, issue "${issue}"` : ''}${flags} to implement it using TDD.`
       );
     },
   });
