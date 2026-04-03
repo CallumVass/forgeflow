@@ -4,7 +4,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { runAgent } from "./run-agent";
-import { emptyStage, getFinalOutput, type PipelineDetails, type StageResult } from "./types";
+import { type AnyCtx, emptyStage, getFinalOutput, type PipelineDetails, type StageResult } from "./types";
 
 type DisplayItem = { type: "text"; text: string } | { type: "toolCall"; name: string; args: Record<string, unknown> };
 
@@ -17,10 +17,7 @@ interface ForgeflowInput {
   skipReview?: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyCtx = any;
-
-function getDisplayItems(messages: any[]): DisplayItem[] {
+function getDisplayItems(messages: AnyCtx[]): DisplayItem[] {
   const items: DisplayItem[] = [];
   for (const msg of messages) {
     if (msg.role === "assistant") {
@@ -295,7 +292,7 @@ async function refactorAndReview(
   stages.push(emptyStage("refactorer"));
   await runAgent(
     "refactorer",
-    "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit if changed.",
+    "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit and push if changed.",
     { cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL },
   );
 
@@ -352,6 +349,7 @@ async function resolveIssue(cwd: string, issueArg?: string): Promise<ResolvedIss
     const match = branch.match(/(?:feat\/)?issue-(\d+)/);
 
     if (match) {
+      // biome-ignore lint/style/noNonNullAssertion: match[1] guaranteed by regex
       issueNum = parseInt(match[1]!, 10);
     } else {
       return `On branch "${branch}" — can't detect issue number. Use /implement <issue#>.`;
@@ -644,6 +642,16 @@ async function runImplement(
   // Refactor + review
   await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
 
+  // Ensure PR exists — agent may have skipped or failed `gh pr create`
+  if (resolved.branch) {
+    await exec(`git push -u origin ${resolved.branch}`, cwd);
+    const existingPR = await exec(`gh pr list --head "${resolved.branch}" --json number --jq '.[0].number'`, cwd);
+    if (!existingPR || existingPR === "null") {
+      const closeRef = resolved.number ? `Closes #${resolved.number}` : "";
+      await exec(`gh pr create --title "${resolved.title}" --body "${closeRef}" --head ${resolved.branch}`, cwd);
+    }
+  }
+
   return {
     content: [{ type: "text" as const, text: `Implementation of ${issueLabel} complete.` }],
     details: { pipeline: "implement", stages },
@@ -729,6 +737,7 @@ async function runImplementAll(
       };
     }
 
+    // biome-ignore lint/style/noNonNullAssertion: ready is non-empty (checked above)
     const issueNum = ready[0]!;
 
     // Run implement for this issue (reuses full implement pipeline)

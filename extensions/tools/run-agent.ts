@@ -5,7 +5,7 @@ import * as path from "node:path";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
 import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
-import { emptyStage, type PipelineDetails, type StageResult } from "./types";
+import { type AnyCtx, emptyStage, type PipelineDetails, type StageResult } from "./types";
 
 type OnUpdate = (partial: AgentToolResult<PipelineDetails>) => void;
 
@@ -92,7 +92,7 @@ export async function runAgent(
 
       const processLine = (line: string) => {
         if (!line.trim()) return;
-        let event: any;
+        let event: AnyCtx;
         try {
           event = JSON.parse(line);
         } catch {
@@ -105,7 +105,7 @@ export async function runAgent(
 
           if (msg.role === "assistant") {
             stage.usage.turns++;
-            const usage = (msg as any).usage;
+            const usage = (msg as AnyCtx).usage;
             if (usage) {
               stage.usage.input += usage.input || 0;
               stage.usage.output += usage.output || 0;
@@ -113,7 +113,7 @@ export async function runAgent(
               stage.usage.cacheWrite += usage.cacheWrite || 0;
               stage.usage.cost += usage.cost?.total || 0;
             }
-            if (!stage.model && (msg as any).model) stage.model = (msg as any).model;
+            if (!stage.model && (msg as AnyCtx).model) stage.model = (msg as AnyCtx).model;
           }
           emitUpdate(options);
         }
@@ -159,6 +159,7 @@ export async function runAgent(
 
     // Extract final text output
     for (let i = stage.messages.length - 1; i >= 0; i--) {
+      // biome-ignore lint/style/noNonNullAssertion: index within bounds
       const msg = stage.messages[i]!;
       if (msg.role === "assistant") {
         for (const part of msg.content) {
