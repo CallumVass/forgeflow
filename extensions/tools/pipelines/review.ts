@@ -1,8 +1,8 @@
-import * as fs from "node:fs";
-import { SIGNALS, TOOLS_NO_EDIT, TOOLS_READONLY } from "../constants.js";
+import { TOOLS_NO_EDIT, TOOLS_READONLY } from "../constants.js";
 import { runAgent } from "../run-agent.js";
 import { type AnyCtx, emptyStage, type StageResult } from "../types.js";
 import { exec } from "../utils/exec.js";
+import { cleanSignal, readSignal, signalExists } from "../utils/signals.js";
 
 /**
  * Shared review logic — used by both standalone /review and chained from /implement.
@@ -27,32 +27,30 @@ export async function runReviewInline(
   const opts = { cwd, signal, stages, pipeline, onUpdate };
 
   // Clean up stale findings
-  try {
-    fs.unlinkSync(`${cwd}/${SIGNALS.findings}`);
-  } catch {}
+  cleanSignal(cwd, "findings");
 
   // Code reviewer
   stages.push(emptyStage("code-reviewer"));
   await runAgent("code-reviewer", `Review the following diff:\n\n${diff}`, { ...opts, tools: TOOLS_NO_EDIT });
 
-  if (!fs.existsSync(`${cwd}/${SIGNALS.findings}`)) {
+  if (!signalExists(cwd, "findings")) {
     return { content: [{ type: "text", text: "Review passed — no actionable findings." }] };
   }
 
   // Review judge
   stages.push(emptyStage("review-judge"));
-  const findings = fs.readFileSync(`${cwd}/${SIGNALS.findings}`, "utf-8");
+  const findings = readSignal(cwd, "findings") ?? "";
   await runAgent(
     "review-judge",
     `Validate the following code review findings against the actual code:\n\n${findings}`,
     { ...opts, tools: TOOLS_NO_EDIT },
   );
 
-  if (!fs.existsSync(`${cwd}/${SIGNALS.findings}`)) {
+  if (!signalExists(cwd, "findings")) {
     return { content: [{ type: "text", text: "Review passed — judge filtered all findings." }] };
   }
 
-  const validatedFindings = fs.readFileSync(`${cwd}/${SIGNALS.findings}`, "utf-8");
+  const validatedFindings = readSignal(cwd, "findings") ?? "";
 
   // Interactive mode with PR: show findings and proposed gh commands for approval
   if (options.interactive && options.prNumber) {

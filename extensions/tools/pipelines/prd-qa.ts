@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import { TOOLS_ALL, TOOLS_NO_EDIT } from "../constants.js";
 import { runAgent } from "../run-agent.js";
 import { type AnyCtx, emptyStage, type StageResult } from "../types.js";
+import { signalExists } from "../utils/signals.js";
 
 export async function runPrdQa(cwd: string, maxIterations: number, signal: AbortSignal, onUpdate: AnyCtx, ctx: AnyCtx) {
   if (!fs.existsSync(`${cwd}/PRD.md`)) {
@@ -24,7 +25,7 @@ export async function runPrdQa(cwd: string, maxIterations: number, signal: Abort
     );
 
     // No QUESTIONS.md = critic considers PRD complete
-    if (!fs.existsSync(`${cwd}/QUESTIONS.md`)) {
+    if (!signalExists(cwd, "questions")) {
       if (criticResult.status === "failed") {
         return {
           content: [{ type: "text" as const, text: `Critic failed.\nStderr: ${criticResult.stderr.slice(0, 300)}` }],

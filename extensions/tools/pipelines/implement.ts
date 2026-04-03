@@ -1,9 +1,9 @@
-import * as fs from "node:fs";
-import { SIGNALS, TOOLS_ALL, TOOLS_READONLY } from "../constants.js";
+import { TOOLS_ALL, TOOLS_READONLY } from "../constants.js";
 import { runAgent } from "../run-agent.js";
 import { type AnyCtx, emptyStage, type StageResult } from "../types.js";
 import { exec } from "../utils/exec.js";
 import { ensureBranch, resolveIssue } from "../utils/git.js";
+import { cleanSignal, readSignal, signalExists } from "../utils/signals.js";
 import { setForgeflowStatus } from "../utils/ui.js";
 import { runReviewInline } from "./review.js";
 
@@ -27,9 +27,7 @@ async function reviewAndFix(
       `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
       { cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL },
     );
-    try {
-      fs.unlinkSync(`${cwd}/${SIGNALS.findings}`);
-    } catch {}
+    cleanSignal(cwd, "findings");
   }
 }
 
@@ -195,9 +193,7 @@ export async function runImplement(
   }
 
   // Clean up stale blockers
-  try {
-    fs.unlinkSync(`${cwd}/${SIGNALS.blocked}`);
-  } catch {}
+  cleanSignal(cwd, "blocked");
 
   // Implementor
   const planSection = plan ? `\n\nIMPLEMENTATION PLAN:\n${plan}` : "";
@@ -219,8 +215,8 @@ export async function runImplement(
   );
 
   // Check for blocker
-  if (fs.existsSync(`${cwd}/${SIGNALS.blocked}`)) {
-    const reason = fs.readFileSync(`${cwd}/${SIGNALS.blocked}`, "utf-8");
+  if (signalExists(cwd, "blocked")) {
+    const reason = readSignal(cwd, "blocked") ?? "";
     return {
       content: [{ type: "text" as const, text: `Implementor blocked:\n${reason}` }],
       details: { pipeline: "implement", stages },
