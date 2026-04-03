@@ -3,7 +3,7 @@ import { runAgent } from "../run-agent.js";
 import { type AnyCtx, emptyStage } from "../types.js";
 
 export async function runArchitecture(cwd: string, signal: AbortSignal, onUpdate: AnyCtx, ctx: AnyCtx) {
-  const stages = [emptyStage("architecture-explorer")];
+  const stages = [emptyStage("architecture-reviewer")];
   const opts = { cwd, signal, stages, pipeline: "architecture", onUpdate };
 
   // Phase 1: Explore codebase for friction
