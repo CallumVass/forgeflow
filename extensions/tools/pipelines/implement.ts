@@ -55,6 +55,33 @@ async function refactorAndReview(
   }
 }
 
+/**
+ * Parse unresolved questions from the plan and prompt the user for answers.
+ * Returns the plan with answers injected inline.
+ */
+async function resolveQuestions(plan: string, ctx: AnyCtx): Promise<string> {
+  const sectionMatch = plan.match(/### Unresolved Questions\n([\s\S]*?)(?=\n###|$)/);
+  if (!sectionMatch) return plan;
+
+  const section = sectionMatch[1] ?? "";
+  const questions: string[] = [];
+  for (const m of section.matchAll(/^- (.+)$/gm)) {
+    if (m[1]) questions.push(m[1]);
+  }
+
+  if (questions.length === 0) return plan;
+
+  let updatedSection = section;
+  for (const q of questions) {
+    const answer = await ctx.ui.input(`Unresolved question (skip to use defaults)`, q);
+    if (answer != null && answer.trim() !== "") {
+      updatedSection = updatedSection.replace(`- ${q}`, `- ${q}\n  **Answer:** ${answer.trim()}`);
+    }
+  }
+
+  return plan.replace(`### Unresolved Questions\n${section}`, `### Unresolved Questions\n${updatedSection}`);
+}
+
 export async function runImplement(
   cwd: string,
   issueArg: string,
@@ -154,6 +181,9 @@ export async function runImplement(
       if (edited != null && edited !== plan) {
         plan = edited;
       }
+
+      // Surface unresolved questions one-by-one for user answers
+      plan = await resolveQuestions(plan, ctx);
 
       const action = await ctx.ui.select("Plan ready. What next?", ["Approve and implement", "Cancel"]);
       if (action === "Cancel" || action == null) {
