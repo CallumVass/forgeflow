@@ -201,6 +201,40 @@ function exec(cmd: string, cwd: string): Promise<string> {
   });
 }
 
+/**
+ * Run review and fix any findings via implementor. Returns true if findings were found and fixed.
+ */
+async function reviewAndFix(
+  cwd: string, signal: AbortSignal, onUpdate: any, ctx: any, stages: StageResult[], pipeline = "implement",
+): Promise<void> {
+  const reviewResult = await runReviewInline(cwd, signal, onUpdate, ctx, stages);
+  if (reviewResult.isError) {
+    const findings = reviewResult.content[0]?.type === "text" ? reviewResult.content[0].text : "";
+    stages.push(emptyStage("fix-findings"));
+    await runAgent("implementor",
+      `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
+      { cwd, signal, stages, pipeline, onUpdate, tools: ["read", "write", "edit", "bash", "grep", "find"] });
+    try { fs.unlinkSync(`${cwd}/FINDINGS.md`); } catch {}
+  }
+}
+
+/**
+ * Run refactorer then review+fix. Shared by fresh implementation and resume-from-branch paths.
+ */
+async function refactorAndReview(
+  cwd: string, signal: AbortSignal, onUpdate: any, ctx: any, stages: StageResult[],
+  skipReview: boolean, pipeline = "implement",
+): Promise<void> {
+  stages.push(emptyStage("refactorer"));
+  await runAgent("refactorer",
+    "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit if changed.",
+    { cwd, signal, stages, pipeline, onUpdate, tools: ["read", "write", "edit", "bash", "grep", "find"] });
+
+  if (!skipReview) {
+    await reviewAndFix(cwd, signal, onUpdate, ctx, stages, pipeline);
+  }
+}
+
 interface ResolvedIssue {
   number: number;
   title: string;
@@ -389,15 +423,7 @@ async function runImplement(
     // PR exists — skip straight to review
     const stages: StageResult[] = [];
     if (!flags.skipReview) {
-      const reviewResult = await runReviewInline(cwd, signal, onUpdate, ctx, stages);
-      if (reviewResult.isError) {
-        const findings = reviewResult.content[0]?.type === "text" ? reviewResult.content[0].text : "";
-        stages.push(emptyStage("fix-findings"));
-        await runAgent("implementor",
-          `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
-          { cwd, signal, stages, pipeline: "implement", onUpdate, tools: ["read", "write", "edit", "bash", "grep", "find"] });
-        try { fs.unlinkSync(`${cwd}/FINDINGS.md`); } catch {}
-      }
+      await reviewAndFix(cwd, signal, onUpdate, ctx, stages);
     }
     return {
       content: [{ type: "text" as const, text: `Resumed ${issueLabel} — PR #${resolved.existingPR} already exists.` }],
@@ -421,23 +447,7 @@ async function runImplement(
         await exec(`gh pr create --title "${resolved.title}" --body "${closeRef}" --head ${resolved.branch}`, cwd);
 
         const stages: StageResult[] = [];
-        // Run refactor + review on the existing work
-        stages.push(emptyStage("refactorer"));
-        await runAgent("refactorer",
-          "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit if changed.",
-          { cwd, signal, stages, pipeline: "implement", onUpdate, tools: ["read", "write", "edit", "bash", "grep", "find"] });
-
-        if (!flags.skipReview) {
-          const reviewResult = await runReviewInline(cwd, signal, onUpdate, ctx, stages);
-          if (reviewResult.isError) {
-            const findings = reviewResult.content[0]?.type === "text" ? reviewResult.content[0].text : "";
-            stages.push(emptyStage("fix-findings"));
-            await runAgent("implementor",
-              `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
-              { cwd, signal, stages, pipeline: "implement", onUpdate, tools: ["read", "write", "edit", "bash", "grep", "find"] });
-            try { fs.unlinkSync(`${cwd}/FINDINGS.md`); } catch {}
-          }
-        }
+        await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
         return {
           content: [{ type: "text" as const, text: `Resumed ${issueLabel} — pushed existing commits and created PR.` }],
           details: { pipeline: "implement", stages },
@@ -526,26 +536,8 @@ async function runImplement(
     };
   }
 
-  // Refactorer
-  await runAgent("refactorer",
-    "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit if changed.",
-    { ...opts, tools: ["read", "write", "edit", "bash", "grep", "find"] });
-
-  // Review (unless skipped)
-  if (!flags.skipReview) {
-    const reviewResult = await runReviewInline(cwd, signal, onUpdate, ctx, stages);
-    if (reviewResult.isError) {
-      // Fix findings
-      const findings = reviewResult.content[0]?.type === "text" ? reviewResult.content[0].text : "";
-      stages.push(emptyStage("fix-findings"));
-      await runAgent("implementor",
-        `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
-        { cwd, signal, stages, pipeline: "implement", onUpdate, tools: ["read", "write", "edit", "bash", "grep", "find"] });
-
-      // Clean up FINDINGS.md after fixing
-      try { fs.unlinkSync(`${cwd}/FINDINGS.md`); } catch {}
-    }
-  }
+  // Refactor + review
+  await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
 
   return {
     content: [{ type: "text" as const, text: `Implementation of ${issueLabel} complete.` }],
