@@ -13,29 +13,30 @@ Search for relevant skills and **recommend only** — do NOT install anything.
 1. **Analyze the project** — scan the codebase to understand the tech stack (languages, frameworks, libraries, config files). Be thorough: check package.json, go.mod, Cargo.toml, *.csproj, pyproject.toml, Gemfile, docker-compose, CI config, etc.
 2. **Check existing plugins** — read `<cwd>/.forgeflow/plugins/*/PLUGIN.md` to see what's already installed. Do not recommend already-installed plugins.
 3. **Search skills.sh** — run `npx skills@latest find "<query>"` for each technology/framework you identified. Run multiple searches to cover the stack. The output includes `owner/repo@skill` identifiers and install counts — extract both.
-4. **Present recommendations** — your final output MUST be a markdown table with these exact columns. Do NOT use bullet lists or prose — use the table format below.
+4. **Present recommendations** — your ENTIRE final text output must follow EXACTLY this structure. No other format is acceptable. No bullet lists. No prose summaries. No "Why these" sections. ONLY the table and the install command.
 
-```
+## Required Output Format (follow EXACTLY)
+
+Your final response text must be EXACTLY this structure and nothing else:
+
 ## Recommended Skills
 
 | Skill | Creator | Installs | Stages | Why |
 |-------|---------|----------|--------|-----|
-| `owner/repo@skill` | owner | 8.7K | plan, implement, review | Brief reason this is relevant |
-| `owner/repo@skill` | owner | 6.9K | implement, review | Brief reason |
-```
+| `owner/repo@skill` | owner | 8.7K | plan, implement, review | One sentence reason |
+| `owner/repo@skill` | owner | 6.9K | implement, review | One sentence reason |
 
-Rules for the table:
-- **Skill** column = the full `owner/repo@skill` identifier from the search results (this is what the user needs for install)
-- **Creator** column = the owner (e.g. `github`, `vercel-labs`, `anthropics`)
-- **Installs** column = weekly install count as shown by `npx skills find`
-- **Stages** column = which forgeflow pipeline stages this skill would apply to
-- **Why** column = one sentence on why it fits this specific project
+To install: `/discover-skills owner/repo@skill1, owner/repo@skill2`
 
-If no useful skills exist for a technology, say so.
+## Column definitions
 
-5. **STOP.** Do NOT install anything. End your response with the install command using the full skill identifiers from the table:
+- **Skill** = the full `owner/repo@skill` identifier from search results (in backticks)
+- **Creator** = the owner part (e.g. `github`, `vercel-labs`)
+- **Installs** = install count from `npx skills find` output
+- **Stages** = which forgeflow stages this applies to (plan, implement, review, refactor, architecture)
+- **Why** = one sentence on why it fits this project
 
-> Run `/discover-skills owner/repo@skill1, owner/repo@skill2` to install.
+5. **STOP.** Do NOT install anything. Do NOT add commentary after the install command.
 
 ## Mode 2: Install (specific skill names provided in the task)
 
