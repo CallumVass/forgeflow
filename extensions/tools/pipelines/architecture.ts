@@ -47,14 +47,22 @@ export async function runArchitecture(cwd: string, signal: AbortSignal, onUpdate
   stages.push(emptyStage("architecture-rfc"));
   const candidateContext = edited ?? exploreResult.output;
 
-  await runAgent(
+  const rfcResult = await runAgent(
     "architecture-reviewer",
     `Based on the following architectural analysis, generate a detailed RFC and create a GitHub issue (with label "architecture") for the highest-priority candidate — or the one the user highlighted/edited.\n\nANALYSIS:\n${candidateContext}`,
     { ...opts, tools: TOOLS_READONLY },
   );
 
+  // Extract issue URL/number from agent output
+  const issueMatch = rfcResult.output?.match(/https:\/\/github\.com\/[^\s]+\/issues\/(\d+)/);
+  const issueNum = issueMatch?.[1];
+  const issueUrl = issueMatch?.[0];
+  const summary = issueUrl
+    ? `Architecture RFC issue created: ${issueUrl}\n\nRun \`/implement ${issueNum}\` to implement it.`
+    : "Architecture RFC issue created.";
+
   return {
-    content: [{ type: "text" as const, text: "Architecture RFC issue created." }],
+    content: [{ type: "text" as const, text: summary }],
     details: { pipeline: "architecture", stages },
   };
 }
