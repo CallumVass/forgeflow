@@ -368,8 +368,9 @@ async function runCreateIssues(cwd: string, signal: AbortSignal, onUpdate: any, 
 
 async function runImplement(
   cwd: string, issueArg: string, signal: AbortSignal, onUpdate: any, ctx: any,
-  flags: { skipPlan: boolean; skipReview: boolean } = { skipPlan: false, skipReview: false },
+  flags: { skipPlan: boolean; skipReview: boolean; autonomous?: boolean } = { skipPlan: false, skipReview: false },
 ) {
+  const interactive = ctx.hasUI && !flags.autonomous;
   // Resolve issue: explicit arg, branch detection, or next open issue
   const resolved = await resolveIssue(cwd, issueArg || undefined);
   if (typeof resolved === "string") {
@@ -406,7 +407,7 @@ async function runImplement(
     plan = planResult.output;
 
     // Interactive mode: let user review/edit the plan before proceeding
-    if (ctx.hasUI && plan) {
+    if (interactive && plan) {
       const edited = await ctx.ui.editor(`Review implementation plan for ${issueLabel}`, plan);
       if (edited != null && edited !== plan) {
         plan = edited;
@@ -557,7 +558,7 @@ async function runImplementAll(
 
     // Run implement for this issue (reuses full implement pipeline)
     allStages.push(emptyStage(`implement-${issueNum}`));
-    const implResult = await runImplement(cwd, String(issueNum), signal, onUpdate, ctx, flags);
+    const implResult = await runImplement(cwd, String(issueNum), signal, onUpdate, ctx, { ...flags, autonomous: true });
 
     // Update stage status
     const implStage = allStages.find((s) => s.name === `implement-${issueNum}`);
