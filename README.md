@@ -1,16 +1,29 @@
 # forgeflow
 
-Agentic software delivery pipeline for [Pi](https://pi.dev). Takes a PRD through to merged pull requests.
+A skill pack for [Pi](https://shittycodingagent.ai/) that turns a PRD into merged pull requests. Install it into Pi, run commands inside your project repo, and it handles the full loop — refinement, issue creation, TDD implementation, code review, and merge.
 
 ```
 PRD.md → /prd-qa → /create-issues → /implement-all → merged PRs
 ```
 
-## Install
+## Getting started
 
-```bash
-pi install git:github.com/callumvass/forgeflow
-```
+1. Install the skill pack and open your project:
+   ```bash
+   pi install git:github.com/callumvass/forgeflow
+   cd your-project
+   ```
+
+2. Write a `PRD.md` in your project root describing what you want to build.
+
+3. Refine, decompose, and implement:
+   ```
+   /prd-qa              # refine PRD until complete
+   /create-issues       # decompose into GitHub issues
+   /implement-all       # TDD through each issue, merge PRs
+   ```
+
+That's it. Each command is also useful standalone — see below.
 
 ## Update
 
@@ -20,9 +33,10 @@ pi update forgeflow
 
 ## Prerequisites
 
-- [Pi](https://pi.dev) CLI installed
+- [Pi](https://shittycodingagent.ai/) CLI installed
 - [GitHub CLI](https://cli.github.com/) (`gh`) authenticated — used for issues, PRs, and merges
 - A GitHub repo with issues enabled
+- All commands run inside your project repo
 
 ## Commands
 
