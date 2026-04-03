@@ -447,9 +447,10 @@ async function runImplement(
   const branchNote = resolved.branch ? `\n- You should be on branch: ${resolved.branch} — do NOT create or switch branches.` : "\n- Do NOT create or switch branches.";
   const prNote = resolved.existingPR ? `\n- PR #${resolved.existingPR} already exists for this branch.` : "";
   const closeNote = resolved.number ? `\n- The PR body MUST include 'Closes #${resolved.number}' so the issue auto-closes on merge.` : "";
+  const unresolvedNote = flags.autonomous ? `\n- If the plan has unresolved questions, resolve them yourself using sensible defaults. Do NOT stop and wait.` : "";
 
   await runAgent("implementor",
-    `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit, push, and create a PR.\n\nCONSTRAINTS:${branchNote}${prNote}${closeNote}\n- If blocked, write BLOCKED.md with the reason and stop.`,
+    `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit, push, and create a PR.\n\nCONSTRAINTS:${branchNote}${prNote}${closeNote}${unresolvedNote}\n- If blocked, write BLOCKED.md with the reason and stop.`,
     { ...opts, tools: ["read", "write", "edit", "bash", "grep", "find"] });
 
   // Check for blocker
