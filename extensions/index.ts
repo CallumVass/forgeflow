@@ -145,11 +145,11 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
       const query = args.trim();
       if (query) {
         pi.sendUserMessage(
-          `Use the forgeflow tool with pipeline "discover-skills" and issue "${query}" to find and install relevant skills.`,
+          `Use the forgeflow tool with pipeline "discover-skills" and issue "${query}" to find and install relevant skills. Present the tool's output verbatim — do not summarize or reformat it.`,
         );
       } else {
         pi.sendUserMessage(
-          `Use the forgeflow tool with pipeline "discover-skills" to analyze the project and find relevant skills to install.`,
+          `Use the forgeflow tool with pipeline "discover-skills" to analyze the project and find relevant skills to install. Present the tool's output verbatim — do not summarize or reformat it.`,
         );
       }
     },
