@@ -23,6 +23,8 @@ Internal modules (stores, hooks, services, helpers) get covered transitively by 
 
 **Bad tests** are coupled to implementation. They mock internal collaborators, test private methods, or verify through external means. The warning sign: your test breaks when you refactor, but behavior hasn't changed.
 
+See [tests.md](tests.md) for boundary examples, what not to test, and [mocking.md](mocking.md) for mocking guidelines.
+
 ## Anti-Pattern: Horizontal Slices
 
 **DO NOT write all tests first, then all implementation.** This is "horizontal slicing" — treating RED as "write all tests" and GREEN as "write all code."
@@ -49,6 +51,8 @@ Before writing any code:
 
 - Confirm what interface changes are needed
 - Confirm which behaviors to test (prioritize)
+- Identify opportunities for [deep modules](deep-modules.md) (small interface, deep implementation)
+- Design interfaces for [testability](interface-design.md)
 - List the behaviors to test (not implementation steps)
 
 **You can't test everything.** Focus testing effort on critical paths and complex logic, not every possible edge case.
@@ -81,7 +85,7 @@ Rules:
 
 ### 4. Refactor
 
-After all tests pass, look for refactor candidates:
+After all tests pass, look for [refactor candidates](refactoring.md):
 - Extract duplication
 - Deepen modules (move complexity behind simple interfaces)
 - Apply SOLID principles where natural
