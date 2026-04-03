@@ -73,7 +73,7 @@ async function resolveQuestions(plan: string, ctx: AnyCtx): Promise<string> {
 
   let updatedSection = section;
   for (const q of questions) {
-    const answer = await ctx.ui.input(`Unresolved question (skip to use defaults)`, q);
+    const answer = await ctx.ui.input(`${q}`, "Skip to use defaults");
     if (answer != null && answer.trim() !== "") {
       updatedSection = updatedSection.replace(`- ${q}`, `- ${q}\n  **Answer:** ${answer.trim()}`);
     }
