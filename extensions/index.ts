@@ -63,7 +63,7 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
     handler: async (args) => {
       const maxIter = parseInt(args, 10) || 10;
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "prd-qa" and maxIterations ${maxIter} to refine the PRD.`,
+        `Call the forgeflow tool now with these exact parameters: pipeline="prd-qa", maxIterations=${maxIter}.`,
       );
     },
   });
@@ -71,9 +71,7 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
   pi.registerCommand("create-issues", {
     description: "Decompose PRD.md into vertical-slice GitHub issues",
     handler: async () => {
-      pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "create-issues" to decompose the PRD into GitHub issues.`,
-      );
+      pi.sendUserMessage(`Call the forgeflow tool now with these exact parameters: pipeline="create-issues".`);
     },
   });
 
@@ -85,7 +83,7 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
         return;
       }
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "create-issue" and issue "${args.trim()}" to create a GitHub issue.`,
+        `Call the forgeflow tool now with these exact parameters: pipeline="create-issue", issue="${args.trim()}". Do not interpret the issue text — pass it as-is.`,
       );
     },
   });
@@ -99,11 +97,11 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
 
       if (issue) {
         pi.sendUserMessage(
-          `Use the forgeflow tool with pipeline "implement", issue "${issue}"${promptPart}${flags}. Implement using TDD.`,
+          `Call the forgeflow tool now with these exact parameters: pipeline="implement", issue="${issue}"${promptPart}${flags}. Do not interpret the issue number — pass it as-is.`,
         );
       } else {
         pi.sendUserMessage(
-          `Use the forgeflow tool with pipeline "implement"${promptPart}${flags}. No issue number provided — the tool will detect it from the current branch. Do NOT ask for an issue number. Implement using TDD.`,
+          `Call the forgeflow tool now with these exact parameters: pipeline="implement"${promptPart}${flags}. No issue number provided — the tool will detect it from the current branch. Do NOT ask for an issue number.`,
         );
       }
     },
@@ -116,7 +114,7 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
       const { flags } = parseImplFlags(args);
 
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "implement-all"${flags}. This processes all open auto-generated issues in dependency order: for each issue, create branch, plan, implement via TDD, refactor, review, create PR, merge, then move to the next. Do NOT ask for confirmation — run autonomously.`,
+        `Call the forgeflow tool now with these exact parameters: pipeline="implement-all"${flags}. Do NOT ask for confirmation — run autonomously.`,
       );
     },
   });
@@ -127,7 +125,7 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
       const { target, customPrompt } = parseReviewArgs(args);
       const promptPart = customPrompt ? `, customPrompt: "${customPrompt}"` : "";
       pi.sendUserMessage(
-        `Use the forgeflow tool with pipeline "review"${target ? ` and target "${target}"` : ""}${promptPart} to review the code.`,
+        `Call the forgeflow tool now with these exact parameters: pipeline="review"${target ? `, target="${target}"` : ""}${promptPart}. Do not interpret the target — pass it as-is.`,
       );
     },
   });
@@ -135,7 +133,7 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
   pi.registerCommand("architecture", {
     description: "Analyze codebase for architectural friction and create RFC issues",
     handler: async () => {
-      pi.sendUserMessage(`Use the forgeflow tool with pipeline "architecture" to analyze the codebase architecture.`);
+      pi.sendUserMessage(`Call the forgeflow tool now with these exact parameters: pipeline="architecture".`);
     },
   });
 
@@ -145,11 +143,11 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
       const query = args.trim();
       if (query) {
         pi.sendUserMessage(
-          `Use the forgeflow tool with pipeline "discover-skills" and issue "${query}" to find and install relevant skills. Present the tool's output verbatim — do not summarize or reformat it.`,
+          `Call the forgeflow tool now with these exact parameters: pipeline="discover-skills", issue="${query}". Present the tool's output verbatim — do not summarize or reformat it.`,
         );
       } else {
         pi.sendUserMessage(
-          `Use the forgeflow tool with pipeline "discover-skills" to analyze the project and find relevant skills to install. Present the tool's output verbatim — do not summarize or reformat it.`,
+          `Call the forgeflow tool now with these exact parameters: pipeline="discover-skills". Present the tool's output verbatim — do not summarize or reformat it.`,
         );
       }
     },
