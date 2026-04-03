@@ -138,6 +138,22 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
       pi.sendUserMessage(`Use the forgeflow tool with pipeline "architecture" to analyze the codebase architecture.`);
     },
   });
+
+  pi.registerCommand("discover-skills", {
+    description: "Find and install domain-specific plugins from skills.sh for this project's tech stack",
+    handler: async (args) => {
+      const query = args.trim();
+      if (query) {
+        pi.sendUserMessage(
+          `Use the forgeflow tool with pipeline "discover-skills" and issue "${query}" to find and install relevant skills.`,
+        );
+      } else {
+        pi.sendUserMessage(
+          `Use the forgeflow tool with pipeline "discover-skills" to analyze the project and find relevant skills to install.`,
+        );
+      }
+    },
+  });
 };
 
 export default extension;

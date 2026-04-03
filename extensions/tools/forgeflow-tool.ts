@@ -3,6 +3,7 @@ import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { runArchitecture } from "./pipelines/architecture.js";
 import { runCreateIssue, runCreateIssues } from "./pipelines/create-issues.js";
+import { runDiscoverSkills } from "./pipelines/discover-skills.js";
 import { runImplement } from "./pipelines/implement.js";
 import { runImplementAll } from "./pipelines/implement-all.js";
 import { runPrdQa } from "./pipelines/prd-qa.js";
@@ -77,7 +78,7 @@ function formatUsage(usage: { input: number; output: number; cost: number; turns
 const ForgeflowParams = Type.Object({
   pipeline: Type.String({
     description:
-      'Which pipeline to run: "prd-qa", "create-issues", "create-issue", "implement", "implement-all", "review", or "architecture"',
+      'Which pipeline to run: "prd-qa", "create-issues", "create-issue", "implement", "implement-all", "review", "architecture", or "discover-skills"',
   }),
   maxIterations: Type.Optional(Type.Number({ description: "Max iterations for prd-qa (default 10)" })),
   issue: Type.Optional(
@@ -140,6 +141,8 @@ export function registerForgeflowTool(pi: ExtensionAPI) {
             return await runReview(cwd, params.target ?? "", sig, onUpdate, ctx, params.customPrompt);
           case "architecture":
             return await runArchitecture(cwd, sig, onUpdate, ctx);
+          case "discover-skills":
+            return await runDiscoverSkills(cwd, params.issue ?? "", sig, onUpdate, ctx);
           default:
             return {
               content: [

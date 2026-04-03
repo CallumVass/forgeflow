@@ -113,6 +113,15 @@ Runs code-reviewer → review-judge. If findings survive validation and a PR is 
 
 An optional custom prompt focuses the review on specific concerns.
 
+### Skill discovery
+
+```
+/discover-skills                   # auto-detect tech stack, find relevant plugins
+/discover-skills "tailwind"        # search for a specific technology
+```
+
+Finds domain-specific plugins from [skills.sh](https://skills.sh) and installs them into `.forgeflow/plugins/`. Plugins are automatically loaded by pipeline stages (plan, implement, review, refactor, architecture) based on trigger matching.
+
 ### Architecture review
 
 ```
@@ -152,6 +161,7 @@ Worker agents spawned by pipelines — not called directly:
 | `code-reviewer` | Checklist-driven review with confidence scoring |
 | `review-judge` | Validates findings against actual code |
 | `architecture-reviewer` | Analyzes codebase for structural friction, proposes refactors |
+| `skill-discoverer` | Finds and installs domain-specific plugins from skills.sh |
 
 ## Skills
 
@@ -165,7 +175,7 @@ Reference material loaded by agents:
 | `issue-template` | Standard issue format for autonomous implementation |
 | `opensrc` | Fetch library source code for reference |
 | `stitch` | UI design system integration |
-| `review-plugins` | Domain-specific review enhancements (e.g. Tailwind) |
+| `plugins` | Domain-specific plugin router — scans `<cwd>/.forgeflow/plugins/` per stage |
 
 ## Signal files
 

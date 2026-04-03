@@ -25,10 +25,12 @@ Read the code-review skill for the full checklist, evidence requirements, confid
 
 ## Domain Plugins
 
-If the orchestrator specifies domain plugins, apply them **after** the core checklist:
+Scan `<cwd>/.forgeflow/plugins/*/PLUGIN.md` for plugins matching the `review` stage. Read the plugins skill for the full matching algorithm.
 
-1. Read each plugin's `PLUGIN.md` from the review-plugins skill directory.
-2. Apply the plugin's additional checks using the same evidence and confidence requirements.
+For each matched plugin:
+
+1. Read the plugin's `PLUGIN.md` body for additional review checks.
+2. Apply the plugin's checks using the same evidence and confidence requirements.
 3. If a finding needs deeper context, read from the plugin's `references/` directory. Only read references when needed.
 4. Plugin findings use the same FINDINGS format. Set the Category to the plugin name.
 
