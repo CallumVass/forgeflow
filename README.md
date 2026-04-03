@@ -1,6 +1,6 @@
 # forgeflow
 
-A skill pack for [Pi](https://shittycodingagent.ai/) that turns a PRD into merged pull requests. Install it into Pi, run commands inside your project repo, and it handles the full loop — refinement, issue creation, TDD implementation, code review, and merge.
+A skill pack for [Pi](https://shittycodingagent.ai/) that turns a PRD into merged pull requests. Install it, run commands inside your project repo, and it handles refinement, issue creation, TDD implementation, code review, and merge.
 
 ```
 PRD.md → /prd-qa → /create-issues → /implement-all → merged PRs
@@ -8,22 +8,22 @@ PRD.md → /prd-qa → /create-issues → /implement-all → merged PRs
 
 ## Getting started
 
-1. Install the skill pack and open your project:
+1. Install and open your project:
    ```bash
    pi install git:github.com/callumvass/forgeflow
    cd your-project
    ```
 
-2. Write a `PRD.md` in your project root describing what you want to build.
+2. Write a `PRD.md` in your project root.
 
-3. Refine, decompose, and implement:
+3. Run the pipeline:
    ```
    /prd-qa              # refine PRD until complete
    /create-issues       # decompose into GitHub issues
    /implement-all       # TDD through each issue, merge PRs
    ```
 
-That's it. Each command is also useful standalone — see below.
+Each command is also useful standalone — see below.
 
 ## Update
 
@@ -37,6 +37,7 @@ pi update forgeflow
 - [GitHub CLI](https://cli.github.com/) (`gh`) authenticated — used for issues, PRs, and merges
 - A GitHub repo with issues enabled
 - All commands run inside your project repo
+- (Optional) [Jira CLI](https://github.com/ankitpokhrel/jira-cli) (`jira`) — for Jira issue support in `/implement`
 
 ## Commands
 
@@ -67,10 +68,12 @@ In interactive mode, you review/edit the PRD after each iteration and choose to 
 ### Implementation
 
 ```
-/implement 42
+/implement 42                       # GitHub issue
+/implement PROJ-123                 # Jira issue
+/implement 42 "focus on error handling"  # with custom prompt
 /implement 42 --skip-plan
 /implement 42 --skip-review
-/implement                    # detects issue from branch name (e.g. feat/issue-42)
+/implement                          # detects issue from branch name (e.g. feat/issue-42)
 ```
 
 Implements a single issue (interactive — shows plan for approval):
@@ -80,6 +83,8 @@ Implements a single issue (interactive — shows plan for approval):
 4. **Implementor** — strict TDD (red-green-refactor), commits, pushes, creates PR
 5. **Refactorer** — deduplication and pattern extraction
 6. **Code reviewer + Judge** — if findings, implementor fixes them automatically
+
+Supports both GitHub issue numbers and Jira keys (e.g. `PROJ-123`). An optional custom prompt is appended to the implementation context.
 
 ### Implement all
 
@@ -98,12 +103,23 @@ Stops on failure or when all issues are done.
 ### Code review
 
 ```
-/review            # review current branch vs main
-/review 42         # review PR #42
+/review                                # review current branch vs main
+/review 42                             # review PR #42
 /review --branch feat/thing
+/review 42 "check for SQL injection"   # with custom prompt
 ```
 
 Runs code-reviewer → review-judge. If findings survive validation and a PR is detected, proposes `gh api` commands to post inline review comments. You approve before anything is posted.
+
+An optional custom prompt focuses the review on specific concerns.
+
+### Architecture review
+
+```
+/architecture
+```
+
+Analyzes the codebase for architectural friction (god modules, shallow modules, high coupling, circular deps, missing boundaries) and creates RFC issues for proposed refactors.
 
 ## How it composes
 
@@ -135,6 +151,7 @@ Worker agents spawned by pipelines — not called directly:
 | `refactorer` | Post-implementation deduplication |
 | `code-reviewer` | Checklist-driven review with confidence scoring |
 | `review-judge` | Validates findings against actual code |
+| `architecture-reviewer` | Analyzes codebase for structural friction, proposes refactors |
 
 ## Skills
 
