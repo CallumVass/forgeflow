@@ -448,7 +448,7 @@ async function runImplement(
   const closeNote = resolved.number ? `\n- The PR body MUST include 'Closes #${resolved.number}' so the issue auto-closes on merge.` : "";
 
   await runAgent("implementor",
-    `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit changes.\n\nCONSTRAINTS:${branchNote}${prNote}${closeNote}\n- If blocked, write BLOCKED.md with the reason and stop.`,
+    `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit, push, and create a PR.\n\nCONSTRAINTS:${branchNote}${prNote}${closeNote}\n- If blocked, write BLOCKED.md with the reason and stop.`,
     { ...opts, tools: ["read", "write", "edit", "bash", "grep", "find"] });
 
   // Check for blocker
