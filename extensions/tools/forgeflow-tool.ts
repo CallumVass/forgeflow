@@ -213,7 +213,7 @@ async function reviewAndFix(
     stages.push(emptyStage("fix-findings"));
     await runAgent("implementor",
       `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
-      { cwd, signal, stages, pipeline, onUpdate, tools: ["read", "write", "edit", "bash", "grep", "find"] });
+      { cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL });
     try { fs.unlinkSync(`${cwd}/FINDINGS.md`); } catch {}
   }
 }
@@ -228,10 +228,28 @@ async function refactorAndReview(
   stages.push(emptyStage("refactorer"));
   await runAgent("refactorer",
     "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit if changed.",
-    { cwd, signal, stages, pipeline, onUpdate, tools: ["read", "write", "edit", "bash", "grep", "find"] });
+    { cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL });
 
   if (!skipReview) {
     await reviewAndFix(cwd, signal, onUpdate, ctx, stages, pipeline);
+  }
+}
+
+const TOOLS_ALL = ["read", "write", "edit", "bash", "grep", "find"];
+const TOOLS_READONLY = ["read", "bash", "grep", "find"];
+const TOOLS_NO_EDIT = ["read", "write", "bash", "grep", "find"];
+
+/**
+ * Checkout a branch, creating it if it doesn't exist.
+ */
+async function ensureBranch(cwd: string, branch: string): Promise<void> {
+  const currentBranch = await exec("git branch --show-current", cwd);
+  if (currentBranch === branch) return;
+  const exists = await exec(`git rev-parse --verify ${branch} 2>/dev/null && echo yes || echo no`, cwd);
+  if (exists === "yes") {
+    await exec(`git checkout ${branch}`, cwd);
+  } else {
+    await exec(`git checkout -b ${branch}`, cwd);
   }
 }
 
@@ -307,7 +325,7 @@ async function runPrdQa(
     stages.push(emptyStage("prd-critic"));
     const criticResult = await runAgent("prd-critic",
       "Review PRD.md for completeness. If it needs refinement, create QUESTIONS.md. If it's complete, do NOT create QUESTIONS.md.",
-      { ...opts, tools: ["read", "write", "bash", "grep", "find"] });
+      { ...opts, tools: TOOLS_NO_EDIT });
 
     // No QUESTIONS.md = critic considers PRD complete
     if (!fs.existsSync(`${cwd}/QUESTIONS.md`)) {
@@ -328,7 +346,7 @@ async function runPrdQa(
     stages.push(emptyStage("prd-architect"));
     await runAgent("prd-architect",
       "Read PRD.md and answer all questions in QUESTIONS.md. Write answers inline in QUESTIONS.md.",
-      { ...opts, tools: ["read", "write", "edit", "bash", "grep", "find"] });
+      { ...opts, tools: TOOLS_ALL });
 
     // Integrator — incorporate answers into PRD before approval gate
     stages.push(emptyStage("prd-integrator"));
@@ -374,7 +392,7 @@ async function runCreateIssue(cwd: string, idea: string, signal: AbortSignal, on
   const opts = { cwd, signal, stages, pipeline: "create-issue", onUpdate };
 
   await runAgent("single-issue-creator", idea,
-    { ...opts, tools: ["read", "write", "bash", "grep", "find"] });
+    { ...opts, tools: TOOLS_NO_EDIT });
 
   return {
     content: [{ type: "text" as const, text: "Issue created." }],
@@ -392,7 +410,7 @@ async function runCreateIssues(cwd: string, signal: AbortSignal, onUpdate: any, 
 
   await runAgent("issue-creator",
     "Decompose PRD.md into vertical-slice GitHub issues. Read the issue-template skill for the standard format.",
-    { ...opts, tools: ["read", "write", "bash", "grep", "find"] });
+    { ...opts, tools: TOOLS_NO_EDIT });
 
   return {
     content: [{ type: "text" as const, text: "Issue creation complete." }],
@@ -435,10 +453,7 @@ async function runImplement(
     // Check if branch exists with commits but no PR (killed before push)
     const branchExists = await exec(`git rev-parse --verify ${resolved.branch} 2>/dev/null && echo yes || echo no`, cwd);
     if (branchExists === "yes") {
-      const currentBranch = await exec("git branch --show-current", cwd);
-      if (currentBranch !== resolved.branch) {
-        await exec(`git checkout ${resolved.branch}`, cwd);
-      }
+      await ensureBranch(cwd, resolved.branch);
       const ahead = await exec(`git rev-list main..${resolved.branch} --count`, cwd);
       if (parseInt(ahead) > 0) {
         // Has commits — push and create PR
@@ -468,7 +483,7 @@ async function runImplement(
   if (!flags.skipPlan) {
     const planResult = await runAgent("planner",
       `Plan the implementation for this issue by producing a sequenced list of test cases.\n\n${issueContext}`,
-      { ...opts, tools: ["read", "bash", "grep", "find"] });
+      { ...opts, tools: TOOLS_READONLY });
 
     if (planResult.status === "failed") {
       return {
@@ -503,12 +518,7 @@ async function runImplement(
   if (resolved.branch) {
     const currentBranch = await exec("git branch --show-current", cwd);
     if (currentBranch === "main" || currentBranch === "master") {
-      const branchExists = await exec(`git rev-parse --verify ${resolved.branch} 2>/dev/null && echo yes || echo no`, cwd);
-      if (branchExists === "yes") {
-        await exec(`git checkout ${resolved.branch}`, cwd);
-      } else {
-        await exec(`git checkout -b ${resolved.branch}`, cwd);
-      }
+      await ensureBranch(cwd, resolved.branch);
     }
   }
 
@@ -524,7 +534,7 @@ async function runImplement(
 
   await runAgent("implementor",
     `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit, push, and create a PR.\n\nCONSTRAINTS:${branchNote}${prNote}${closeNote}${unresolvedNote}\n- If blocked, write BLOCKED.md with the reason and stop.`,
-    { ...opts, tools: ["read", "write", "edit", "bash", "grep", "find"] });
+    { ...opts, tools: TOOLS_ALL });
 
   // Check for blocker
   if (fs.existsSync(`${cwd}/BLOCKED.md`)) {
@@ -678,13 +688,7 @@ async function runReviewInline(
   stages: StageResult[], diffCmd = "git diff main...HEAD", pipeline = "review",
   options: { prNumber?: string; interactive?: boolean } = {},
 ): Promise<{ content: { type: "text"; text: string }[]; isError?: boolean }> {
-  const diff = await new Promise<string>((resolve) => {
-    const proc = nodeSpawn("bash", ["-c", diffCmd], { cwd, stdio: ["ignore", "pipe", "pipe"] });
-    let out = "";
-    proc.stdout.on("data", (d: Buffer) => { out += d.toString(); });
-    proc.on("close", () => resolve(out.trim()));
-    proc.on("error", () => resolve(""));
-  });
+  const diff = await exec(diffCmd, cwd);
 
   if (!diff) {
     return { content: [{ type: "text", text: "No changes to review." }] };
@@ -699,7 +703,7 @@ async function runReviewInline(
   stages.push(emptyStage("code-reviewer"));
   await runAgent("code-reviewer",
     `Review the following diff:\n\n${diff}`,
-    { ...opts, tools: ["read", "write", "bash", "grep", "find"] });
+    { ...opts, tools: TOOLS_NO_EDIT });
 
   if (!fs.existsSync(`${cwd}/FINDINGS.md`)) {
     return { content: [{ type: "text", text: "Review passed — no actionable findings." }] };
@@ -710,7 +714,7 @@ async function runReviewInline(
   const findings = fs.readFileSync(`${cwd}/FINDINGS.md`, "utf-8");
   await runAgent("review-judge",
     `Validate the following code review findings against the actual code:\n\n${findings}`,
-    { ...opts, tools: ["read", "write", "bash", "grep", "find"] });
+    { ...opts, tools: TOOLS_NO_EDIT });
 
   if (!fs.existsSync(`${cwd}/FINDINGS.md`)) {
     return { content: [{ type: "text", text: "Review passed — judge filtered all findings." }] };
@@ -762,7 +766,7 @@ Output ONLY the commands, no other text.`;
 
     stages.push(emptyStage("propose-comments"));
     await runAgent("review-judge", proposalPrompt,
-      { cwd, signal, stages, pipeline, onUpdate, tools: ["read", "bash", "grep", "find"] });
+      { cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_READONLY });
 
     const commentStage = stages.find((s) => s.name === "propose-comments");
     const proposedCommands = commentStage?.output || "";

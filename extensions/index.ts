@@ -1,6 +1,17 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { registerForgeflowTool } from "./tools/forgeflow-tool";
 
+function parseImplFlags(args: string) {
+  const skipPlan = args.includes("--skip-plan");
+  const skipReview = args.includes("--skip-review");
+  const rest = args.replace(/--skip-plan/g, "").replace(/--skip-review/g, "").trim();
+  const flags = [
+    skipPlan ? ", skipPlan: true" : "",
+    skipReview ? ", skipReview: true" : "",
+  ].join("");
+  return { rest, flags };
+}
+
 const extension: (pi: ExtensionAPI) => void = (pi) => {
   // Register the main tool (LLM-callable with streaming)
   registerForgeflowTool(pi);
@@ -41,21 +52,13 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
   pi.registerCommand("implement", {
     description: "Implement a single issue using TDD. Usage: /implement <issue#> [--skip-plan] [--skip-review]",
     handler: async (args) => {
-      const skipPlan = args.includes("--skip-plan");
-      const skipReview = args.includes("--skip-review");
-      const issue = args.replace(/--skip-plan/g, "").replace(/--skip-review/g, "").trim();
-
-      const flags = [
-        skipPlan ? ', skipPlan: true' : '',
-        skipReview ? ', skipReview: true' : '',
-      ].join('');
+      const { rest: issue, flags } = parseImplFlags(args);
 
       if (issue) {
         pi.sendUserMessage(
           `Use the forgeflow tool with pipeline "implement", issue "${issue}"${flags}. Implement using TDD.`
         );
       } else {
-        // No arg — tool will detect from branch name
         pi.sendUserMessage(
           `Use the forgeflow tool with pipeline "implement"${flags}. No issue number provided — the tool will detect it from the current branch. Do NOT ask for an issue number. Implement using TDD.`
         );
@@ -66,13 +69,7 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
   pi.registerCommand("implement-all", {
     description: "Loop through all open auto-generated issues: implement, review, merge. Flags: --skip-plan, --skip-review",
     handler: async (args) => {
-      const skipPlan = args.includes("--skip-plan");
-      const skipReview = args.includes("--skip-review");
-
-      const flags = [
-        skipPlan ? ', skipPlan: true' : '',
-        skipReview ? ', skipReview: true' : '',
-      ].join('');
+      const { flags } = parseImplFlags(args);
 
       pi.sendUserMessage(
         `Use the forgeflow tool with pipeline "implement-all"${flags}. This processes all open auto-generated issues in dependency order: for each issue, create branch, plan, implement via TDD, refactor, review, create PR, merge, then move to the next. Do NOT ask for confirmation — run autonomously.`
