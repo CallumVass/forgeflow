@@ -384,6 +384,69 @@ async function runImplement(
     ? `Issue #${resolved.number}: ${resolved.title}\n\n${resolved.body}`
     : resolved.body;
 
+  // --- Resumability: skip to review if work already exists ---
+  if (resolved.existingPR) {
+    // PR exists — skip straight to review
+    const stages: StageResult[] = [];
+    if (!flags.skipReview) {
+      const reviewResult = await runReviewInline(cwd, signal, onUpdate, ctx, stages);
+      if (reviewResult.isError) {
+        const findings = reviewResult.content[0]?.type === "text" ? reviewResult.content[0].text : "";
+        stages.push(emptyStage("fix-findings"));
+        await runAgent("implementor",
+          `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
+          { cwd, signal, stages, pipeline: "implement", onUpdate, tools: ["read", "write", "edit", "bash", "grep", "find"] });
+        try { fs.unlinkSync(`${cwd}/FINDINGS.md`); } catch {}
+      }
+    }
+    return {
+      content: [{ type: "text" as const, text: `Resumed ${issueLabel} — PR #${resolved.existingPR} already exists.` }],
+      details: { pipeline: "implement", stages },
+    };
+  }
+
+  if (resolved.branch) {
+    // Check if branch exists with commits but no PR (killed before push)
+    const branchExists = await exec(`git rev-parse --verify ${resolved.branch} 2>/dev/null && echo yes || echo no`, cwd);
+    if (branchExists === "yes") {
+      const currentBranch = await exec("git branch --show-current", cwd);
+      if (currentBranch !== resolved.branch) {
+        await exec(`git checkout ${resolved.branch}`, cwd);
+      }
+      const ahead = await exec(`git rev-list main..${resolved.branch} --count`, cwd);
+      if (parseInt(ahead) > 0) {
+        // Has commits — push and create PR
+        await exec(`git push -u origin ${resolved.branch}`, cwd);
+        const closeRef = resolved.number ? `Closes #${resolved.number}` : "";
+        await exec(`gh pr create --title "${resolved.title}" --body "${closeRef}" --head ${resolved.branch}`, cwd);
+
+        const stages: StageResult[] = [];
+        // Run refactor + review on the existing work
+        stages.push(emptyStage("refactorer"));
+        await runAgent("refactorer",
+          "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit if changed.",
+          { cwd, signal, stages, pipeline: "implement", onUpdate, tools: ["read", "write", "edit", "bash", "grep", "find"] });
+
+        if (!flags.skipReview) {
+          const reviewResult = await runReviewInline(cwd, signal, onUpdate, ctx, stages);
+          if (reviewResult.isError) {
+            const findings = reviewResult.content[0]?.type === "text" ? reviewResult.content[0].text : "";
+            stages.push(emptyStage("fix-findings"));
+            await runAgent("implementor",
+              `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
+              { cwd, signal, stages, pipeline: "implement", onUpdate, tools: ["read", "write", "edit", "bash", "grep", "find"] });
+            try { fs.unlinkSync(`${cwd}/FINDINGS.md`); } catch {}
+          }
+        }
+        return {
+          content: [{ type: "text" as const, text: `Resumed ${issueLabel} — pushed existing commits and created PR.` }],
+          details: { pipeline: "implement", stages },
+        };
+      }
+    }
+  }
+
+  // --- Fresh implementation ---
   const stageList: StageResult[] = [];
   if (!flags.skipPlan) stageList.push(emptyStage("planner"));
   stageList.push(emptyStage("implementor"), emptyStage("refactorer"));
