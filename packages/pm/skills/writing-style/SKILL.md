@@ -1,3 +1,8 @@
+---
+name: writing-style
+description: Enforces concise British English writing style rules for all written output.
+---
+
 # Writing Style
 
 All written output must follow these rules. No exceptions.
