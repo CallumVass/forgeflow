@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.4](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.4.3...forgeflow-dev-v0.4.4) (2026-04-04)
+
+
+### Bug Fixes
+
+* single-command branch setup with retry to handle race conditions ([46b7842](https://github.com/CallumVass/forgeflow/commit/46b78426036e60578a10c66c235733787a7c5ea6))
+
 ## [0.4.3](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.4.2...forgeflow-dev-v0.4.3) (2026-04-04)
 
 
