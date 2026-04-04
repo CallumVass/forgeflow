@@ -72,18 +72,20 @@ async function resolveQuestions(plan: string, ctx: AnyCtx): Promise<string> {
   if (!sectionMatch) return plan;
 
   const section = sectionMatch[1] ?? "";
-  const questions: string[] = [];
-  for (const m of section.matchAll(/^- (.+)$/gm)) {
-    if (m[1]) questions.push(m[1]);
+  // Match any list prefix: "- ", "1. ", "1) ", "a) ", etc, plus continuation lines
+  const itemRe = /^(?:[-*]|\d+[.)]+|[a-z][.)]+)\s+(.+(?:\n(?!(?:[-*]|\d+[.)]+|[a-z][.)]+)\s).*)*)/gm;
+  const items: { full: string; text: string }[] = [];
+  for (const m of section.matchAll(itemRe)) {
+    if (m[0] && m[1]) items.push({ full: m[0], text: m[1] });
   }
 
-  if (questions.length === 0) return plan;
+  if (items.length === 0) return plan;
 
   let updatedSection = section;
-  for (const q of questions) {
-    const answer = await ctx.ui.input(`${q}`, "Skip to use defaults");
+  for (const item of items) {
+    const answer = await ctx.ui.input(`${item.text}`, "Skip to use defaults");
     if (answer != null && answer.trim() !== "") {
-      updatedSection = updatedSection.replace(`- ${q}`, `- ${q}\n  **Answer:** ${answer.trim()}`);
+      updatedSection = updatedSection.replace(item.full, `${item.full}\n  **Answer:** ${answer.trim()}`);
     }
   }
 
