@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       releases_created: ${{ steps.release.outputs.releases_created }}
+      pm_released: ${{ steps.release.outputs['packages/pm--release_created'] }}
+      dev_released: ${{ steps.release.outputs['packages/dev--release_created'] }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -35,5 +37,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run check
-      - run: npm publish --access public --provenance -w packages/pm
-      - run: npm publish --access public --provenance -w packages/dev
+      - if: needs.release-please.outputs.pm_released == 'true'
+        run: npm publish --access public --provenance -w packages/pm
+      - if: needs.release-please.outputs.dev_released == 'true'
+        run: npm publish --access public --provenance -w packages/dev
