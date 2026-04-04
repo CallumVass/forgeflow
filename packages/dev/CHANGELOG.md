@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.3.1...forgeflow-dev-v0.3.2) (2026-04-04)
+
+
+### Bug Fixes
+
+* move forgeflow-shared to devDependencies since it's bundled ([2649eb9](https://github.com/CallumVass/forgeflow/commit/2649eb967bcf04f46e2023554c0a262358a1fb9e))
+
 ## [0.3.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.3.0...forgeflow-dev-v0.3.1) (2026-04-04)
 
 
