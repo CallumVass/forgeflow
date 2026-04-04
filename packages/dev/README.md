@@ -1,6 +1,6 @@
 # @callumvass/forgeflow-dev
 
-Dev pipeline for [Pi](https://github.com/nicholasgriffintn/pi) — TDD implementation, code review, architecture, and skill discovery.
+Dev pipeline for [Pi](https://shittycodingagent.ai/) — TDD implementation, code review, architecture, and skill discovery.
 
 ## Install
 

@@ -1,6 +1,6 @@
 # @callumvass/forgeflow-pm
 
-PM pipeline for [Pi](https://github.com/nicholasgriffintn/pi) — PRD refinement, issue creation, and investigation.
+PM pipeline for [Pi](https://shittycodingagent.ai/) — PRD refinement, issue creation, and investigation.
 
 ## Install
 
