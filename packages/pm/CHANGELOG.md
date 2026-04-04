@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.3.2...forgeflow-pm-v0.3.3) (2026-04-04)
+
+
+### Bug Fixes
+
+* add required frontmatter to writing-style skill ([5093222](https://github.com/CallumVass/forgeflow/commit/50932223a276099ec1f289059f872b5058230f88))
+
 ## [0.3.2](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.3.1...forgeflow-pm-v0.3.2) (2026-04-04)
 
 
