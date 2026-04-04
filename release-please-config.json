@@ -1,0 +1,12 @@
+{
+  "packages": {
+    "packages/pm": {
+      "package-name": "@callumvass/forgeflow-pm",
+      "release-type": "node"
+    },
+    "packages/dev": {
+      "package-name": "@callumvass/forgeflow-dev",
+      "release-type": "node"
+    }
+  }
+}

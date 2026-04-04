@@ -1,0 +1,47 @@
+{
+  "name": "@callumvass/forgeflow-pm",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "PM pipeline for Pi — PRD refinement, issue creation, and continue.",
+  "keywords": [
+    "pi-package"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/callumvass/forgeflow.git",
+    "directory": "packages/pm"
+  },
+  "publishConfig": {
+    "provenance": true
+  },
+  "files": [
+    "extensions",
+    "agents",
+    "skills"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "agents": [
+      "./agents"
+    ]
+  },
+  "scripts": {
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@callumvass/forgeflow-shared": "*"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-agent-core": "*",
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "@sinclair/typebox": "*"
+  }
+}
