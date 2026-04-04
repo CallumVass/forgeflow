@@ -2,7 +2,12 @@ import * as fs from "node:fs";
 import { type AnyCtx, emptyStage, runAgent, TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 
-export async function runCreateIssue(cwd: string, idea: string, signal: AbortSignal, onUpdate: AnyCtx, _ctx: AnyCtx) {
+export async function runCreateIssue(cwd: string, idea: string, signal: AbortSignal, onUpdate: AnyCtx, ctx: AnyCtx) {
+  // Ask for feature idea interactively if not provided
+  if (!idea && ctx.hasUI) {
+    const input = await ctx.ui.input("Feature idea?", "");
+    idea = input?.trim() ?? "";
+  }
   if (!idea) {
     return {
       content: [{ type: "text" as const, text: "No feature idea provided." }],

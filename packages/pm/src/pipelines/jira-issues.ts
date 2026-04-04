@@ -14,13 +14,30 @@ export async function runJiraIssues(
   exampleUrl: string,
   signal: AbortSignal,
   onUpdate: AnyCtx,
-  _ctx: AnyCtx,
+  ctx: AnyCtx,
 ) {
+  const interactive = ctx.hasUI;
+
+  // Ask for required doc URLs interactively if not provided
+  if (docUrls.length === 0 && interactive) {
+    const input = await ctx.ui.input("Confluence doc URL(s)?", "Space-separated");
+    if (input != null && input.trim() !== "") {
+      docUrls = input.trim().split(/\s+/).filter(Boolean);
+    }
+  }
   if (docUrls.length === 0) {
     return {
       content: [{ type: "text" as const, text: "No document URLs provided." }],
       details: { pipeline: "jira-issues", stages: [] },
     };
+  }
+
+  // Ask for optional example URL interactively if not provided
+  if (!exampleUrl && interactive) {
+    const input = await ctx.ui.input("Example ticket URL?", "Skip");
+    if (input != null && input.trim() !== "") {
+      exampleUrl = input.trim();
+    }
   }
 
   // Fetch all Confluence pages

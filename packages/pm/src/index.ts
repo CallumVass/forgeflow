@@ -308,46 +308,35 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
   pi.registerCommand("create-gh-issue", {
     description: "Create a single GitHub issue from a feature idea",
     handler: async (args) => {
-      if (!args.trim()) {
-        pi.sendUserMessage('I need a feature idea. Usage: /create-gh-issue "Add user authentication"');
-        return;
-      }
+      const issuePart = args.trim() ? `, issue="${args.trim()}"` : "";
       pi.sendUserMessage(
-        `Call the forgeflow-pm tool now with these exact parameters: pipeline="create-gh-issue", issue="${args.trim()}". Do not interpret the issue text — pass it as-is.`,
+        `Call the forgeflow-pm tool now with these exact parameters: pipeline="create-gh-issue"${issuePart}. Do not interpret the issue text — pass it as-is.`,
       );
     },
   });
 
   pi.registerCommand("investigate", {
     description:
-      "Spike or RFC: explore codebase + web, fill a Confluence template. Usage: /investigate <description> [--template <confluence-url>]",
+      "Spike or RFC: explore codebase + web, fill a Confluence template. Usage: /investigate [description] [--template <confluence-url>]",
     handler: async (args) => {
       const { description, template } = parseInvestigateArgs(args);
-      if (!description) {
-        pi.sendUserMessage("I need a description. Usage: /investigate <description> [--template <confluence-url>]");
-        return;
-      }
+      const issuePart = description ? `, issue="${description}"` : "";
       const templatePart = template ? `, template="${template}"` : "";
       pi.sendUserMessage(
-        `Call the forgeflow-pm tool now with these exact parameters: pipeline="investigate", issue="${description}"${templatePart}. Do not interpret the description — pass it as-is.`,
+        `Call the forgeflow-pm tool now with these exact parameters: pipeline="investigate"${issuePart}${templatePart}. Do not interpret the description — pass it as-is.`,
       );
     },
   });
 
   pi.registerCommand("jira-issues", {
     description:
-      "Decompose Confluence PM docs into Jira issues. Usage: /jira-issues <confluence-url> [confluence-url...] [--example <confluence-url>]",
+      "Decompose Confluence PM docs into Jira issues. Usage: /jira-issues [confluence-url] [confluence-url...] [--example <confluence-url>]",
     handler: async (args) => {
       const { docs, example } = parseJiraIssuesArgs(args);
-      if (docs.length === 0) {
-        pi.sendUserMessage(
-          "I need at least one Confluence doc URL. Usage: /jira-issues <url> [url...] [--example <url>]",
-        );
-        return;
-      }
+      const docsPart = docs.length > 0 ? `, docs="${docs.join(",")}"` : "";
       const examplePart = example ? `, example="${example}"` : "";
       pi.sendUserMessage(
-        `Call the forgeflow-pm tool now with these exact parameters: pipeline="jira-issues", docs="${docs.join(",")}"${examplePart}. Do not interpret the URLs — pass them as-is.`,
+        `Call the forgeflow-pm tool now with these exact parameters: pipeline="jira-issues"${docsPart}${examplePart}. Do not interpret the URLs — pass them as-is.`,
       );
     },
   });

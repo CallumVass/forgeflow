@@ -14,13 +14,28 @@ export async function runInvestigate(
   templateUrl: string,
   signal: AbortSignal,
   onUpdate: AnyCtx,
-  _ctx: AnyCtx,
+  ctx: AnyCtx,
 ) {
+  const interactive = ctx.hasUI;
+
+  // Ask for required description interactively if not provided
+  if (!description && interactive) {
+    const input = await ctx.ui.input("What should we investigate?", "");
+    description = input?.trim() ?? "";
+  }
   if (!description) {
     return {
       content: [{ type: "text" as const, text: "No description provided." }],
       details: { pipeline: "investigate", stages: [] },
     };
+  }
+
+  // Ask for optional template URL interactively if not provided
+  if (!templateUrl && interactive) {
+    const input = await ctx.ui.input("Confluence template URL?", "Skip");
+    if (input != null && input.trim() !== "") {
+      templateUrl = input.trim();
+    }
   }
 
   let templateSection = "";

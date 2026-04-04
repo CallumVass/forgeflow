@@ -174,6 +174,14 @@ export async function runReview(
     if (pr && pr !== "") prNumber = pr;
   }
 
+  // Ask for additional instructions interactively if not provided via CLI args
+  if (ctx.hasUI && !customPrompt) {
+    const extra = await ctx.ui.input("Additional instructions?", "Skip");
+    if (extra != null && extra.trim() !== "") {
+      customPrompt = extra.trim();
+    }
+  }
+
   const result = await runReviewInline(cwd, signal, onUpdate, ctx, stages, diffCmd, "review", {
     prNumber,
     interactive: ctx.hasUI,

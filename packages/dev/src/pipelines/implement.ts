@@ -122,6 +122,14 @@ export async function runImplement(
     ? `Issue #${resolved.number}: ${resolved.title}\n\n${resolved.body}`
     : `Jira ${resolved.key}: ${resolved.title}\n\n${resolved.body}`;
 
+  // Ask for additional instructions interactively if not provided via CLI args
+  if (interactive && !flags.customPrompt) {
+    const extra = await ctx.ui.input("Additional instructions?", "Skip");
+    if (extra != null && extra.trim() !== "") {
+      flags.customPrompt = extra.trim();
+    }
+  }
+
   const customPromptSection = flags.customPrompt ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${flags.customPrompt}` : "";
 
   // --- Resumability: skip to review if work already exists ---
