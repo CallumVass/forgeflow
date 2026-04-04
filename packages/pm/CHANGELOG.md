@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.3.0...forgeflow-pm-v0.3.1) (2026-04-04)
+
+
+### Bug Fixes
+
+* use Node 24 for trusted publishing and fix repository URL casing ([41b5e21](https://github.com/CallumVass/forgeflow/commit/41b5e21165875c3303b9d4dc98a4c5e06882b150))
+
 ## [0.3.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.2.0...forgeflow-pm-v0.3.0) (2026-04-04)
 
 
