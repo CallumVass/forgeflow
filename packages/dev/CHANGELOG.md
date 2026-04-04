@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.3.2...forgeflow-dev-v0.4.0) (2026-04-04)
+
+
+### Features
+
+* rename /jira-issues to /create-jira-issues, link package READMEs to root ([ab3002a](https://github.com/CallumVass/forgeflow/commit/ab3002a5f89e284fe35a5b57b0458aaa26efbb96))
+
+
+### Bug Fixes
+
+* use --body-file for PR creation to preserve markdown formatting ([afb281d](https://github.com/CallumVass/forgeflow/commit/afb281d2f1b0bf2b269c3e649798b9787b68f3c3))
+
 ## [0.3.2](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.3.1...forgeflow-dev-v0.3.2) (2026-04-04)
 
 

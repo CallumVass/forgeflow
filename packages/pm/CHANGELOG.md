@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.4.0...forgeflow-pm-v0.5.0) (2026-04-04)
+
+
+### Features
+
+* rename /jira-issues to /create-jira-issues, link package READMEs to root ([ab3002a](https://github.com/CallumVass/forgeflow/commit/ab3002a5f89e284fe35a5b57b0458aaa26efbb96))
+
 ## [0.4.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.3.3...forgeflow-pm-v0.4.0) (2026-04-04)
 
 
