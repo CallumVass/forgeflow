@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.2.0...forgeflow-dev-v0.3.0) (2026-04-04)
+
+
+### Features
+
+* ask for missing args interactively instead of requiring CLI flags ([c7db3c5](https://github.com/CallumVass/forgeflow/commit/c7db3c508c863eca7d7128deaa1fa647bd2b901d))
+
+
+### Bug Fixes
+
+* handle multi-line and numbered unresolved questions in planner ([ae64db9](https://github.com/CallumVass/forgeflow/commit/ae64db9e8a64ef51df15c63e0f995f71385f347f))
+
 ## [0.2.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.1.2...forgeflow-dev-v0.2.0) (2026-04-04)
 
 
