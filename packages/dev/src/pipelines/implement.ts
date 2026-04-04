@@ -154,19 +154,26 @@ export async function runImplement(
             cwd,
           );
     if (localExists === "yes" || remoteExists === "yes") {
-      await ensureBranch(cwd, resolved.branch);
-      const ahead = await exec(`git rev-list main..${resolved.branch} --count`, cwd);
-      if (parseInt(ahead, 10) > 0) {
-        await exec(`git push -u origin ${resolved.branch}`, cwd);
-        const prBody = buildPrBody(cwd, resolved);
-        await createPr(cwd, resolved.title, prBody, resolved.branch);
+      // Delete stale local branch at same commit as main so fresh implementation can recreate it
+      if (localExists === "yes") {
+        const ahead = await exec(`git rev-list main..${resolved.branch} --count`, cwd);
+        if (parseInt(ahead, 10) === 0) {
+          await exec(`git branch -D ${resolved.branch}`, cwd);
+        } else {
+          await ensureBranch(cwd, resolved.branch);
+          await exec(`git push -u origin ${resolved.branch}`, cwd);
+          const prBody = buildPrBody(cwd, resolved);
+          await createPr(cwd, resolved.title, prBody, resolved.branch);
 
-        const stages: StageResult[] = [];
-        await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
-        return {
-          content: [{ type: "text" as const, text: `Resumed ${issueLabel} — pushed existing commits and created PR.` }],
-          details: { pipeline: "implement", stages },
-        };
+          const stages: StageResult[] = [];
+          await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
+          return {
+            content: [
+              { type: "text" as const, text: `Resumed ${issueLabel} ��� pushed existing commits and created PR.` },
+            ],
+            details: { pipeline: "implement", stages },
+          };
+        }
       }
     }
   }
