@@ -1,5 +1,10 @@
 {
   "packages": {
+    ".": {
+      "package-name": "forgeflow",
+      "release-type": "node",
+      "skip-github-release": true
+    },
     "packages/pm": {
       "package-name": "@callumvass/forgeflow-pm",
       "release-type": "node"
@@ -8,5 +13,13 @@
       "package-name": "@callumvass/forgeflow-dev",
       "release-type": "node"
     }
-  }
+  },
+  "plugins": [
+    {
+      "type": "linked-versions",
+      "groupName": "forgeflow",
+      "components": ["@callumvass/forgeflow-pm", "@callumvass/forgeflow-dev"]
+    }
+  ],
+  "separate-pull-requests": false
 }
