@@ -1,10 +1,5 @@
 {
   "packages": {
-    ".": {
-      "package-name": "forgeflow",
-      "release-type": "node",
-      "skip-github-release": true
-    },
     "packages/pm": {
       "package-name": "@callumvass/forgeflow-pm",
       "release-type": "node"
