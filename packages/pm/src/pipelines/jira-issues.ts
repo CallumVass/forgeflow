@@ -28,7 +28,7 @@ export async function runJiraIssues(
   if (docUrls.length === 0) {
     return {
       content: [{ type: "text" as const, text: "No document URLs provided." }],
-      details: { pipeline: "jira-issues", stages: [] },
+      details: { pipeline: "create-jira-issues", stages: [] },
     };
   }
 
@@ -47,7 +47,7 @@ export async function runJiraIssues(
     if (typeof result === "string") {
       return {
         content: [{ type: "text" as const, text: `Failed to fetch doc: ${result}` }],
-        details: { pipeline: "jira-issues", stages: [] },
+        details: { pipeline: "create-jira-issues", stages: [] },
         isError: true,
       };
     }
@@ -60,7 +60,7 @@ export async function runJiraIssues(
     if (typeof result === "string") {
       return {
         content: [{ type: "text" as const, text: `Failed to fetch example: ${result}` }],
-        details: { pipeline: "jira-issues", stages: [] },
+        details: { pipeline: "create-jira-issues", stages: [] },
         isError: true,
       };
     }
@@ -71,7 +71,7 @@ export async function runJiraIssues(
   const docSections = docs.map((d, i) => `DOCUMENT ${i + 1}: "${d.title}"\n\n${d.body}`).join("\n\n---\n\n");
 
   const stages = [emptyStage("jira-issue-creator")];
-  const opts = { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline: "jira-issues", onUpdate };
+  const opts = { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline: "create-jira-issues", onUpdate };
 
   const task = `Decompose the following PM documents into vertical-slice Jira issues.
 
@@ -85,6 +85,6 @@ Read the writing-style skill before writing any issue content.`;
 
   return {
     content: [{ type: "text" as const, text: "Jira issue creation complete." }],
-    details: { pipeline: "jira-issues", stages },
+    details: { pipeline: "create-jira-issues", stages },
   };
 }

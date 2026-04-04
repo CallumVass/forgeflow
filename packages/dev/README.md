@@ -35,3 +35,7 @@ npx pi install @callumvass/forgeflow-dev
 - **opensrc** — Fetch library source code for reference
 - **stitch** — UI design reference integration
 - **plugins** — Domain-specific review plugin router
+
+## Usage examples
+
+See the [root README](../../README.md#commands) for detailed usage examples of each command.

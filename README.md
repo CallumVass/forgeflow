@@ -50,11 +50,11 @@ pi update @callumvass/forgeflow-dev
 - [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`)
 - A GitHub repo with issues enabled
 
-### Jira (`/jira-issues`, `/implement PROJ-123`)
+### Jira (`/create-jira-issues`, `/implement PROJ-123`)
 
 - [Jira CLI](https://github.com/ankitpokhrel/jira-cli) installed and authenticated (`jira init`)
 
-### Confluence (`/investigate`, `/jira-issues`)
+### Confluence (`/investigate`, `/create-jira-issues`)
 
 Set these environment variables (add to your shell profile):
 
@@ -97,7 +97,7 @@ In interactive mode, you review/edit the PRD after each iteration and choose to 
 #### Jira issue creation
 
 ```
-/jira-issues <confluence-url> [confluence-url...] [--example <confluence-url>]
+/create-jira-issues <confluence-url> [confluence-url...] [--example <confluence-url>]
 ```
 
 Decomposes one or more Confluence PM documents into vertical-slice Jira issues. Optionally provide an example ticket link so the agent matches your team's format.

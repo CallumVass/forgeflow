@@ -74,7 +74,7 @@ function formatUsage(usage: { input: number; output: number; cost: number; turns
 const ForgeflowPmParams = Type.Object({
   pipeline: Type.String({
     description:
-      'Which pipeline to run: "continue", "prd-qa", "create-gh-issues", "create-gh-issue", "investigate", or "jira-issues"',
+      'Which pipeline to run: "continue", "prd-qa", "create-gh-issues", "create-gh-issue", "investigate", or "create-jira-issues"',
   }),
   maxIterations: Type.Optional(Type.Number({ description: "Max iterations for prd-qa (default 10)" })),
   issue: Type.Optional(
@@ -94,7 +94,7 @@ function registerForgeflowPmTool(pi: ExtensionAPI) {
       "prd-qa (refine PRD), create-gh-issues (decompose PRD into GitHub issues),",
       "create-gh-issue (single issue from a feature idea),",
       "investigate (spike/RFC using codebase exploration + optional Confluence template),",
-      "jira-issues (decompose Confluence PM docs into Jira issues).",
+      "create-jira-issues (decompose Confluence PM docs into Jira issues).",
       "Each pipeline spawns specialized sub-agents with isolated context.",
     ].join(" "),
     parameters: ForgeflowPmParams as AnyCtx,
@@ -122,7 +122,7 @@ function registerForgeflowPmTool(pi: ExtensionAPI) {
             return await runCreateIssue(cwd, params.issue ?? "", sig, onUpdate, ctx);
           case "investigate":
             return await runInvestigate(cwd, params.issue ?? "", params.template ?? "", sig, onUpdate, ctx);
-          case "jira-issues": {
+          case "create-jira-issues": {
             const docUrls = (params.docs ?? "")
               .split(",")
               .map((u) => u.trim())
@@ -134,7 +134,7 @@ function registerForgeflowPmTool(pi: ExtensionAPI) {
               content: [
                 {
                   type: "text",
-                  text: `Unknown pipeline: ${params.pipeline}. Use: continue, prd-qa, create-gh-issues, create-gh-issue, investigate, jira-issues`,
+                  text: `Unknown pipeline: ${params.pipeline}. Use: continue, prd-qa, create-gh-issues, create-gh-issue, investigate, create-jira-issues`,
                 },
               ],
               details: { pipeline: params.pipeline, stages: [] } as PipelineDetails,
@@ -328,15 +328,15 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
     },
   });
 
-  pi.registerCommand("jira-issues", {
+  pi.registerCommand("create-jira-issues", {
     description:
-      "Decompose Confluence PM docs into Jira issues. Usage: /jira-issues [confluence-url] [confluence-url...] [--example <confluence-url>]",
+      "Decompose Confluence PM docs into Jira issues. Usage: /create-jira-issues [confluence-url] [confluence-url...] [--example <confluence-url>]",
     handler: async (args) => {
       const { docs, example } = parseJiraIssuesArgs(args);
       const docsPart = docs.length > 0 ? `, docs="${docs.join(",")}"` : "";
       const examplePart = example ? `, example="${example}"` : "";
       pi.sendUserMessage(
-        `Call the forgeflow-pm tool now with these exact parameters: pipeline="jira-issues"${docsPart}${examplePart}. Do not interpret the URLs — pass them as-is.`,
+        `Call the forgeflow-pm tool now with these exact parameters: pipeline="create-jira-issues"${docsPart}${examplePart}. Do not interpret the URLs — pass them as-is.`,
       );
     },
   });

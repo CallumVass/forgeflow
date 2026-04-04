@@ -16,7 +16,7 @@ npx pi install @callumvass/forgeflow-pm
 | `/continue` | Update PRD with Done/Next, QA, then create issues for next phase |
 | `/create-gh-issues` | Decompose PRD.md into vertical-slice GitHub issues |
 | `/create-gh-issue` | Create a single GitHub issue from a feature idea |
-| `/jira-issues` | Decompose Confluence PM docs into Jira issues |
+| `/create-jira-issues` | Decompose Confluence PM docs into Jira issues |
 | `/investigate` | Spike or RFC: explore codebase + web, fill a Confluence template |
 
 ## Agents
@@ -34,3 +34,7 @@ npx pi install @callumvass/forgeflow-pm
 - **issue-template** — Standard format for GitHub issues
 - **prd-quality** — PRD completeness and quality criteria
 - **writing-style** — Consistent tone and formatting rules
+
+## Usage examples
+
+See the [root README](../../README.md#commands) for detailed usage examples of each command.
