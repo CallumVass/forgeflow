@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.2.0...forgeflow-pm-v0.3.0) (2026-04-04)
+
+
+### Features
+
+* ask for missing args interactively instead of requiring CLI flags ([c7db3c5](https://github.com/CallumVass/forgeflow/commit/c7db3c508c863eca7d7128deaa1fa647bd2b901d))
+
 ## [0.2.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.1.2...forgeflow-pm-v0.2.0) (2026-04-04)
 
 
