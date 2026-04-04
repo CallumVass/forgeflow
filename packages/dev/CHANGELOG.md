@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.4.1...forgeflow-dev-v0.4.2) (2026-04-04)
+
+
+### Bug Fixes
+
+* handle remote-only branches in ensureBranch ([c788b0f](https://github.com/CallumVass/forgeflow/commit/c788b0ff6746da8332a3fc0a32026fdc014bdb82))
+
 ## [0.4.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.4.0...forgeflow-dev-v0.4.1) (2026-04-04)
 
 
