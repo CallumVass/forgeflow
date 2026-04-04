@@ -7,6 +7,7 @@
     "pi-package"
   ],
   "license": "MIT",
+  "homepage": "https://github.com/callumvass/forgeflow#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/callumvass/forgeflow.git",
