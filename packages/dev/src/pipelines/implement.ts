@@ -11,7 +11,7 @@ import {
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 import { exec } from "../utils/exec.js";
-import { buildPrBody, createPr, ensureBranch, resolveIssue } from "../utils/git.js";
+import { buildPrBody, createPr, resolveIssue } from "../utils/git.js";
 import { setForgeflowStatus } from "../utils/ui.js";
 import { runReviewInline } from "./review.js";
 
@@ -146,54 +146,37 @@ export async function runImplement(
 
   // --- Branch setup (before planning) ---
   if (resolved.branch) {
-    const localExists = await exec(`git rev-parse --verify ${resolved.branch} 2>/dev/null && echo yes || echo no`, cwd);
+    const branch = resolved.branch;
+    const branchSetup = await exec(
+      `ahead=$(git rev-list main..${branch} --count 2>/dev/null || echo 0); if [ "$ahead" -gt 0 ] 2>/dev/null; then git checkout ${branch} && echo "RESUME:$ahead"; else git branch -D ${branch} 2>/dev/null; git branch -dr origin/${branch} 2>/dev/null; git checkout -b ${branch} && echo "FRESH"; fi`,
+      cwd,
+    );
 
-    if (localExists === "yes") {
-      const ahead = await exec(`git rev-list main..${resolved.branch} --count`, cwd);
-      if (parseInt(ahead, 10) > 0) {
-        // Branch has work — resume by pushing and creating PR
-        await ensureBranch(cwd, resolved.branch);
-        await exec(`git push -u origin ${resolved.branch}`, cwd);
-        const prBody = buildPrBody(cwd, resolved);
-        await createPr(cwd, resolved.title, prBody, resolved.branch);
+    if (branchSetup.startsWith("RESUME:")) {
+      await exec(`git push -u origin ${branch}`, cwd);
+      const prBody = buildPrBody(cwd, resolved);
+      await createPr(cwd, resolved.title, prBody, branch);
 
-        const stages: StageResult[] = [];
-        await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
-        return {
-          content: [{ type: "text" as const, text: `Resumed ${issueLabel} — pushed existing commits and created PR.` }],
-          details: { pipeline: "implement", stages },
-        };
-      }
-      // Stale branch at same commit as main — delete so we can recreate cleanly
-      await exec(`git branch -D ${resolved.branch}`, cwd);
+      const stages: StageResult[] = [];
+      await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
+      return {
+        content: [{ type: "text" as const, text: `Resumed ${issueLabel} — pushed existing commits and created PR.` }],
+        details: { pipeline: "implement", stages },
+      };
     }
 
-    // Ensure we're on main before creating branch
-    const currentBranch = await exec("git branch --show-current", cwd);
-    if (currentBranch === "main" || currentBranch === "master") {
-      const dirty = await exec("git status --porcelain", cwd);
-      if (dirty) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Cannot switch to ${resolved.branch} — working tree is dirty. Please commit or stash your changes first.`,
-            },
-          ],
-          details: { pipeline: "implement", stages: [] },
-          isError: true,
-        };
-      }
+    // Verify we're on the right branch — retry once if something switched us back
+    let afterBranch = await exec("git branch --show-current", cwd);
+    if (afterBranch !== branch) {
+      await exec(`git checkout ${branch} 2>/dev/null || git checkout -b ${branch}`, cwd);
+      afterBranch = await exec("git branch --show-current", cwd);
     }
-
-    await ensureBranch(cwd, resolved.branch);
-    const afterBranch = await exec("git branch --show-current", cwd);
-    if (afterBranch !== resolved.branch) {
+    if (afterBranch !== branch) {
       return {
         content: [
           {
             type: "text" as const,
-            text: `Failed to switch to ${resolved.branch} (still on ${afterBranch}). Check git state and retry.`,
+            text: `Failed to switch to ${branch} (on ${afterBranch}). Setup output: ${branchSetup || "(empty)"}`,
           },
         ],
         details: { pipeline: "implement", stages: [] },
