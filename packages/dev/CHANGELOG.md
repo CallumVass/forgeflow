@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.4.4...forgeflow-dev-v0.5.0) (2026-04-04)
+
+
+### Features
+
+* add conventional commit style guidance to implementor and refactorer agents ([b270a39](https://github.com/CallumVass/forgeflow/commit/b270a39b47f932907a098f028c8113ce10540a9e))
+
 ## [0.4.4](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.4.3...forgeflow-dev-v0.4.4) (2026-04-04)
 
 
