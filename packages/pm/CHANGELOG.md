@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.5.0...forgeflow-pm-v0.5.1) (2026-04-04)
+
+
+### Bug Fixes
+
+* correct Pi link in package READMEs ([6bd425e](https://github.com/CallumVass/forgeflow/commit/6bd425e1c0599d388c66055249c64e2d1697707a))
+
 ## [0.5.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.4.0...forgeflow-pm-v0.5.0) (2026-04-04)
 
 
