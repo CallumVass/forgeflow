@@ -7,10 +7,10 @@
     "pi-package"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/callumvass/forgeflow#readme",
+  "homepage": "https://github.com/CallumVass/forgeflow#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/callumvass/forgeflow.git",
+    "url": "git+https://github.com/CallumVass/forgeflow.git",
     "directory": "packages/dev"
   },
   "publishConfig": {
