@@ -24,9 +24,7 @@ export function buildPrBody(cwd: string, issue: ResolvedIssue): string {
       const template = fs.readFileSync(abs, "utf-8");
       const closeRef = isGitHub ? `Closes #${issue.number}` : `Jira: ${issue.key}`;
       return `${closeRef}\n\n${template}`;
-    } catch {
-      continue;
-    }
+    } catch {}
   }
 
   return defaultBody;

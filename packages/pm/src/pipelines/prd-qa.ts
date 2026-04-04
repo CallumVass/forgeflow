@@ -40,7 +40,7 @@ export async function runPrdQa(cwd: string, maxIterations: number, signal: Abort
         };
       }
       return {
-        content: [{ type: "text" as const, text: "PRD refinement complete. Ready for /create-issues." }],
+        content: [{ type: "text" as const, text: "PRD refinement complete. Ready for /create-gh-issues." }],
         details: { pipeline: "prd-qa", stages },
       };
     }

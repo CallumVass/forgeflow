@@ -4,6 +4,8 @@ import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { runContinue } from "./pipelines/continue.js";
 import { runCreateIssue, runCreateIssues } from "./pipelines/create-issues.js";
+import { runInvestigate } from "./pipelines/investigate.js";
+import { runJiraIssues } from "./pipelines/jira-issues.js";
 import { runPrdQa } from "./pipelines/prd-qa.js";
 
 // ─── Display helpers ──────────────────────────────────────────────────
@@ -14,6 +16,9 @@ interface ForgeflowPmInput {
   pipeline: string;
   maxIterations?: number;
   issue?: string;
+  template?: string;
+  docs?: string;
+  example?: string;
 }
 
 function getDisplayItems(messages: AnyCtx[]): DisplayItem[] {
@@ -68,10 +73,16 @@ function formatUsage(usage: { input: number; output: number; cost: number; turns
 
 const ForgeflowPmParams = Type.Object({
   pipeline: Type.String({
-    description: 'Which pipeline to run: "continue", "prd-qa", "create-issues", or "create-issue"',
+    description:
+      'Which pipeline to run: "continue", "prd-qa", "create-gh-issues", "create-gh-issue", "investigate", or "jira-issues"',
   }),
   maxIterations: Type.Optional(Type.Number({ description: "Max iterations for prd-qa (default 10)" })),
-  issue: Type.Optional(Type.String({ description: "Feature idea for create-issue, or description for continue" })),
+  issue: Type.Optional(
+    Type.String({ description: "Feature idea for create-gh-issue, description for continue/investigate" }),
+  ),
+  template: Type.Optional(Type.String({ description: "Confluence URL for a template (investigate)" })),
+  docs: Type.Optional(Type.String({ description: "Comma-separated Confluence URLs for PM documents (jira-issues)" })),
+  example: Type.Optional(Type.String({ description: "Confluence/Jira URL for an example ticket (jira-issues)" })),
 });
 
 function registerForgeflowPmTool(pi: ExtensionAPI) {
@@ -80,8 +91,10 @@ function registerForgeflowPmTool(pi: ExtensionAPI) {
     label: "Forgeflow PM",
     description: [
       "Run forgeflow PM pipelines: continue (update PRD Done/Next→QA→create issues for next phase),",
-      "prd-qa (refine PRD), create-issues (decompose PRD into GitHub issues),",
-      "create-issue (single issue from a feature idea).",
+      "prd-qa (refine PRD), create-gh-issues (decompose PRD into GitHub issues),",
+      "create-gh-issue (single issue from a feature idea),",
+      "investigate (spike/RFC using codebase exploration + optional Confluence template),",
+      "jira-issues (decompose Confluence PM docs into Jira issues).",
       "Each pipeline spawns specialized sub-agents with isolated context.",
     ].join(" "),
     parameters: ForgeflowPmParams as AnyCtx,
@@ -103,16 +116,25 @@ function registerForgeflowPmTool(pi: ExtensionAPI) {
             return await runContinue(cwd, params.issue ?? "", params.maxIterations ?? 10, sig, onUpdate, ctx);
           case "prd-qa":
             return await runPrdQa(cwd, params.maxIterations ?? 10, sig, onUpdate, ctx);
-          case "create-issues":
+          case "create-gh-issues":
             return await runCreateIssues(cwd, sig, onUpdate, ctx);
-          case "create-issue":
+          case "create-gh-issue":
             return await runCreateIssue(cwd, params.issue ?? "", sig, onUpdate, ctx);
+          case "investigate":
+            return await runInvestigate(cwd, params.issue ?? "", params.template ?? "", sig, onUpdate, ctx);
+          case "jira-issues": {
+            const docUrls = (params.docs ?? "")
+              .split(",")
+              .map((u) => u.trim())
+              .filter(Boolean);
+            return await runJiraIssues(cwd, docUrls, params.example ?? "", sig, onUpdate, ctx);
+          }
           default:
             return {
               content: [
                 {
                   type: "text",
-                  text: `Unknown pipeline: ${params.pipeline}. Use: continue, prd-qa, create-issues, create-issue`,
+                  text: `Unknown pipeline: ${params.pipeline}. Use: continue, prd-qa, create-gh-issues, create-gh-issue, investigate, jira-issues`,
                 },
               ],
               details: { pipeline: params.pipeline, stages: [] } as PipelineDetails,
@@ -229,6 +251,26 @@ function stageIcon(stage: StageResult, theme: AnyCtx): string {
         : theme.fg("muted", "○");
 }
 
+// ─── Command arg parsers ──────────────────────────────────────────────
+
+function parseInvestigateArgs(args: string): { description: string; template: string } {
+  const templateMatch = args.match(/--template\s+(\S+)/);
+  const template = templateMatch ? (templateMatch[1] ?? "") : "";
+  const description = args
+    .replace(/--template\s+\S+/, "")
+    .trim()
+    .replace(/^"(.*)"$/, "$1");
+  return { description, template };
+}
+
+function parseJiraIssuesArgs(args: string): { docs: string[]; example: string } {
+  const exampleMatch = args.match(/--example\s+(\S+)/);
+  const example = exampleMatch ? (exampleMatch[1] ?? "") : "";
+  const rest = args.replace(/--example\s+\S+/, "").trim();
+  const docs = rest.split(/\s+/).filter(Boolean);
+  return { docs, example };
+}
+
 // ─── Extension entry point ────────────────────────────────────────────
 
 const extension: (pi: ExtensionAPI) => void = (pi) => {
@@ -256,22 +298,56 @@ const extension: (pi: ExtensionAPI) => void = (pi) => {
     },
   });
 
-  pi.registerCommand("create-issues", {
+  pi.registerCommand("create-gh-issues", {
     description: "Decompose PRD.md into vertical-slice GitHub issues",
     handler: async () => {
-      pi.sendUserMessage(`Call the forgeflow-pm tool now with these exact parameters: pipeline="create-issues".`);
+      pi.sendUserMessage(`Call the forgeflow-pm tool now with these exact parameters: pipeline="create-gh-issues".`);
     },
   });
 
-  pi.registerCommand("create-issue", {
+  pi.registerCommand("create-gh-issue", {
     description: "Create a single GitHub issue from a feature idea",
     handler: async (args) => {
       if (!args.trim()) {
-        pi.sendUserMessage('I need a feature idea. Usage: /create-issue "Add user authentication"');
+        pi.sendUserMessage('I need a feature idea. Usage: /create-gh-issue "Add user authentication"');
         return;
       }
       pi.sendUserMessage(
-        `Call the forgeflow-pm tool now with these exact parameters: pipeline="create-issue", issue="${args.trim()}". Do not interpret the issue text — pass it as-is.`,
+        `Call the forgeflow-pm tool now with these exact parameters: pipeline="create-gh-issue", issue="${args.trim()}". Do not interpret the issue text — pass it as-is.`,
+      );
+    },
+  });
+
+  pi.registerCommand("investigate", {
+    description:
+      "Spike or RFC: explore codebase + web, fill a Confluence template. Usage: /investigate <description> [--template <confluence-url>]",
+    handler: async (args) => {
+      const { description, template } = parseInvestigateArgs(args);
+      if (!description) {
+        pi.sendUserMessage("I need a description. Usage: /investigate <description> [--template <confluence-url>]");
+        return;
+      }
+      const templatePart = template ? `, template="${template}"` : "";
+      pi.sendUserMessage(
+        `Call the forgeflow-pm tool now with these exact parameters: pipeline="investigate", issue="${description}"${templatePart}. Do not interpret the description — pass it as-is.`,
+      );
+    },
+  });
+
+  pi.registerCommand("jira-issues", {
+    description:
+      "Decompose Confluence PM docs into Jira issues. Usage: /jira-issues <confluence-url> [confluence-url...] [--example <confluence-url>]",
+    handler: async (args) => {
+      const { docs, example } = parseJiraIssuesArgs(args);
+      if (docs.length === 0) {
+        pi.sendUserMessage(
+          "I need at least one Confluence doc URL. Usage: /jira-issues <url> [url...] [--example <url>]",
+        );
+        return;
+      }
+      const examplePart = example ? `, example="${example}"` : "";
+      pi.sendUserMessage(
+        `Call the forgeflow-pm tool now with these exact parameters: pipeline="jira-issues", docs="${docs.join(",")}"${examplePart}. Do not interpret the URLs — pass them as-is.`,
       );
     },
   });

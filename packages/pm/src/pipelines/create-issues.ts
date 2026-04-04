@@ -10,10 +10,10 @@ export async function runCreateIssue(cwd: string, idea: string, signal: AbortSig
     };
   }
 
-  const stages = [emptyStage("single-issue-creator")];
+  const stages = [emptyStage("gh-single-issue-creator")];
   const opts = { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline: "create-issue", onUpdate };
 
-  await runAgent("single-issue-creator", idea, { ...opts, tools: TOOLS_NO_EDIT });
+  await runAgent("gh-single-issue-creator", idea, { ...opts, tools: TOOLS_NO_EDIT });
 
   return {
     content: [{ type: "text" as const, text: "Issue created." }],
@@ -29,11 +29,11 @@ export async function runCreateIssues(cwd: string, signal: AbortSignal, onUpdate
     };
   }
 
-  const stages = [emptyStage("issue-creator")];
+  const stages = [emptyStage("gh-issue-creator")];
   const opts = { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline: "create-issues", onUpdate };
 
   await runAgent(
-    "issue-creator",
+    "gh-issue-creator",
     "Decompose PRD.md into vertical-slice GitHub issues. Read the issue-template skill for the standard format.",
     { ...opts, tools: TOOLS_NO_EDIT },
   );

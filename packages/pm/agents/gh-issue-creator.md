@@ -1,5 +1,5 @@
 ---
-name: issue-creator
+name: gh-issue-creator
 description: Decomposes a PRD into vertical-slice GitHub issues for autonomous implementation.
 tools: read, write, bash, grep, find
 ---

@@ -1,5 +1,5 @@
 ---
-name: single-issue-creator
+name: gh-single-issue-creator
 description: Turns a rough feature idea into a well-structured GitHub issue by exploring the codebase.
 tools: read, write, bash, grep, find
 ---

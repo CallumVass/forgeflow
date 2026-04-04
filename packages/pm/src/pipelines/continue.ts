@@ -124,9 +124,9 @@ CRITICAL RULES:
   }
 
   // Phase 3: Create issues from the Next section
-  stages.push(emptyStage("issue-creator"));
+  stages.push(emptyStage("gh-issue-creator"));
   await runAgent(
-    "issue-creator",
+    "gh-issue-creator",
     "Decompose PRD.md into vertical-slice GitHub issues. Focus on the ## Next section — the ## Done section is context only. Read the issue-template skill for the standard format.",
     { ...opts, tools: TOOLS_NO_EDIT },
   );
