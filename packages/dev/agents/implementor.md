@@ -103,6 +103,10 @@ PRBODY
 gh pr create --title "My title" --body-file /tmp/pr-body.md
 ```
 
+## Commit Style
+
+Use [Conventional Commits](https://www.conventionalcommits.org/). Read `git log --oneline -10` before your first commit to match the repo's existing style. Common prefixes: `feat:`, `fix:`, `test:`, `refactor:`, `chore:`, `docs:`. Keep messages concise (under 72 chars).
+
 ## Before Committing
 
 - **Reachability check**: Every new module, class, or function you created must be imported and called from production code — not just from tests. Trace from the entry point to your new code.
