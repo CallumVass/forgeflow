@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.1.2...forgeflow-pm-v0.2.0) (2026-04-04)
+
+
+### Features
+
+* add /investigate, /jira-issues commands and Confluence integration ([af5bfc8](https://github.com/CallumVass/forgeflow/commit/af5bfc894406fdee3a477c20fcbbba320ce2fe46))
+
 ## [0.1.2](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.1.1...forgeflow-pm-v0.1.2) (2026-04-04)
 
 

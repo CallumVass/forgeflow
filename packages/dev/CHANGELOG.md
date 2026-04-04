@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.1.2...forgeflow-dev-v0.2.0) (2026-04-04)
+
+
+### Features
+
+* add /investigate, /jira-issues commands and Confluence integration ([af5bfc8](https://github.com/CallumVass/forgeflow/commit/af5bfc894406fdee3a477c20fcbbba320ce2fe46))
+* use repo PR template for pull request body if it exists ([b7a888a](https://github.com/CallumVass/forgeflow/commit/b7a888a1f3e7704856e2f5def9e5cee081417510))
+
 ## [0.1.2](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.1.1...forgeflow-dev-v0.1.2) (2026-04-04)
 
 
