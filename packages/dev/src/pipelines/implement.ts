@@ -11,7 +11,7 @@ import {
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 import { exec } from "../utils/exec.js";
-import { buildPrBody, ensureBranch, resolveIssue } from "../utils/git.js";
+import { buildPrBody, createPr, ensureBranch, resolveIssue } from "../utils/git.js";
 import { setForgeflowStatus } from "../utils/ui.js";
 import { runReviewInline } from "./review.js";
 
@@ -155,7 +155,7 @@ export async function runImplement(
       if (parseInt(ahead, 10) > 0) {
         await exec(`git push -u origin ${resolved.branch}`, cwd);
         const prBody = buildPrBody(cwd, resolved);
-        await exec(`gh pr create --title "${resolved.title}" --body "${prBody}" --head ${resolved.branch}`, cwd);
+        await createPr(cwd, resolved.title, prBody, resolved.branch);
 
         const stages: StageResult[] = [];
         await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
@@ -257,7 +257,7 @@ export async function runImplement(
     : "\n- Do NOT create or switch branches.";
   const prNote = resolved.existingPR ? `\n- PR #${resolved.existingPR} already exists for this branch.` : "";
   const closeNote = isGitHub
-    ? `\n- The PR body MUST include 'Closes #${resolved.number}' so the issue auto-closes on merge.`
+    ? `\n- The PR body MUST end with a blank line then 'Closes #${resolved.number}' on its own line (not inline with other text), so the issue auto-closes on merge.`
     : `\n- The PR body should reference Jira issue ${resolved.key}.`;
   const unresolvedNote = flags.autonomous
     ? `\n- If the plan has unresolved questions, resolve them yourself using sensible defaults. Do NOT stop and wait.`
@@ -289,7 +289,7 @@ export async function runImplement(
     prNumber = await exec(`gh pr list --head "${resolved.branch}" --json number --jq '.[0].number'`, cwd);
     if (!prNumber || prNumber === "null") {
       const prBody = buildPrBody(cwd, resolved);
-      await exec(`gh pr create --title "${resolved.title}" --body "${prBody}" --head ${resolved.branch}`, cwd);
+      await createPr(cwd, resolved.title, prBody, resolved.branch);
       prNumber = await exec(`gh pr list --head "${resolved.branch}" --json number --jq '.[0].number'`, cwd);
     }
   }

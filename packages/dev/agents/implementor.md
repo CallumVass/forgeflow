@@ -89,6 +89,20 @@ Scan `<cwd>/.forgeflow/plugins/*/PLUGIN.md` for plugins matching the `implement`
 
 For each matched plugin, read the plugin body and follow its guidance — framework-specific idioms, API patterns, common pitfalls, and conventions for the project's tech stack.
 
+## Creating PRs
+
+When creating a PR with `gh pr create`, ALWAYS write the body to a temp file and use `--body-file` instead of `--body`. The `--body` flag breaks markdown formatting due to shell escaping. Example:
+
+```bash
+cat > /tmp/pr-body.md << 'PRBODY'
+## Summary
+- description here
+
+Closes #123
+PRBODY
+gh pr create --title "My title" --body-file /tmp/pr-body.md
+```
+
 ## Before Committing
 
 - **Reachability check**: Every new module, class, or function you created must be imported and called from production code — not just from tests. Trace from the entry point to your new code.
