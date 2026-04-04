@@ -74,9 +74,16 @@ const JIRA_BRANCH_RE = /feat\/([A-Z]+-\d+)/;
 export async function ensureBranch(cwd: string, branch: string): Promise<void> {
   const currentBranch = await exec("git branch --show-current", cwd);
   if (currentBranch === branch) return;
-  const exists = await exec(`git rev-parse --verify ${branch} 2>/dev/null && echo yes || echo no`, cwd);
-  if (exists === "yes") {
+  const localExists = await exec(`git rev-parse --verify ${branch} 2>/dev/null && echo yes || echo no`, cwd);
+  if (localExists === "yes") {
     await exec(`git checkout ${branch}`, cwd);
+    return;
+  }
+  // Check for remote-only branch and track it
+  await exec("git fetch origin", cwd);
+  const remoteExists = await exec(`git rev-parse --verify origin/${branch} 2>/dev/null && echo yes || echo no`, cwd);
+  if (remoteExists === "yes") {
+    await exec(`git checkout -b ${branch} origin/${branch}`, cwd);
   } else {
     await exec(`git checkout -b ${branch}`, cwd);
   }

@@ -145,11 +145,15 @@ export async function runImplement(
   }
 
   if (resolved.branch) {
-    const branchExists = await exec(
-      `git rev-parse --verify ${resolved.branch} 2>/dev/null && echo yes || echo no`,
-      cwd,
-    );
-    if (branchExists === "yes") {
+    const localExists = await exec(`git rev-parse --verify ${resolved.branch} 2>/dev/null && echo yes || echo no`, cwd);
+    const remoteExists =
+      localExists === "yes"
+        ? "no"
+        : await exec(
+            `git fetch origin && git rev-parse --verify origin/${resolved.branch} 2>/dev/null && echo yes || echo no`,
+            cwd,
+          );
+    if (localExists === "yes" || remoteExists === "yes") {
       await ensureBranch(cwd, resolved.branch);
       const ahead = await exec(`git rev-list main..${resolved.branch} --count`, cwd);
       if (parseInt(ahead, 10) > 0) {
