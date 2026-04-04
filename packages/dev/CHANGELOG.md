@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.4.2...forgeflow-dev-v0.4.3) (2026-04-04)
+
+
+### Bug Fixes
+
+* delete stale local branches at same commit as main before implementing ([9be6a47](https://github.com/CallumVass/forgeflow/commit/9be6a47756a8e6f0e9b093a53ef0533828804584))
+
 ## [0.4.2](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.4.1...forgeflow-dev-v0.4.2) (2026-04-04)
 
 
