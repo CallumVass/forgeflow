@@ -11,7 +11,7 @@ import {
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 import { exec } from "../utils/exec.js";
-import { ensureBranch, resolveIssue } from "../utils/git.js";
+import { buildPrBody, ensureBranch, resolveIssue } from "../utils/git.js";
 import { setForgeflowStatus } from "../utils/ui.js";
 import { runReviewInline } from "./review.js";
 
@@ -144,7 +144,7 @@ export async function runImplement(
       const ahead = await exec(`git rev-list main..${resolved.branch} --count`, cwd);
       if (parseInt(ahead, 10) > 0) {
         await exec(`git push -u origin ${resolved.branch}`, cwd);
-        const prBody = isGitHub ? `Closes #${resolved.number}` : `Jira: ${resolved.key}`;
+        const prBody = buildPrBody(cwd, resolved);
         await exec(`gh pr create --title "${resolved.title}" --body "${prBody}" --head ${resolved.branch}`, cwd);
 
         const stages: StageResult[] = [];
@@ -278,7 +278,7 @@ export async function runImplement(
     await exec(`git push -u origin ${resolved.branch}`, cwd);
     prNumber = await exec(`gh pr list --head "${resolved.branch}" --json number --jq '.[0].number'`, cwd);
     if (!prNumber || prNumber === "null") {
-      const prBody = isGitHub ? `Closes #${resolved.number}` : `Jira: ${resolved.key}`;
+      const prBody = buildPrBody(cwd, resolved);
       await exec(`gh pr create --title "${resolved.title}" --body "${prBody}" --head ${resolved.branch}`, cwd);
       prNumber = await exec(`gh pr list --head "${resolved.branch}" --json number --jq '.[0].number'`, cwd);
     }
