@@ -144,37 +144,61 @@ export async function runImplement(
     };
   }
 
+  // --- Branch setup (before planning) ---
   if (resolved.branch) {
     const localExists = await exec(`git rev-parse --verify ${resolved.branch} 2>/dev/null && echo yes || echo no`, cwd);
-    const remoteExists =
-      localExists === "yes"
-        ? "no"
-        : await exec(
-            `git fetch origin && git rev-parse --verify origin/${resolved.branch} 2>/dev/null && echo yes || echo no`,
-            cwd,
-          );
-    if (localExists === "yes" || remoteExists === "yes") {
-      // Delete stale local branch at same commit as main so fresh implementation can recreate it
-      if (localExists === "yes") {
-        const ahead = await exec(`git rev-list main..${resolved.branch} --count`, cwd);
-        if (parseInt(ahead, 10) === 0) {
-          await exec(`git branch -D ${resolved.branch}`, cwd);
-        } else {
-          await ensureBranch(cwd, resolved.branch);
-          await exec(`git push -u origin ${resolved.branch}`, cwd);
-          const prBody = buildPrBody(cwd, resolved);
-          await createPr(cwd, resolved.title, prBody, resolved.branch);
 
-          const stages: StageResult[] = [];
-          await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
-          return {
-            content: [
-              { type: "text" as const, text: `Resumed ${issueLabel} ��� pushed existing commits and created PR.` },
-            ],
-            details: { pipeline: "implement", stages },
-          };
-        }
+    if (localExists === "yes") {
+      const ahead = await exec(`git rev-list main..${resolved.branch} --count`, cwd);
+      if (parseInt(ahead, 10) > 0) {
+        // Branch has work — resume by pushing and creating PR
+        await ensureBranch(cwd, resolved.branch);
+        await exec(`git push -u origin ${resolved.branch}`, cwd);
+        const prBody = buildPrBody(cwd, resolved);
+        await createPr(cwd, resolved.title, prBody, resolved.branch);
+
+        const stages: StageResult[] = [];
+        await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
+        return {
+          content: [{ type: "text" as const, text: `Resumed ${issueLabel} — pushed existing commits and created PR.` }],
+          details: { pipeline: "implement", stages },
+        };
       }
+      // Stale branch at same commit as main — delete so we can recreate cleanly
+      await exec(`git branch -D ${resolved.branch}`, cwd);
+    }
+
+    // Ensure we're on main before creating branch
+    const currentBranch = await exec("git branch --show-current", cwd);
+    if (currentBranch === "main" || currentBranch === "master") {
+      const dirty = await exec("git status --porcelain", cwd);
+      if (dirty) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Cannot switch to ${resolved.branch} — working tree is dirty. Please commit or stash your changes first.`,
+            },
+          ],
+          details: { pipeline: "implement", stages: [] },
+          isError: true,
+        };
+      }
+    }
+
+    await ensureBranch(cwd, resolved.branch);
+    const afterBranch = await exec("git branch --show-current", cwd);
+    if (afterBranch !== resolved.branch) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Failed to switch to ${resolved.branch} (still on ${afterBranch}). Check git state and retry.`,
+          },
+        ],
+        details: { pipeline: "implement", stages: [] },
+        isError: true,
+      };
     }
   }
 
@@ -219,40 +243,6 @@ export async function runImplement(
         return {
           content: [{ type: "text" as const, text: "Implementation cancelled." }],
           details: { pipeline: "implement", stages },
-        };
-      }
-    }
-  }
-
-  // Create/checkout feature branch if on main
-  if (resolved.branch) {
-    const currentBranch = await exec("git branch --show-current", cwd);
-    if (currentBranch === "main" || currentBranch === "master") {
-      const dirty = await exec("git status --porcelain", cwd);
-      if (dirty) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Cannot switch to ${resolved.branch} — working tree is dirty. Please commit or stash your changes first.`,
-            },
-          ],
-          details: { pipeline: "implement", stages: [] },
-          isError: true,
-        };
-      }
-      await ensureBranch(cwd, resolved.branch);
-      const afterBranch = await exec("git branch --show-current", cwd);
-      if (afterBranch !== resolved.branch) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `Failed to switch to ${resolved.branch} (still on ${afterBranch}). Check git state and retry.`,
-            },
-          ],
-          details: { pipeline: "implement", stages: [] },
-          isError: true,
         };
       }
     }
