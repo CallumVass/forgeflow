@@ -34,7 +34,7 @@ function htmlToPlainText(html: string): string {
     .replace(/<\/li>/gi, "\n")
     .replace(/<li[^>]*>/gi, "- ")
     .replace(/<\/h[1-6]>/gi, "\n\n")
-    .replace(/<h([1-6])[^>]*>/gi, (_m, level) => "#".repeat(parseInt(level as string, 10)) + " ")
+    .replace(/<h([1-6])[^>]*>/gi, (_m, level) => `${"#".repeat(parseInt(level as string, 10))} `)
     .replace(/<\/?strong>/gi, "**")
     .replace(/<\/?em>/gi, "*")
     .replace(/<\/?code>/gi, "`")
