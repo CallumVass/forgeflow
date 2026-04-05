@@ -1,6 +1,15 @@
+export { extractFlags, type FlagResult, type FlagSpecs, splitFirstToken, unquote } from "./arg-parsing.js";
 export { type ConfluencePage, fetchConfluencePage } from "./confluence.js";
 export { SIGNALS, TOOLS_ALL, TOOLS_NO_EDIT, TOOLS_READONLY } from "./constants.js";
 export { type ExecFn, exec, execSafe } from "./exec.js";
+export {
+  buildSendMessage,
+  type CommandDefinition,
+  createForgeflowExtension,
+  type ExtensionConfig,
+  type ParamDef,
+  type PipelineDefinition,
+} from "./extension.js";
 export {
   type DisplayItem,
   formatToolCallShort,

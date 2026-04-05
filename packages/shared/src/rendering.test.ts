@@ -234,7 +234,7 @@ describe("extraction verification", () => {
     }
   });
 
-  it("dev/index.ts and pm/index.ts import renderResult from shared", () => {
+  it("dev/index.ts and pm/index.ts use createForgeflowExtension from shared (which handles renderResult internally)", () => {
     const devPath = resolve(__dirname, "../../dev/src/index.ts");
     const pmPath = resolve(__dirname, "../../pm/src/index.ts");
     const devSrc = readFileSync(devPath, "utf-8");
@@ -242,8 +242,12 @@ describe("extraction verification", () => {
 
     for (const src of [devSrc, pmSrc]) {
       expect(src).toContain("@callumvass/forgeflow-shared");
-      expect(src).toContain("renderResult");
+      expect(src).toContain("createForgeflowExtension");
     }
+
+    // renderResult is now called internally by the factory in extension.ts
+    const extensionSrc = readFileSync(resolve(__dirname, "extension.ts"), "utf-8");
+    expect(extensionSrc).toContain("renderResult");
   });
 });
 
