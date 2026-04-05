@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { exec } from "@callumvass/forgeflow-shared";
+import { findPrNumber } from "./git-workflow.js";
 
 const PR_TEMPLATE_PATHS = [
   ".github/pull_request_template.md",
@@ -125,8 +126,7 @@ async function resolveGitHubIssue(cwd: string, issueNum: number): Promise<Resolv
   }
 
   const branch = `feat/issue-${issueNum}`;
-  const prJson = await exec(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
-  const existingPR = prJson && prJson !== "null" ? parseInt(prJson, 10) : undefined;
+  const existingPR = (await findPrNumber(cwd, branch)) ?? undefined;
 
   return { source: "github", key: String(issueNum), ...issue, branch, existingPR };
 }
@@ -162,8 +162,7 @@ async function resolveJiraIssue(
   const body = bodyParts.join("\n\n");
   const branch = existingBranch ?? `feat/${jiraKey}-${slugify(title)}`;
 
-  const prJson = await exec(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
-  const existingPR = prJson && prJson !== "null" ? parseInt(prJson, 10) : undefined;
+  const existingPR = (await findPrNumber(cwd, branch)) ?? undefined;
 
   return { source: "jira", key: jiraKey, number: 0, title, body, branch, existingPR };
 }
