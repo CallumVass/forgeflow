@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { exec } from "@callumvass/forgeflow-shared";
+import { exec, execSafe } from "@callumvass/forgeflow-shared";
 import { findPrNumber } from "./git-workflow.js";
 
 const PR_TEMPLATE_PATHS = [
@@ -115,7 +115,7 @@ export async function resolveIssue(cwd: string, issueArg?: string): Promise<Reso
 }
 
 async function resolveGitHubIssue(cwd: string, issueNum: number): Promise<ResolvedIssue | string> {
-  const issueJson = await exec(`gh issue view ${issueNum} --json number,title,body`, cwd);
+  const issueJson = await execSafe(`gh issue view ${issueNum} --json number,title,body`, cwd);
   if (!issueJson) return `Could not fetch issue #${issueNum}.`;
 
   let issue: { number: number; title: string; body: string };
@@ -136,7 +136,7 @@ async function resolveJiraIssue(
   jiraKey: string,
   existingBranch?: string,
 ): Promise<ResolvedIssue | string> {
-  const raw = await exec(`jira issue view ${jiraKey} --raw`, cwd);
+  const raw = await execSafe(`jira issue view ${jiraKey} --raw`, cwd);
   if (!raw) return `Could not fetch Jira issue ${jiraKey}.`;
 
   // biome-ignore lint/suspicious/noExplicitAny: Jira JSON shape varies by instance

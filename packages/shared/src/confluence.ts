@@ -1,4 +1,4 @@
-import { exec } from "./exec.js";
+import { execSafe } from "./exec.js";
 
 /**
  * Extract a Confluence page ID from a URL.
@@ -68,7 +68,7 @@ export async function fetchConfluencePage(pageUrl: string): Promise<ConfluencePa
   const auth = Buffer.from(`${email}:${token}`).toString("base64");
   const apiUrl = `${baseUrl.replace(/\/$/, "")}/wiki/api/v2/pages/${pageId}?body-format=storage`;
 
-  const raw = await exec(`curl -s -H "Authorization: Basic ${auth}" -H "Accept: application/json" "${apiUrl}"`);
+  const raw = await execSafe(`curl -s -H "Authorization: Basic ${auth}" -H "Accept: application/json" "${apiUrl}"`);
 
   if (!raw) return `Failed to fetch Confluence page ${pageId}.`;
 
