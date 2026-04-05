@@ -1,7 +1,30 @@
+import type { AgentToolUpdateCallback } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
 
-// biome-ignore lint/suspicious/noExplicitAny: opaque type for untyped external boundaries
-export type AnyCtx = any;
+/** Subset of ExtensionUIContext that forgeflow actually uses. */
+export interface ForgeflowUI {
+  input(title: string, placeholder?: string): Promise<string | undefined>;
+  editor(title: string, content: string): Promise<string | undefined>;
+  select(title: string, options: string[]): Promise<string | undefined>;
+  setStatus(key: string, text: string | undefined): void;
+  setWidget(key: string, content: string[] | undefined): void;
+}
+
+/** What forgeflow actually needs from the extension context. */
+export interface ForgeflowContext {
+  hasUI: boolean;
+  cwd: string;
+  ui: ForgeflowUI;
+}
+
+/** Structural theme interface — subset of Pi's Theme class used by rendering. */
+export interface ForgeflowTheme {
+  fg(color: string, text: string): string;
+  bold(text: string): string;
+}
+
+/** Concrete callback type for pipeline update notifications. */
+export type OnUpdate = AgentToolUpdateCallback<PipelineDetails>;
 
 export interface StageResult {
   name: string;

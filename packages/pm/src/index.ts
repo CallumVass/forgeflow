@@ -1,4 +1,5 @@
-import { type AnyCtx, type PipelineDetails, renderResult } from "@callumvass/forgeflow-shared";
+import { type PipelineDetails, renderResult } from "@callumvass/forgeflow-shared";
+import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
@@ -45,15 +46,9 @@ function registerForgeflowPmTool(pi: ExtensionAPI) {
       "create-jira-issues (decompose Confluence PM docs into Jira issues).",
       "Each pipeline spawns specialized sub-agents with isolated context.",
     ].join(" "),
-    parameters: ForgeflowPmParams as AnyCtx,
+    parameters: ForgeflowPmParams,
 
-    async execute(
-      _toolCallId: string,
-      _params: unknown,
-      signal: AbortSignal | undefined,
-      onUpdate: AnyCtx,
-      ctx: AnyCtx,
-    ) {
+    async execute(_toolCallId, _params, signal, onUpdate, ctx) {
       const params = _params as ForgeflowPmInput;
       const cwd = ctx.cwd as string;
       const sig = signal ?? new AbortController().signal;
@@ -96,7 +91,7 @@ function registerForgeflowPmTool(pi: ExtensionAPI) {
       }
     },
 
-    renderCall(_args: unknown, theme: AnyCtx) {
+    renderCall(_args, theme) {
       const args = _args as ForgeflowPmInput;
       const pipeline = args.pipeline || "?";
       let text = theme.fg("toolTitle", theme.bold("forgeflow-pm ")) + theme.fg("accent", pipeline);
@@ -105,8 +100,8 @@ function registerForgeflowPmTool(pi: ExtensionAPI) {
       return new Text(text, 0, 0);
     },
 
-    renderResult(result: AnyCtx, { expanded }: { expanded: boolean }, theme: AnyCtx) {
-      return renderResult(result, expanded, theme, "forgeflow-pm");
+    renderResult(result, { expanded }, theme) {
+      return renderResult(result as AgentToolResult<PipelineDetails>, expanded, theme, "forgeflow-pm");
     },
   });
 }

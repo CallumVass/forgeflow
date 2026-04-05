@@ -1,15 +1,15 @@
-import type { AnyCtx } from "@callumvass/forgeflow-shared";
+import type { ForgeflowContext } from "@callumvass/forgeflow-shared";
 
-export function setForgeflowStatus(ctx: AnyCtx, text: string | undefined): void {
+export function setForgeflowStatus(ctx: ForgeflowContext, text: string | undefined): void {
   if (ctx.hasUI) ctx.ui.setStatus("forgeflow-dev", text);
 }
 
-export function setForgeflowWidget(ctx: AnyCtx, lines: string[] | undefined): void {
+export function setForgeflowWidget(ctx: ForgeflowContext, lines: string[] | undefined): void {
   if (ctx.hasUI) ctx.ui.setWidget("forgeflow-dev", lines);
 }
 
 export function updateProgressWidget(
-  ctx: AnyCtx,
+  ctx: ForgeflowContext,
   progress: Map<number, { title: string; status: string }>,
   totalCost: number,
 ): void {

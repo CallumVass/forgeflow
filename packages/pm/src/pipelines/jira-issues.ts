@@ -1,8 +1,9 @@
 import {
-  type AnyCtx,
   type ConfluencePage,
   emptyStage,
+  type ForgeflowContext,
   fetchConfluencePage,
+  type OnUpdate,
   runAgent,
   TOOLS_ALL,
 } from "@callumvass/forgeflow-shared";
@@ -13,8 +14,8 @@ export async function runJiraIssues(
   docUrls: string[],
   exampleUrl: string,
   signal: AbortSignal,
-  onUpdate: AnyCtx,
-  ctx: AnyCtx,
+  onUpdate: OnUpdate | undefined,
+  ctx: ForgeflowContext,
 ) {
   const interactive = ctx.hasUI;
 

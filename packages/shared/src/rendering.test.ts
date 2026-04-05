@@ -9,7 +9,7 @@ import {
   renderExpanded,
   stageIcon,
 } from "./rendering.js";
-import type { PipelineDetails, StageResult } from "./types.js";
+import type { ForgeflowContext, ForgeflowTheme, ForgeflowUI, PipelineDetails, StageResult } from "./types.js";
 import { emptyStage } from "./types.js";
 
 // Helper: mock theme that passes through text with category prefix for assertions
@@ -244,5 +244,57 @@ describe("extraction verification", () => {
       expect(src).toContain("@callumvass/forgeflow-shared");
       expect(src).toContain("renderResult");
     }
+  });
+});
+
+describe("type safety: AnyCtx removal", () => {
+  it("zero AnyCtx references remain in non-test source files", () => {
+    const srcDirs = [resolve(__dirname, "."), resolve(__dirname, "../../dev/src"), resolve(__dirname, "../../pm/src")];
+    const { readdirSync } = require("node:fs");
+    const { join } = require("node:path");
+
+    function walk(dir: string): string[] {
+      const results: string[] = [];
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) results.push(...walk(full));
+        else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts") && !entry.name.endsWith(".d.ts"))
+          results.push(full);
+      }
+      return results;
+    }
+
+    const violations: string[] = [];
+    for (const dir of srcDirs) {
+      for (const file of walk(dir)) {
+        const content = readFileSync(file, "utf-8");
+        if (content.includes("AnyCtx")) violations.push(file);
+      }
+    }
+    expect(violations).toEqual([]);
+  });
+
+  it("ForgeflowContext, ForgeflowUI, OnUpdate, and ForgeflowTheme are exported from shared types", () => {
+    // These imports would fail at compile time if the types don't exist.
+    // At runtime, verify they're usable as type constraints by creating conforming objects.
+    const ui: ForgeflowUI = {
+      input: async () => undefined,
+      editor: async () => undefined,
+      select: async () => undefined,
+      setStatus: () => {},
+      setWidget: () => {},
+    };
+    const ctx: ForgeflowContext = { hasUI: true, cwd: "/tmp", ui };
+    expect(ctx.hasUI).toBe(true);
+    expect(ctx.cwd).toBe("/tmp");
+    expect(typeof ctx.ui.input).toBe("function");
+
+    // ForgeflowTheme structural check
+    const theme: ForgeflowTheme = {
+      fg: (_color: string, text: string) => text,
+      bold: (text: string) => text,
+    };
+    expect(typeof theme.fg).toBe("function");
+    expect(typeof theme.bold).toBe("function");
   });
 });

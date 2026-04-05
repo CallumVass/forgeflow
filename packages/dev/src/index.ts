@@ -1,4 +1,5 @@
-import { type AnyCtx, type PipelineDetails, renderResult } from "@callumvass/forgeflow-shared";
+import { type PipelineDetails, renderResult } from "@callumvass/forgeflow-shared";
+import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
@@ -97,15 +98,9 @@ function registerForgeflowDevTool(pi: ExtensionAPI) {
       "discover-skills (find and install domain-specific plugins).",
       "Each pipeline spawns specialized sub-agents with isolated context.",
     ].join(" "),
-    parameters: ForgeflowDevParams as AnyCtx,
+    parameters: ForgeflowDevParams,
 
-    async execute(
-      _toolCallId: string,
-      _params: unknown,
-      signal: AbortSignal | undefined,
-      onUpdate: AnyCtx,
-      ctx: AnyCtx,
-    ) {
+    async execute(_toolCallId, _params, signal, onUpdate, ctx) {
       const params = _params as ForgeflowDevInput;
       const cwd = ctx.cwd as string;
       const sig = signal ?? new AbortController().signal;
@@ -148,7 +143,7 @@ function registerForgeflowDevTool(pi: ExtensionAPI) {
       }
     },
 
-    renderCall(_args: unknown, theme: AnyCtx) {
+    renderCall(_args, theme) {
       const args = _args as ForgeflowDevInput;
       const pipeline = args.pipeline || "?";
       let text = theme.fg("toolTitle", theme.bold("forgeflow-dev ")) + theme.fg("accent", pipeline);
@@ -160,8 +155,8 @@ function registerForgeflowDevTool(pi: ExtensionAPI) {
       return new Text(text, 0, 0);
     },
 
-    renderResult(result: AnyCtx, { expanded }: { expanded: boolean }, theme: AnyCtx) {
-      return renderResult(result, expanded, theme, "forgeflow-dev");
+    renderResult(result, { expanded }, theme) {
+      return renderResult(result as AgentToolResult<PipelineDetails>, expanded, theme, "forgeflow-dev");
     },
   });
 }

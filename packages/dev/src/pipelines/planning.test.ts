@@ -1,16 +1,20 @@
+import type { ForgeflowContext } from "@callumvass/forgeflow-shared";
 import { describe, expect, it, vi } from "vitest";
 import { resolveQuestions, runPlanning } from "./planning.js";
 
 function mockCtx(
-  opts: { editorResult?: string | null; selectResult?: string | null; inputAnswers?: (string | null)[] } = {},
-) {
+  opts: { editorResult?: string; selectResult?: string; inputAnswers?: (string | undefined)[] } = {},
+): ForgeflowContext {
   const inputAnswers = [...(opts.inputAnswers ?? [])];
   return {
     hasUI: true,
+    cwd: "/tmp/test",
     ui: {
-      editor: vi.fn(async () => opts.editorResult ?? null),
-      select: vi.fn(async () => opts.selectResult ?? null),
-      input: vi.fn(async () => inputAnswers.shift() ?? null),
+      editor: vi.fn(async () => opts.editorResult ?? undefined),
+      select: vi.fn(async () => opts.selectResult ?? undefined),
+      input: vi.fn(async () => inputAnswers.shift() ?? undefined),
+      setStatus: vi.fn(),
+      setWidget: vi.fn(),
     },
   };
 }
@@ -54,8 +58,8 @@ describe("runPlanning", () => {
     expect(result.cancelled).toBe(true);
   });
 
-  it("returns cancelled: true when user dismisses the select (null)", async () => {
-    const ctx = mockCtx({ selectResult: null });
+  it("returns cancelled: true when user dismisses the select (undefined)", async () => {
+    const ctx = mockCtx({ selectResult: undefined });
     const runAgentFn = mockRunAgent("Some plan");
 
     const result = await runPlanning("/tmp", "Issue context", undefined, {

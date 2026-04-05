@@ -1,7 +1,18 @@
-import { type AnyCtx, emptyStage, runAgent, TOOLS_READONLY } from "@callumvass/forgeflow-shared";
+import {
+  emptyStage,
+  type ForgeflowContext,
+  type OnUpdate,
+  runAgent,
+  TOOLS_READONLY,
+} from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 
-export async function runArchitecture(cwd: string, signal: AbortSignal, onUpdate: AnyCtx, ctx: AnyCtx) {
+export async function runArchitecture(
+  cwd: string,
+  signal: AbortSignal,
+  onUpdate: OnUpdate | undefined,
+  ctx: ForgeflowContext,
+) {
   const stages = [emptyStage("architecture-reviewer")];
   const opts = { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline: "architecture", onUpdate };
 
