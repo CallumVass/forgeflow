@@ -21,6 +21,7 @@ export function getDisplayItems(messages: Message[]): DisplayItem[] {
   return items;
 }
 
+// See also: progress.ts#formatToolCallPlain (plain-text variant for streaming status)
 export function formatToolCallShort(
   name: string,
   args: Record<string, unknown>,

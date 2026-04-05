@@ -12,7 +12,7 @@ const stubOpts: RunAgentOpts = {
 
 describe("resolveRunAgent", () => {
   it("returns the injected function when one is provided", async () => {
-    const { resolveRunAgent } = await import("./run-agent.js");
+    const { resolveRunAgent } = await import("./di.js");
     const injected = vi.fn(async () => ({
       ...emptyStage("mock"),
       status: "done" as const,
@@ -26,7 +26,7 @@ describe("resolveRunAgent", () => {
   });
 
   it("returns the real runAgent when no injection is provided", async () => {
-    const { resolveRunAgent } = await import("./run-agent.js");
+    const { resolveRunAgent } = await import("./di.js");
     const { runAgent } = await import("./run-agent.js");
 
     const result = await resolveRunAgent();
@@ -119,8 +119,12 @@ describe("migration verification", () => {
     ];
     for (const file of files) {
       const src = readFileSync(file, "utf-8");
-      // Should not contain biome-ignore for noExplicitAny related to RunAgentFn/opts
       expect(src).not.toMatch(/biome-ignore.*noExplicitAny.*(?:opts|RunAgentFn|DI)/i);
     }
+  });
+
+  it("resolveRunAgent does not live in run-agent.ts", () => {
+    const src = readFileSync(resolve(__dirname, "run-agent.ts"), "utf-8");
+    expect(src).not.toContain("resolveRunAgent");
   });
 });
