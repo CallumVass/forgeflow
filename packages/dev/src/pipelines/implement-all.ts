@@ -1,5 +1,6 @@
 import { type AnyCtx, emptyStage, type StageResult, sumUsage } from "@callumvass/forgeflow-shared";
 import { exec } from "../utils/exec.js";
+import { findPrNumber, mergePr, returnToMain } from "../utils/git-workflow.js";
 import { setForgeflowStatus, updateProgressWidget } from "../utils/ui.js";
 import { runImplement } from "./implement.js";
 
@@ -49,7 +50,7 @@ export async function runImplementAll(
     if (signal.aborted) break;
 
     // Return to main and pull
-    await exec("git checkout main && git pull --rebase", cwd);
+    await returnToMain(cwd, exec);
 
     // Fetch open issues
     const issuesJson = await exec(
@@ -132,28 +133,24 @@ export async function runImplementAll(
       };
     }
 
-    // Check for PR and merge
+    // Merge PR and return to main
     const branch = `feat/issue-${issueNum}`;
-    await exec("git checkout main && git pull --rebase", cwd);
-    const prNum = await exec(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
+    await returnToMain(cwd, exec);
 
-    if (prNum && prNum !== "null") {
-      const mergeResult = await exec(`gh pr merge ${prNum} --squash --delete-branch`, cwd);
-      if (mergeResult.includes("Merged") || mergeResult === "") {
+    const prNum = await findPrNumber(cwd, branch, exec);
+
+    if (prNum != null) {
+      try {
+        await mergePr(cwd, prNum, exec);
         completed.add(issueNum);
-      } else {
-        const prState = await exec(`gh pr view ${prNum} --json state --jq '.state'`, cwd);
-        if (prState === "MERGED") {
-          completed.add(issueNum);
-        } else {
-          issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
-          updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
-          return {
-            content: [{ type: "text" as const, text: `Failed to merge PR #${prNum} for issue #${issueNum}.` }],
-            details: { pipeline: "implement-all", stages: allStages },
-            isError: true,
-          };
-        }
+      } catch {
+        issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
+        updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
+        return {
+          content: [{ type: "text" as const, text: `Failed to merge PR #${prNum} for issue #${issueNum}.` }],
+          details: { pipeline: "implement-all", stages: allStages },
+          isError: true,
+        };
       }
     } else {
       issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
