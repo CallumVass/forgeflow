@@ -1,5 +1,4 @@
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 import { exec } from "./exec.js";
 
@@ -29,21 +28,6 @@ export function buildPrBody(cwd: string, issue: ResolvedIssue): string {
   }
 
   return defaultBody;
-}
-
-/**
- * Create a PR using a temp file for the body to avoid shell escaping issues.
- */
-export async function createPr(cwd: string, title: string, body: string, branch: string): Promise<void> {
-  const tmp = path.join(os.tmpdir(), `forgeflow-pr-${Date.now()}.md`);
-  try {
-    fs.writeFileSync(tmp, body, "utf-8");
-    await exec(`gh pr create --title "${title}" --body-file "${tmp}" --head ${branch}`, cwd);
-  } finally {
-    try {
-      fs.unlinkSync(tmp);
-    } catch {}
-  }
 }
 
 export interface ResolvedIssue {

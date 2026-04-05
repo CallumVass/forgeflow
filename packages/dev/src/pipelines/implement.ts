@@ -3,93 +3,21 @@ import {
   cleanSignal,
   emptyStage,
   readSignal,
-  runAgent,
   type StageResult,
   signalExists,
-  TOOLS_ALL,
-  TOOLS_READONLY,
 } from "@callumvass/forgeflow-shared";
-import { AGENTS_DIR } from "../resolve.js";
-import { exec } from "../utils/exec.js";
-import { buildPrBody, createPr, resolveIssue } from "../utils/git.js";
+import { buildPrBody, resolveIssue } from "../utils/git.js";
+import { ensurePr, mergePr, returnToMain, setupBranch } from "../utils/git-workflow.js";
 import { setForgeflowStatus } from "../utils/ui.js";
-import { runReviewInline } from "./review.js";
+import { buildImplementorPrompt, refactorAndReview, reviewAndFix, runImplementor } from "./agents.js";
+import { runPlanning } from "./planning.js";
 
-/**
- * Run review and fix any findings via implementor.
- */
-async function reviewAndFix(
-  cwd: string,
-  signal: AbortSignal,
-  onUpdate: AnyCtx,
-  ctx: AnyCtx,
-  stages: StageResult[],
-  pipeline = "implement",
-): Promise<void> {
-  const reviewResult = await runReviewInline(cwd, signal, onUpdate, ctx, stages);
-  if (reviewResult.isError) {
-    const findings = reviewResult.content[0]?.type === "text" ? reviewResult.content[0].text : "";
-    stages.push(emptyStage("fix-findings"));
-    await runAgent(
-      "implementor",
-      `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
-      { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL, stageName: "fix-findings" },
-    );
-    cleanSignal(cwd, "findings");
-  }
-}
-
-/**
- * Run refactorer then review+fix. Shared by fresh implementation and resume-from-branch paths.
- */
-async function refactorAndReview(
-  cwd: string,
-  signal: AbortSignal,
-  onUpdate: AnyCtx,
-  ctx: AnyCtx,
-  stages: StageResult[],
-  skipReview: boolean,
-  pipeline = "implement",
-): Promise<void> {
-  if (!stages.some((s) => s.name === "refactorer")) stages.push(emptyStage("refactorer"));
-  await runAgent(
-    "refactorer",
-    "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit and push if changed.",
-    { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL },
-  );
-
-  if (!skipReview) {
-    await reviewAndFix(cwd, signal, onUpdate, ctx, stages, pipeline);
-  }
-}
-
-/**
- * Parse unresolved questions from the plan and prompt the user for answers.
- * Returns the plan with answers injected inline.
- */
-async function resolveQuestions(plan: string, ctx: AnyCtx): Promise<string> {
-  const sectionMatch = plan.match(/### Unresolved Questions\n([\s\S]*?)(?=\n###|$)/);
-  if (!sectionMatch) return plan;
-
-  const section = sectionMatch[1] ?? "";
-  // Match any list prefix: "- ", "1. ", "1) ", "a) ", etc, plus continuation lines
-  const itemRe = /^(?:[-*]|\d+[.)]+|[a-z][.)]+)\s+(.+(?:\n(?!(?:[-*]|\d+[.)]+|[a-z][.)]+)\s).*)*)/gm;
-  const items: { full: string; text: string }[] = [];
-  for (const m of section.matchAll(itemRe)) {
-    if (m[0] && m[1]) items.push({ full: m[0], text: m[1] });
-  }
-
-  if (items.length === 0) return plan;
-
-  let updatedSection = section;
-  for (const item of items) {
-    const answer = await ctx.ui.input(`${item.text}`, "Skip to use defaults");
-    if (answer != null && answer.trim() !== "") {
-      updatedSection = updatedSection.replace(item.full, `${item.full}\n  **Answer:** ${answer.trim()}`);
-    }
-  }
-
-  return plan.replace(`### Unresolved Questions\n${section}`, `### Unresolved Questions\n${updatedSection}`);
+function result(text: string, stages: StageResult[], isError?: boolean) {
+  return {
+    content: [{ type: "text" as const, text }],
+    details: { pipeline: "implement", stages },
+    ...(isError ? { isError } : {}),
+  };
 }
 
 export async function runImplement(
@@ -105,195 +33,88 @@ export async function runImplement(
 ) {
   const interactive = ctx.hasUI && !flags.autonomous;
   const resolved = await resolveIssue(cwd, issueArg || undefined);
-  if (typeof resolved === "string") {
-    return { content: [{ type: "text" as const, text: resolved }], details: { pipeline: "implement", stages: [] } };
-  }
+  if (typeof resolved === "string") return result(resolved, []);
 
-  const isGitHub = resolved.source === "github" && resolved.number > 0;
-  const issueLabel = isGitHub ? `#${resolved.number}: ${resolved.title}` : `${resolved.key}: ${resolved.title}`;
-
-  // Status line for standalone /implement (implement-all manages its own)
-  if (!flags.autonomous && (resolved.number || resolved.key)) {
-    const tag = isGitHub ? `#${resolved.number}` : resolved.key;
-    setForgeflowStatus(ctx, `${tag} ${resolved.title} · ${resolved.branch}`);
-  }
-
-  const issueContext = isGitHub
+  const isGH = resolved.source === "github" && resolved.number > 0;
+  const issueLabel = isGH ? `#${resolved.number}: ${resolved.title}` : `${resolved.key}: ${resolved.title}`;
+  const issueContext = isGH
     ? `Issue #${resolved.number}: ${resolved.title}\n\n${resolved.body}`
     : `Jira ${resolved.key}: ${resolved.title}\n\n${resolved.body}`;
 
-  // Ask for additional instructions interactively if not provided via CLI args
+  if (!flags.autonomous && (resolved.number || resolved.key))
+    setForgeflowStatus(ctx, `${isGH ? `#${resolved.number}` : resolved.key} ${resolved.title} · ${resolved.branch}`);
+
   if (interactive && !flags.customPrompt) {
     const extra = await ctx.ui.input("Additional instructions?", "Skip");
-    if (extra != null && extra.trim() !== "") {
-      flags.customPrompt = extra.trim();
-    }
+    if (extra?.trim()) flags.customPrompt = extra.trim();
   }
 
-  const customPromptSection = flags.customPrompt ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${flags.customPrompt}` : "";
-
-  // --- Resumability: skip to review if work already exists ---
+  // --- Resumability ---
   if (resolved.existingPR) {
     const stages: StageResult[] = [];
-    if (!flags.skipReview) {
-      await reviewAndFix(cwd, signal, onUpdate, ctx, stages);
-    }
-    return {
-      content: [{ type: "text" as const, text: `Resumed ${issueLabel} — PR #${resolved.existingPR} already exists.` }],
-      details: { pipeline: "implement", stages },
-    };
+    if (!flags.skipReview) await reviewAndFix(cwd, signal, onUpdate, ctx, stages);
+    return result(`Resumed ${issueLabel} — PR #${resolved.existingPR} already exists.`, stages);
   }
 
-  // --- Branch setup (before planning) ---
+  // --- Branch setup ---
   if (resolved.branch) {
-    const branch = resolved.branch;
-    const branchSetup = await exec(
-      `ahead=$(git rev-list main..${branch} --count 2>/dev/null || echo 0); if [ "$ahead" -gt 0 ] 2>/dev/null; then git checkout ${branch} && echo "RESUME:$ahead"; else git branch -D ${branch} 2>/dev/null; git branch -dr origin/${branch} 2>/dev/null; git checkout -b ${branch} && echo "FRESH"; fi`,
-      cwd,
-    );
-
-    if (branchSetup.startsWith("RESUME:")) {
-      await exec(`git push -u origin ${branch}`, cwd);
-      const prBody = buildPrBody(cwd, resolved);
-      await createPr(cwd, resolved.title, prBody, branch);
-
+    const branchResult = await setupBranch(cwd, resolved.branch);
+    if (branchResult.status === "resumed") {
+      await ensurePr(cwd, resolved.title, buildPrBody(cwd, resolved), resolved.branch);
       const stages: StageResult[] = [];
       await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
-      return {
-        content: [{ type: "text" as const, text: `Resumed ${issueLabel} — pushed existing commits and created PR.` }],
-        details: { pipeline: "implement", stages },
-      };
+      return result(`Resumed ${issueLabel} — pushed existing commits and created PR.`, stages);
     }
-
-    // Verify we're on the right branch — retry once if something switched us back
-    let afterBranch = await exec("git branch --show-current", cwd);
-    if (afterBranch !== branch) {
-      await exec(`git checkout ${branch} 2>/dev/null || git checkout -b ${branch}`, cwd);
-      afterBranch = await exec("git branch --show-current", cwd);
-    }
-    if (afterBranch !== branch) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Failed to switch to ${branch} (on ${afterBranch}). Setup output: ${branchSetup || "(empty)"}`,
-          },
-        ],
-        details: { pipeline: "implement", stages: [] },
-        isError: true,
-      };
-    }
+    if (branchResult.status === "failed")
+      return result(branchResult.error || `Failed to switch to ${resolved.branch}.`, [], true);
   }
 
-  // --- Fresh implementation ---
-  const stageList: StageResult[] = [];
-  if (!flags.skipPlan) stageList.push(emptyStage("planner"));
-  stageList.push(emptyStage("implementor"));
-  stageList.push(emptyStage("refactorer"));
-  const stages = stageList;
-  const opts = { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline: "implement", onUpdate };
+  // --- Planning ---
+  const stages: StageResult[] = [];
+  if (!flags.skipPlan) stages.push(emptyStage("planner"));
+  stages.push(emptyStage("implementor"), emptyStage("refactorer"));
 
   let plan = "";
-
   if (!flags.skipPlan) {
-    const planResult = await runAgent(
-      "planner",
-      `Plan the implementation for this issue by producing a sequenced list of test cases.\n\n${issueContext}${customPromptSection}`,
-      { ...opts, tools: TOOLS_READONLY },
-    );
-
-    if (planResult.status === "failed") {
-      return {
-        content: [{ type: "text" as const, text: `Planner failed: ${planResult.output}` }],
-        details: { pipeline: "implement", stages },
-        isError: true,
-      };
-    }
-    plan = planResult.output;
-
-    // Interactive mode: let user review/edit the plan before proceeding
-    if (interactive && plan) {
-      const edited = await ctx.ui.editor(`Review implementation plan for ${issueLabel}`, plan);
-      if (edited != null && edited !== plan) {
-        plan = edited;
-      }
-
-      // Surface unresolved questions one-by-one for user answers
-      plan = await resolveQuestions(plan, ctx);
-
-      const action = await ctx.ui.select("Plan ready. What next?", ["Approve and implement", "Cancel"]);
-      if (action === "Cancel" || action == null) {
-        return {
-          content: [{ type: "text" as const, text: "Implementation cancelled." }],
-          details: { pipeline: "implement", stages },
-        };
-      }
-    }
+    const planResult = await runPlanning(cwd, issueContext, flags.customPrompt, {
+      signal,
+      onUpdate,
+      ctx,
+      interactive,
+      stages,
+    });
+    if (planResult.failed) return result(`Planner failed: ${planResult.plan}`, stages, true);
+    if (planResult.cancelled) return result("Implementation cancelled.", stages);
+    plan = planResult.plan;
   }
 
-  // Clean up stale blockers
+  // --- Implementor ---
   cleanSignal(cwd, "blocked");
+  const prompt = buildImplementorPrompt(issueContext, plan, flags.customPrompt, resolved, flags.autonomous);
+  await runImplementor(cwd, prompt, signal, stages, onUpdate);
 
-  // Implementor
-  const planSection = plan ? `\n\nIMPLEMENTATION PLAN:\n${plan}` : "";
-  const branchNote = resolved.branch
-    ? `\n- You should be on branch: ${resolved.branch} — do NOT create or switch branches.`
-    : "\n- Do NOT create or switch branches.";
-  const prNote = resolved.existingPR ? `\n- PR #${resolved.existingPR} already exists for this branch.` : "";
-  const closeNote = isGitHub
-    ? `\n- The PR body MUST end with a blank line then 'Closes #${resolved.number}' on its own line (not inline with other text), so the issue auto-closes on merge.`
-    : `\n- The PR body should reference Jira issue ${resolved.key}.`;
-  const unresolvedNote = flags.autonomous
-    ? `\n- If the plan has unresolved questions, resolve them yourself using sensible defaults. Do NOT stop and wait.`
-    : "";
+  if (signalExists(cwd, "blocked"))
+    return result(`Implementor blocked:\n${readSignal(cwd, "blocked") ?? ""}`, stages, true);
 
-  await runAgent(
-    "implementor",
-    `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}${customPromptSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit, push, and create a PR.\n\nCONSTRAINTS:${branchNote}${prNote}${closeNote}${unresolvedNote}\n- If blocked, write BLOCKED.md with the reason and stop.`,
-    { ...opts, tools: TOOLS_ALL },
-  );
-
-  // Check for blocker
-  if (signalExists(cwd, "blocked")) {
-    const reason = readSignal(cwd, "blocked") ?? "";
-    return {
-      content: [{ type: "text" as const, text: `Implementor blocked:\n${reason}` }],
-      details: { pipeline: "implement", stages },
-      isError: true,
-    };
-  }
-
-  // Refactor + review
+  // --- Refactor + Review ---
   await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
 
-  // Ensure PR exists — agent may have skipped or failed `gh pr create`
-  let prNumber = "";
+  // --- PR + Merge ---
+  let prNumber = 0;
   if (resolved.branch) {
-    await exec(`git push -u origin ${resolved.branch}`, cwd);
-    prNumber = await exec(`gh pr list --head "${resolved.branch}" --json number --jq '.[0].number'`, cwd);
-    if (!prNumber || prNumber === "null") {
-      const prBody = buildPrBody(cwd, resolved);
-      await createPr(cwd, resolved.title, prBody, resolved.branch);
-      prNumber = await exec(`gh pr list --head "${resolved.branch}" --json number --jq '.[0].number'`, cwd);
-    }
+    const prResult = await ensurePr(cwd, resolved.title, buildPrBody(cwd, resolved), resolved.branch);
+    prNumber = prResult.number;
   }
 
-  // Squash-merge, delete branch, update local main (skip when called from implement-all)
-  if (!flags.autonomous && prNumber && prNumber !== "null") {
+  if (!flags.autonomous && prNumber > 0) {
     const mergeStage = emptyStage("merge");
     stages.push(mergeStage);
-    await exec(`gh pr merge ${prNumber} --squash --delete-branch`, cwd);
-    await exec("git checkout main && git pull", cwd);
+    await mergePr(cwd, prNumber);
+    await returnToMain(cwd);
     mergeStage.status = "done";
     mergeStage.output = `Merged PR #${prNumber}`;
-    onUpdate?.({
-      content: [{ type: "text", text: "Pipeline complete" }],
-      details: { pipeline: "implement", stages },
-    });
+    onUpdate?.({ content: [{ type: "text", text: "Pipeline complete" }], details: { pipeline: "implement", stages } });
   }
 
-  return {
-    content: [{ type: "text" as const, text: `Implementation of ${issueLabel} complete.` }],
-    details: { pipeline: "implement", stages },
-  };
+  return result(`Implementation of ${issueLabel} complete.`, stages);
 }
