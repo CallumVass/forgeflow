@@ -1,6 +1,7 @@
 import {
   cleanSignal,
   emptyStage,
+  exec,
   type ForgeflowContext,
   type OnUpdate,
   runAgent,
@@ -9,7 +10,7 @@ import {
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 import type { ResolvedIssue } from "../utils/git.js";
-import { runReviewInline } from "./review.js";
+import { runReviewPipeline } from "./review-orchestrator.js";
 
 /**
  * Run the implementor agent with the given prompt.
@@ -39,13 +40,15 @@ export async function reviewAndFix(
   cwd: string,
   signal: AbortSignal,
   onUpdate: OnUpdate | undefined,
-  ctx: ForgeflowContext,
+  _ctx: ForgeflowContext,
   stages: StageResult[],
   pipeline = "implement",
 ): Promise<void> {
-  const reviewResult = await runReviewInline(cwd, signal, onUpdate, ctx, stages);
-  if (reviewResult.isError) {
-    const findings = reviewResult.content[0]?.type === "text" ? reviewResult.content[0].text : "";
+  const diff = await exec("git diff main...HEAD", cwd);
+  if (!diff) return;
+  const reviewResult = await runReviewPipeline(diff, { cwd, signal, stages, pipeline, onUpdate });
+  if (!reviewResult.passed) {
+    const findings = reviewResult.findings ?? "";
     stages.push(emptyStage("fix-findings"));
     await runAgent(
       "implementor",
