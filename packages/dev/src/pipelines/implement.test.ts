@@ -50,6 +50,16 @@ import { runImplement } from "./implement.js";
 import { runPlanning } from "./planning.js";
 import { runReviewPipeline } from "./review-orchestrator.js";
 
+const resolvedWithExistingPR = {
+  source: "github" as const,
+  key: "42",
+  number: 42,
+  title: "Test issue",
+  body: "Issue body",
+  branch: "feat/issue-42",
+  existingPR: 99,
+};
+
 describe("runImplement orchestrator", () => {
   it("calls setupBranch, runPlanning, runAgent (implementor), and ensurePr/mergePr in sequence", async () => {
     const pctx = mockPipelineContext({ cwd: "/tmp" });
@@ -71,15 +81,7 @@ describe("runImplement orchestrator", () => {
   });
 
   it("resume path (existingPR) calls reviewAndFix via exec + runReviewPipeline", async () => {
-    vi.mocked(resolveIssue).mockResolvedValueOnce({
-      source: "github",
-      key: "42",
-      number: 42,
-      title: "Test issue",
-      body: "Issue body",
-      branch: "feat/issue-42",
-      existingPR: 99,
-    });
+    vi.mocked(resolveIssue).mockResolvedValueOnce(resolvedWithExistingPR);
     vi.mocked(runAgent).mockClear();
 
     const pctx = mockPipelineContext({ cwd: "/tmp" });
@@ -105,15 +107,7 @@ describe("runImplement orchestrator", () => {
   });
 
   it("reviewAndFix skips review when diff is empty", async () => {
-    vi.mocked(resolveIssue).mockResolvedValueOnce({
-      source: "github",
-      key: "42",
-      number: 42,
-      title: "Test issue",
-      body: "Issue body",
-      branch: "feat/issue-42",
-      existingPR: 99,
-    });
+    vi.mocked(resolveIssue).mockResolvedValueOnce(resolvedWithExistingPR);
     vi.mocked(exec).mockResolvedValueOnce("");
     vi.mocked(runReviewPipeline).mockClear();
 
@@ -124,15 +118,7 @@ describe("runImplement orchestrator", () => {
   });
 
   it("reviewAndFix runs fix-findings agent when review fails", async () => {
-    vi.mocked(resolveIssue).mockResolvedValueOnce({
-      source: "github",
-      key: "42",
-      number: 42,
-      title: "Test issue",
-      body: "Issue body",
-      branch: "feat/issue-42",
-      existingPR: 99,
-    });
+    vi.mocked(resolveIssue).mockResolvedValueOnce(resolvedWithExistingPR);
     vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: false, findings: "Some findings" });
     vi.mocked(runAgent).mockClear();
 

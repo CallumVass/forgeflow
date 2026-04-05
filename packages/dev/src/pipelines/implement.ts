@@ -114,7 +114,7 @@ export async function runImplement(
   return result(`Implementation of ${issueLabel} complete.`, stages);
 }
 
-// --- Inlined from agents.ts (private helpers) ---
+// --- Private helpers ---
 
 async function reviewAndFix(pctx: PipelineContext, stages: StageResult[], pipeline = "implement"): Promise<void> {
   const diff = await exec("git diff main...HEAD", pctx.cwd);
