@@ -13,12 +13,14 @@
     "typecheck": "tsc -b packages/shared packages/pm packages/dev",
     "lint": "biome check packages/*/src/",
     "lint:fix": "biome check --fix packages/*/src/",
-    "check": "npm run typecheck && npm run lint"
+    "check": "npm run typecheck && npm run lint",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.10",
     "@mariozechner/pi-coding-agent": "*",
     "tsup": "^8.5.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
   }
 }
