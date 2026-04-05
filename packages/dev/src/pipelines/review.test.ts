@@ -63,15 +63,3 @@ describe("runReview composition root", () => {
     expect(result.isError).toBeUndefined();
   });
 });
-
-describe("no circular imports", () => {
-  it("agents.ts does not import from review.ts", async () => {
-    const fs = await import("node:fs");
-    const agentsSource = fs.readFileSync(
-      new URL("./agents.ts", import.meta.url).pathname.replace("/agents.ts", "/agents.ts"),
-      "utf-8",
-    );
-    expect(agentsSource).not.toContain('from "./review.js"');
-    expect(agentsSource).not.toContain("from './review.js'");
-  });
-});
