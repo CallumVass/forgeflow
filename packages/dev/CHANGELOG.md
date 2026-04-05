@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.8.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.7.0...forgeflow-dev-v0.8.0) (2026-04-05)
+
+
+### Features
+
+* add /investigate, /jira-issues commands and Confluence integration ([af5bfc8](https://github.com/CallumVass/forgeflow/commit/af5bfc894406fdee3a477c20fcbbba320ce2fe46))
+* add conventional commit style guidance to implementor and refactorer agents ([b270a39](https://github.com/CallumVass/forgeflow/commit/b270a39b47f932907a098f028c8113ce10540a9e))
+* add knip for dead code detection and extend check script with test ([#32](https://github.com/CallumVass/forgeflow/issues/32)) ([0fb4fd6](https://github.com/CallumVass/forgeflow/commit/0fb4fd625e9adefe70cd3a25b07ed0a703fa21ce))
+* ask for missing args interactively instead of requiring CLI flags ([c7db3c5](https://github.com/CallumVass/forgeflow/commit/c7db3c508c863eca7d7128deaa1fa647bd2b901d))
+* rename /jira-issues to /create-jira-issues, link package READMEs to root ([ab3002a](https://github.com/CallumVass/forgeflow/commit/ab3002a5f89e284fe35a5b57b0458aaa26efbb96))
+* support multi-candidate RFC creation in architecture pipeline ([3e5d3ef](https://github.com/CallumVass/forgeflow/commit/3e5d3ef95042c293c09ea723735938d84e03c442))
+* use repo PR template for pull request body if it exists ([b7a888a](https://github.com/CallumVass/forgeflow/commit/b7a888a1f3e7704856e2f5def9e5cee081417510))
+
+
+### Bug Fixes
+
+* add homepage field to published packages ([063be60](https://github.com/CallumVass/forgeflow/commit/063be6023005f0c646312ce27bd44ed18e9aee24))
+* correct Pi link in package READMEs ([6bd425e](https://github.com/CallumVass/forgeflow/commit/6bd425e1c0599d388c66055249c64e2d1697707a))
+* delete stale local branches at same commit as main before implementing ([9be6a47](https://github.com/CallumVass/forgeflow/commit/9be6a47756a8e6f0e9b093a53ef0533828804584))
+* gitignore tsbuildinfo files and add npm files filter ([c57e2da](https://github.com/CallumVass/forgeflow/commit/c57e2da379b2b72b8cb829cb2884f20aafb2d346))
+* handle multi-line and numbered unresolved questions in planner ([ae64db9](https://github.com/CallumVass/forgeflow/commit/ae64db9e8a64ef51df15c63e0f995f71385f347f))
+* handle remote-only branches in ensureBranch ([c788b0f](https://github.com/CallumVass/forgeflow/commit/c788b0ff6746da8332a3fc0a32026fdc014bdb82))
+* move forgeflow-shared to devDependencies since it's bundled ([2649eb9](https://github.com/CallumVass/forgeflow/commit/2649eb967bcf04f46e2023554c0a262358a1fb9e))
+* single-command branch setup with retry to handle race conditions ([46b7842](https://github.com/CallumVass/forgeflow/commit/46b78426036e60578a10c66c235733787a7c5ea6))
+* use --body-file for PR creation to preserve markdown formatting ([afb281d](https://github.com/CallumVass/forgeflow/commit/afb281d2f1b0bf2b269c3e649798b9787b68f3c3))
+* use Node 24 for trusted publishing and fix repository URL casing ([41b5e21](https://github.com/CallumVass/forgeflow/commit/41b5e21165875c3303b9d4dc98a4c5e06882b150))
+
 ## [0.7.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.6.0...forgeflow-dev-v0.7.0) (2026-04-05)
 
 
