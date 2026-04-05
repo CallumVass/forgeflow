@@ -1,4 +1,5 @@
 import type * as fs from "node:fs";
+import { mockForgeflowContext } from "@callumvass/forgeflow-shared";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", async (importOriginal) => {
@@ -31,7 +32,7 @@ describe("runContinue", () => {
   it("calls runQaLoop in Phase 2 and proceeds to issue creation on acceptance", async () => {
     const mockedRunQaLoop = vi.mocked(runQaLoop);
     mockedRunQaLoop.mockResolvedValue({ accepted: true });
-    const ctx = { hasUI: false, ui: { editor: vi.fn(), select: vi.fn() } };
+    const ctx = mockForgeflowContext();
 
     const result = await runContinue("/tmp/test", "focus on auth", 5, AbortSignal.timeout(5000), undefined, ctx);
 

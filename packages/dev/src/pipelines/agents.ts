@@ -1,7 +1,8 @@
 import {
-  type AnyCtx,
   cleanSignal,
   emptyStage,
+  type ForgeflowContext,
+  type OnUpdate,
   runAgent,
   type StageResult,
   TOOLS_ALL,
@@ -18,7 +19,7 @@ export async function runImplementor(
   prompt: string,
   signal: AbortSignal,
   stages: StageResult[],
-  onUpdate: AnyCtx,
+  onUpdate: OnUpdate | undefined,
 ): Promise<void> {
   await runAgent("implementor", prompt, {
     agentsDir: AGENTS_DIR,
@@ -37,8 +38,8 @@ export async function runImplementor(
 export async function reviewAndFix(
   cwd: string,
   signal: AbortSignal,
-  onUpdate: AnyCtx,
-  ctx: AnyCtx,
+  onUpdate: OnUpdate | undefined,
+  ctx: ForgeflowContext,
   stages: StageResult[],
   pipeline = "implement",
 ): Promise<void> {
@@ -61,8 +62,8 @@ export async function reviewAndFix(
 export async function refactorAndReview(
   cwd: string,
   signal: AbortSignal,
-  onUpdate: AnyCtx,
-  ctx: AnyCtx,
+  onUpdate: OnUpdate | undefined,
+  ctx: ForgeflowContext,
   stages: StageResult[],
   skipReview: boolean,
   pipeline = "implement",

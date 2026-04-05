@@ -12,11 +12,15 @@ export {
 } from "./rendering.js";
 export { runAgent } from "./run-agent.js";
 export { cleanSignal, readSignal, signalExists, signalPath } from "./signals.js";
+export { mockForgeflowContext } from "./test-utils.js";
 export {
-  type AnyCtx,
   emptyStage,
   emptyUsage,
+  type ForgeflowContext,
+  type ForgeflowTheme,
+  type ForgeflowUI,
   getFinalOutput,
+  type OnUpdate,
   type PipelineDetails,
   type StageResult,
   sumUsage,

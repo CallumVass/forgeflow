@@ -1,5 +1,5 @@
 import * as fs from "node:fs";
-import type { AnyCtx, StageResult } from "@callumvass/forgeflow-shared";
+import type { ForgeflowContext, OnUpdate, StageResult } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 import { runQaLoop } from "./qa-loop.js";
 
@@ -11,7 +11,13 @@ function result(text: string, pipeline: string, stages: StageResult[], isError?:
   };
 }
 
-export async function runPrdQa(cwd: string, maxIterations: number, signal: AbortSignal, onUpdate: AnyCtx, ctx: AnyCtx) {
+export async function runPrdQa(
+  cwd: string,
+  maxIterations: number,
+  signal: AbortSignal,
+  onUpdate: OnUpdate | undefined,
+  ctx: ForgeflowContext,
+) {
   if (!fs.existsSync(`${cwd}/PRD.md`)) return result("PRD.md not found.", "prd-qa", []);
 
   const stages: StageResult[] = [];

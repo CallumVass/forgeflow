@@ -1,4 +1,4 @@
-import { type AnyCtx, type StageResult, TOOLS_READONLY } from "@callumvass/forgeflow-shared";
+import { type ForgeflowContext, type OnUpdate, type StageResult, TOOLS_READONLY } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 
 // Allow injection of runAgent for testing
@@ -16,7 +16,7 @@ export interface PlanResult {
  * Parse unresolved questions from the plan and prompt the user for answers.
  * Returns the plan with answers injected inline.
  */
-export async function resolveQuestions(plan: string, ctx: AnyCtx): Promise<string> {
+export async function resolveQuestions(plan: string, ctx: ForgeflowContext): Promise<string> {
   const sectionMatch = plan.match(/### Unresolved Questions\n([\s\S]*?)(?=\n###|$)/);
   if (!sectionMatch) return plan;
 
@@ -51,8 +51,8 @@ export async function runPlanning(
   customPrompt: string | undefined,
   opts: {
     signal: AbortSignal;
-    onUpdate: AnyCtx;
-    ctx: AnyCtx;
+    onUpdate: OnUpdate | undefined;
+    ctx: ForgeflowContext;
     interactive: boolean;
     stages: StageResult[];
     runAgentFn?: RunAgentFn;

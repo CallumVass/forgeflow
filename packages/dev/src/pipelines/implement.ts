@@ -1,7 +1,8 @@
 import {
-  type AnyCtx,
   cleanSignal,
   emptyStage,
+  type ForgeflowContext,
+  type OnUpdate,
   readSignal,
   type StageResult,
   signalExists,
@@ -24,8 +25,8 @@ export async function runImplement(
   cwd: string,
   issueArg: string,
   signal: AbortSignal,
-  onUpdate: AnyCtx,
-  ctx: AnyCtx,
+  onUpdate: OnUpdate | undefined,
+  ctx: ForgeflowContext,
   flags: { skipPlan: boolean; skipReview: boolean; autonomous?: boolean; customPrompt?: string } = {
     skipPlan: false,
     skipReview: false,

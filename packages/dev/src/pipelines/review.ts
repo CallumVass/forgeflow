@@ -1,7 +1,8 @@
 import {
-  type AnyCtx,
   cleanSignal,
   emptyStage,
+  type ForgeflowContext,
+  type OnUpdate,
   readSignal,
   runAgent,
   type StageResult,
@@ -19,8 +20,8 @@ import { exec } from "../utils/exec.js";
 export async function runReviewInline(
   cwd: string,
   signal: AbortSignal,
-  onUpdate: AnyCtx,
-  ctx: AnyCtx,
+  onUpdate: OnUpdate | undefined,
+  ctx: ForgeflowContext,
   stages: StageResult[],
   diffCmd = "git diff main...HEAD",
   pipeline = "review",
@@ -153,8 +154,8 @@ export async function runReview(
   cwd: string,
   target: string,
   signal: AbortSignal,
-  onUpdate: AnyCtx,
-  ctx: AnyCtx,
+  onUpdate: OnUpdate | undefined,
+  ctx: ForgeflowContext,
   customPrompt?: string,
 ) {
   const stages: StageResult[] = [];

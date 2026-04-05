@@ -1,4 +1,10 @@
-import { type AnyCtx, emptyStage, type StageResult, sumUsage } from "@callumvass/forgeflow-shared";
+import {
+  emptyStage,
+  type ForgeflowContext,
+  type OnUpdate,
+  type StageResult,
+  sumUsage,
+} from "@callumvass/forgeflow-shared";
 import { exec } from "../utils/exec.js";
 import { findPrNumber, mergePr, returnToMain } from "../utils/git-workflow.js";
 import { setForgeflowStatus, updateProgressWidget } from "../utils/ui.js";
@@ -29,8 +35,8 @@ function getReadyIssues(issues: IssueInfo[], completed: Set<number>): number[] {
 export async function runImplementAll(
   cwd: string,
   signal: AbortSignal,
-  onUpdate: AnyCtx,
-  ctx: AnyCtx,
+  onUpdate: OnUpdate | undefined,
+  ctx: ForgeflowContext,
   flags: { skipPlan: boolean; skipReview: boolean },
 ) {
   const allStages: StageResult[] = [];
@@ -114,7 +120,7 @@ export async function runImplementAll(
     if (implStage) {
       implStage.status = implResult.isError ? "failed" : "done";
       implStage.output = implResult.content[0]?.type === "text" ? implResult.content[0].text : "";
-      const detailedStages = (implResult as AnyCtx).details?.stages as StageResult[] | undefined;
+      const detailedStages = implResult.details?.stages;
       if (detailedStages) implStage.usage = sumUsage(detailedStages);
     }
 

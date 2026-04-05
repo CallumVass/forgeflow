@@ -1,7 +1,8 @@
 import * as fs from "node:fs";
 import {
-  type AnyCtx,
   emptyStage,
+  type ForgeflowContext,
+  type OnUpdate,
   runAgent,
   type StageResult,
   TOOLS_ALL,
@@ -49,8 +50,8 @@ export async function runContinue(
   description: string,
   maxIterations: number,
   signal: AbortSignal,
-  onUpdate: AnyCtx,
-  ctx: AnyCtx,
+  onUpdate: OnUpdate | undefined,
+  ctx: ForgeflowContext,
 ) {
   if (!fs.existsSync(`${cwd}/PRD.md`)) return result("PRD.md not found.", []);
 

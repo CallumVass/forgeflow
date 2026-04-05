@@ -1,12 +1,14 @@
+import type { AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { Message } from "@mariozechner/pi-ai";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
-import type { AnyCtx, PipelineDetails, StageResult } from "./types.js";
+import type { ForgeflowTheme, PipelineDetails, StageResult } from "./types.js";
 import { getFinalOutput } from "./types.js";
 
 export type DisplayItem =
   | { type: "text"; text: string }
   | { type: "toolCall"; name: string; args: Record<string, unknown> };
 
-export function getDisplayItems(messages: AnyCtx[]): DisplayItem[] {
+export function getDisplayItems(messages: Message[]): DisplayItem[] {
   const items: DisplayItem[] = [];
   for (const msg of messages) {
     if (msg.role === "assistant") {
@@ -55,7 +57,7 @@ export function formatUsage(
   return parts.join(" ");
 }
 
-export function stageIcon(stage: StageResult, theme: AnyCtx): string {
+export function stageIcon(stage: StageResult, theme: ForgeflowTheme): string {
   return stage.status === "done"
     ? theme.fg("success", "✓")
     : stage.status === "running"
@@ -65,7 +67,7 @@ export function stageIcon(stage: StageResult, theme: AnyCtx): string {
         : theme.fg("muted", "○");
 }
 
-export function renderExpanded(details: PipelineDetails, theme: AnyCtx, toolLabel: string) {
+export function renderExpanded(details: PipelineDetails, theme: ForgeflowTheme, toolLabel: string) {
   const container = new Container();
   container.addChild(
     new Text(theme.fg("toolTitle", theme.bold(`${toolLabel} `)) + theme.fg("accent", details.pipeline), 0, 0),
@@ -108,7 +110,12 @@ export function renderExpanded(details: PipelineDetails, theme: AnyCtx, toolLabe
   return container;
 }
 
-export function renderResult(result: AnyCtx, expanded: boolean, theme: AnyCtx, toolLabel: string) {
+export function renderResult(
+  result: AgentToolResult<PipelineDetails>,
+  expanded: boolean,
+  theme: ForgeflowTheme,
+  toolLabel: string,
+) {
   const details = result.details as PipelineDetails | undefined;
   if (!details || details.stages.length === 0) {
     const text = result.content[0];
@@ -117,7 +124,7 @@ export function renderResult(result: AnyCtx, expanded: boolean, theme: AnyCtx, t
   return expanded ? renderExpanded(details, theme, toolLabel) : renderCollapsed(details, theme, toolLabel);
 }
 
-export function renderCollapsed(details: PipelineDetails, theme: AnyCtx, toolLabel: string) {
+export function renderCollapsed(details: PipelineDetails, theme: ForgeflowTheme, toolLabel: string) {
   let text = theme.fg("toolTitle", theme.bold(`${toolLabel} `)) + theme.fg("accent", details.pipeline);
   for (const stage of details.stages) {
     const icon = stageIcon(stage, theme);

@@ -2,12 +2,9 @@ import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
 import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
-import { type AnyCtx, emptyStage, type PipelineDetails, type StageResult } from "./types.js";
-
-type OnUpdate = (partial: AgentToolResult<PipelineDetails>) => void;
+import { emptyStage, type OnUpdate, type StageResult } from "./types.js";
 
 function getPiInvocation(args: string[]): { command: string; args: string[] } {
   const currentScript = process.argv[1];
@@ -90,20 +87,20 @@ export async function runAgent(
 
       const processLine = (line: string) => {
         if (!line.trim()) return;
-        let event: AnyCtx;
+        let event: { type?: string; message?: Message };
         try {
-          event = JSON.parse(line);
+          event = JSON.parse(line) as { type?: string; message?: Message };
         } catch {
           return;
         }
 
         if (event.type === "message_end" && event.message) {
-          const msg = event.message as Message;
+          const msg = event.message;
           stage.messages.push(msg);
 
           if (msg.role === "assistant") {
             stage.usage.turns++;
-            const usage = (msg as AnyCtx).usage;
+            const usage = msg.usage;
             if (usage) {
               stage.usage.input += usage.input || 0;
               stage.usage.output += usage.output || 0;
@@ -111,13 +108,13 @@ export async function runAgent(
               stage.usage.cacheWrite += usage.cacheWrite || 0;
               stage.usage.cost += usage.cost?.total || 0;
             }
-            if (!stage.model && (msg as AnyCtx).model) stage.model = (msg as AnyCtx).model;
+            if (!stage.model && msg.model) stage.model = msg.model;
           }
           emitUpdate(options);
         }
 
         if (event.type === "tool_result_end" && event.message) {
-          stage.messages.push(event.message as Message);
+          stage.messages.push(event.message);
           emitUpdate(options);
         }
       };
@@ -189,11 +186,10 @@ function getLastToolCall(messages: Message[]): string {
     // biome-ignore lint/style/noNonNullAssertion: index within bounds
     const msg = messages[i]!;
     if (msg.role === "assistant") {
-      const parts = msg.content as AnyCtx[];
-      for (let j = parts.length - 1; j >= 0; j--) {
-        const part = parts[j];
+      for (let j = msg.content.length - 1; j >= 0; j--) {
+        const part = msg.content[j];
         if (part?.type === "toolCall") {
-          const name = part.name as string;
+          const name = part.name;
           const args = (part.arguments ?? {}) as Record<string, unknown>;
           switch (name) {
             case "bash": {

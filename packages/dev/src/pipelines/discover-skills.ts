@@ -1,12 +1,19 @@
-import { type AnyCtx, emptyStage, runAgent, TOOLS_ALL, TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared";
+import {
+  emptyStage,
+  type ForgeflowContext,
+  type OnUpdate,
+  runAgent,
+  TOOLS_ALL,
+  TOOLS_NO_EDIT,
+} from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 
 export async function runDiscoverSkills(
   cwd: string,
   query: string,
   signal: AbortSignal,
-  onUpdate: AnyCtx,
-  _ctx: AnyCtx,
+  onUpdate: OnUpdate | undefined,
+  _ctx: ForgeflowContext,
 ) {
   // If query looks like specific skill names (contains commas or known skill identifiers),
   // treat as install mode. Otherwise, discover mode.

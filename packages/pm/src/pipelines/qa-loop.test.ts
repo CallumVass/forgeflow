@@ -7,12 +7,20 @@ vi.mock("node:fs", async (importOriginal) => {
   return { ...actual, readFileSync: vi.fn(() => "# PRD content"), writeFileSync: vi.fn() };
 });
 
-function mockCtx(opts: { hasUI?: boolean; editorResult?: string | null; selectResult?: string | null } = {}) {
+import type { ForgeflowContext } from "@callumvass/forgeflow-shared";
+
+function mockCtx(
+  opts: { hasUI?: boolean; editorResult?: string | undefined; selectResult?: string | undefined } = {},
+): ForgeflowContext {
   return {
     hasUI: opts.hasUI ?? true,
+    cwd: "/tmp/test",
     ui: {
-      editor: vi.fn(async () => opts.editorResult ?? null),
-      select: vi.fn(async () => opts.selectResult ?? null),
+      editor: vi.fn(async () => opts.editorResult ?? undefined),
+      select: vi.fn(async () => opts.selectResult ?? undefined),
+      input: vi.fn(async () => undefined),
+      setStatus: vi.fn(),
+      setWidget: vi.fn(),
     },
   };
 }
@@ -111,7 +119,7 @@ describe("runQaLoop", () => {
     const runAgentFn = mockRunAgent();
     // iteration 1: questions exist, iteration 2: no questions
     const signalExistsFn = vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false);
-    const ctx = { hasUI: false, ui: { editor: vi.fn(), select: vi.fn() } };
+    const ctx = mockCtx({ hasUI: false });
 
     const result = await runQaLoop(baseOpts({ runAgentFn, signalExistsFn, ctx }));
 

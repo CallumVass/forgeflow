@@ -1,5 +1,12 @@
 import * as fs from "node:fs";
-import { type AnyCtx, emptyStage, type StageResult, TOOLS_ALL, TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared";
+import {
+  emptyStage,
+  type ForgeflowContext,
+  type OnUpdate,
+  type StageResult,
+  TOOLS_ALL,
+  TOOLS_NO_EDIT,
+} from "@callumvass/forgeflow-shared";
 
 export type RunAgentFn = (
   agent: string,
@@ -15,8 +22,8 @@ export interface QaLoopOptions {
   stages: StageResult[];
   pipeline: string;
   agentsDir: string;
-  onUpdate: AnyCtx;
-  ctx: AnyCtx;
+  onUpdate: OnUpdate | undefined;
+  ctx: ForgeflowContext;
   maxIterations: number;
   criticPrompt: string;
   runAgentFn?: RunAgentFn;
