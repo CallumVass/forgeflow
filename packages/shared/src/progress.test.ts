@@ -1,31 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { emitUpdate, getLastToolCall } from "./progress.js";
-import type { StageResult } from "./types.js";
-import { emptyStage } from "./types.js";
-
-function makeStage(overrides: Partial<StageResult> = {}): StageResult {
-  return { ...emptyStage("test-stage"), ...overrides };
-}
-
-function makeAssistantMessage(content: unknown[]) {
-  return {
-    role: "assistant" as const,
-    content,
-    api: "anthropic-messages" as const,
-    provider: "anthropic" as const,
-    model: "claude-sonnet",
-    usage: {
-      input: 0,
-      output: 0,
-      cacheRead: 0,
-      cacheWrite: 0,
-      totalTokens: 0,
-      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-    },
-    stopReason: "stop" as const,
-    timestamp: Date.now(),
-  };
-}
+import { makeAssistantMessage, makeStage } from "./test-utils.js";
 
 describe("getLastToolCall", () => {
   it.each([
@@ -40,7 +15,7 @@ describe("getLastToolCall", () => {
     ["find", "find", { pattern: "*.ts" }, "find *.ts"],
     ["unknown tool", "custom-tool", {}, "custom-tool"],
   ])("formats %s correctly", (_label, name, args, expected) => {
-    const messages = [makeAssistantMessage([{ type: "toolCall", id: "tc-1", name, arguments: args }])];
+    const messages = [makeAssistantMessage({ content: [{ type: "toolCall", id: "tc-1", name, arguments: args }] })];
     expect(getLastToolCall(messages)).toBe(expected);
   });
 
@@ -49,7 +24,7 @@ describe("getLastToolCall", () => {
   });
 
   it("returns empty string when messages have no tool calls", () => {
-    const messages = [makeAssistantMessage([{ type: "text", text: "just text" }])];
+    const messages = [makeAssistantMessage({ content: [{ type: "text", text: "just text" }] })];
     expect(getLastToolCall(messages)).toBe("");
   });
 });
@@ -62,7 +37,9 @@ describe("emitUpdate", () => {
         name: "planner",
         status: "running",
         messages: [
-          makeAssistantMessage([{ type: "toolCall", id: "tc-1", name: "bash", arguments: { command: "ls" } }]),
+          makeAssistantMessage({
+            content: [{ type: "toolCall", id: "tc-1", name: "bash", arguments: { command: "ls" } }],
+          }),
         ],
       }),
     ];

@@ -1,32 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyMessageToStage, extractFinalOutput, parseMessageLine } from "./message-parser.js";
-import type { StageResult } from "./types.js";
-import { emptyStage } from "./types.js";
-
-function makeStage(overrides: Partial<StageResult> = {}): StageResult {
-  return { ...emptyStage("test-stage"), ...overrides };
-}
-
-function makeAssistantMessage(overrides: Record<string, unknown> = {}) {
-  return {
-    role: "assistant" as const,
-    content: [{ type: "text" as const, text: "hello" }],
-    api: "anthropic-messages" as const,
-    provider: "anthropic" as const,
-    model: "claude-sonnet",
-    usage: {
-      input: 100,
-      output: 50,
-      cacheRead: 10,
-      cacheWrite: 5,
-      totalTokens: 165,
-      cost: { input: 0.001, output: 0.002, cacheRead: 0.0001, cacheWrite: 0.0002, total: 0.0033 },
-    },
-    stopReason: "stop" as const,
-    timestamp: Date.now(),
-    ...overrides,
-  };
-}
+import { makeAssistantMessage, makeStage } from "./test-utils.js";
 
 describe("parseMessageLine", () => {
   it.each([

@@ -25,7 +25,14 @@ export {
 } from "./rendering.js";
 export { runAgent } from "./run-agent.js";
 export { cleanSignal, readSignal, signalExists, signalPath } from "./signals.js";
-export { mockForgeflowContext, mockPipelineContext, mockRunAgent, mockTheme } from "./test-utils.js";
+export {
+  makeAssistantMessage,
+  makeStage,
+  mockForgeflowContext,
+  mockPipelineContext,
+  mockRunAgent,
+  mockTheme,
+} from "./test-utils.js";
 export {
   emptyStage,
   emptyUsage,

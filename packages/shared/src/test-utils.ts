@@ -9,6 +9,33 @@ import {
   type StageResult,
 } from "./types.js";
 
+/** Create a StageResult with defaults, overridable for tests. */
+export function makeStage(overrides: Partial<StageResult> = {}): StageResult {
+  return { ...emptyStage("test-stage"), ...overrides };
+}
+
+/** Create a realistic assistant message with defaults, overridable for tests. */
+export function makeAssistantMessage(overrides: Record<string, unknown> = {}) {
+  return {
+    role: "assistant" as const,
+    content: [{ type: "text" as const, text: "hello" }],
+    api: "anthropic-messages" as const,
+    provider: "anthropic" as const,
+    model: "claude-sonnet",
+    usage: {
+      input: 100,
+      output: 50,
+      cacheRead: 10,
+      cacheWrite: 5,
+      totalTokens: 165,
+      cost: { input: 0.001, output: 0.002, cacheRead: 0.0001, cacheWrite: 0.0002, total: 0.0033 },
+    },
+    stopReason: "stop" as const,
+    timestamp: Date.now(),
+    ...overrides,
+  };
+}
+
 /** Create a mock theme that prefixes text with the category for test assertions. */
 export function mockTheme(): ForgeflowTheme {
   return {
