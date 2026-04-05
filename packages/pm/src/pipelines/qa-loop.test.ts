@@ -8,8 +8,7 @@ vi.mock("node:fs", async (importOriginal) => {
 });
 
 import { mockRunAgent } from "@callumvass/forgeflow-shared/testing";
-import type { ForgeflowContext } from "@callumvass/forgeflow-shared/types";
-import { emptyStage } from "@callumvass/forgeflow-shared/types";
+import { emptyStage, type ForgeflowContext } from "@callumvass/forgeflow-shared/types";
 
 function mockCtx(
   opts: { hasUI?: boolean; editorResult?: string | undefined; selectResult?: string | undefined } = {},
