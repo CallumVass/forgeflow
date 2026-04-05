@@ -13,7 +13,7 @@
     "typecheck": "tsc -b packages/shared packages/pm packages/dev",
     "lint": "biome check packages/*/src/",
     "lint:fix": "biome check --fix packages/*/src/",
-    "check": "npm run typecheck && npm run lint",
+    "check": "npm run typecheck && npm run lint && npm run test",
     "test": "vitest run"
   },
   "devDependencies": {
