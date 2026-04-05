@@ -1,6 +1,7 @@
 export { extractFlags, type FlagResult, type FlagSpecs, splitFirstToken, unquote } from "./arg-parsing.js";
 export { type ConfluencePage, fetchConfluencePage } from "./confluence.js";
 export { SIGNALS, TOOLS_ALL, TOOLS_NO_EDIT, TOOLS_READONLY } from "./constants.js";
+export { resolveRunAgent } from "./di.js";
 export { type ExecFn, exec, execSafe } from "./exec.js";
 export {
   buildSendMessage,
@@ -10,6 +11,8 @@ export {
   type ParamDef,
   type PipelineDefinition,
 } from "./extension.js";
+export { applyMessageToStage, extractFinalOutput, parseMessageLine } from "./message-parser.js";
+export { emitUpdate, getLastToolCall } from "./progress.js";
 export {
   type DisplayItem,
   formatToolCallShort,
@@ -20,9 +23,16 @@ export {
   renderResult,
   stageIcon,
 } from "./rendering.js";
-export { resolveRunAgent, runAgent } from "./run-agent.js";
+export { runAgent } from "./run-agent.js";
 export { cleanSignal, readSignal, signalExists, signalPath } from "./signals.js";
-export { mockForgeflowContext, mockPipelineContext, mockRunAgent, mockTheme } from "./test-utils.js";
+export {
+  makeAssistantMessage,
+  makeStage,
+  mockForgeflowContext,
+  mockPipelineContext,
+  mockRunAgent,
+  mockTheme,
+} from "./test-utils.js";
 export {
   emptyStage,
   emptyUsage,

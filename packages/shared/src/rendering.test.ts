@@ -9,13 +9,8 @@ import {
   renderExpanded,
   stageIcon,
 } from "./rendering.js";
-import { mockTheme } from "./test-utils.js";
-import type { ForgeflowContext, ForgeflowTheme, ForgeflowUI, PipelineDetails, StageResult } from "./types.js";
-import { emptyStage } from "./types.js";
-
-function makeStage(overrides: Partial<StageResult> = {}): StageResult {
-  return { ...emptyStage("test-stage"), ...overrides };
-}
+import { makeStage, mockTheme } from "./test-utils.js";
+import type { ForgeflowContext, ForgeflowTheme, ForgeflowUI, PipelineDetails } from "./types.js";
 
 describe("rendering exports", () => {
   it("exports all seven symbols", () => {
