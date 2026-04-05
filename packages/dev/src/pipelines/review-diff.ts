@@ -1,4 +1,4 @@
-import { execSafe as defaultExecSafe, type ExecFn } from "@callumvass/forgeflow-shared";
+import { execSafe as defaultExecSafe, type ExecFn } from "@callumvass/forgeflow-shared/exec";
 
 interface DiffTarget {
   diffCmd: string;

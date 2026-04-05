@@ -1,5 +1,5 @@
-import type { ForgeflowContext } from "@callumvass/forgeflow-shared";
-import { mockRunAgent } from "@callumvass/forgeflow-shared";
+import { mockRunAgent } from "@callumvass/forgeflow-shared/testing";
+import type { ForgeflowContext } from "@callumvass/forgeflow-shared/types";
 import { describe, expect, it, vi } from "vitest";
 import { resolveQuestions, runPlanning } from "./planning.js";
 

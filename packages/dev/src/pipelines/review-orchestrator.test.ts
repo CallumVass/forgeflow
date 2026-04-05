@@ -1,30 +1,25 @@
-import { emptyStage, type StageResult } from "@callumvass/forgeflow-shared";
+import { emptyStage, type StageResult } from "@callumvass/forgeflow-shared/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { runReviewPipeline } from "./review-orchestrator.js";
 
 // Mock signals module
-vi.mock("@callumvass/forgeflow-shared", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@callumvass/forgeflow-shared")>();
-  let signals: Record<string, string> = {};
-  return {
-    ...actual,
-    cleanSignal: vi.fn((_cwd: string, name: string) => {
-      delete signals[name];
-    }),
-    signalExists: vi.fn((_cwd: string, name: string) => name in signals),
-    readSignal: vi.fn((_cwd: string, name: string) => signals[name] ?? null),
-    // Allow tests to control the signal state
-    __setSignal: (name: string, value: string) => {
-      signals[name] = value;
-    },
-    __clearSignals: () => {
-      signals = {};
-    },
-  };
-});
+let signals: Record<string, string> = {};
 
-// biome-ignore lint/suspicious/noExplicitAny: test helper access
-const shared = (await import("@callumvass/forgeflow-shared")) as any;
+vi.mock("@callumvass/forgeflow-shared/signals", () => ({
+  cleanSignal: vi.fn((_cwd: string, name: string) => {
+    delete signals[name];
+  }),
+  signalExists: vi.fn((_cwd: string, name: string) => name in signals),
+  readSignal: vi.fn((_cwd: string, name: string) => signals[name] ?? null),
+}));
+
+function setSignal(name: string, value: string) {
+  signals[name] = value;
+}
+
+function clearSignals() {
+  signals = {};
+}
 
 function mockRunAgent(sideEffects: Array<() => void> = []) {
   let callIndex = 0;
@@ -45,7 +40,7 @@ describe("runReviewPipeline", () => {
   });
 
   beforeEach(() => {
-    shared.__clearSignals();
+    clearSignals();
   });
 
   it("returns passed: true when code-reviewer produces no findings signal", async () => {
@@ -69,8 +64,8 @@ describe("runReviewPipeline", () => {
   it("returns passed: true when review-judge filters all findings", async () => {
     // Reviewer sets findings, then judge clears them
     const runAgentFn = mockRunAgent([
-      () => shared.__setSignal("findings", "some findings"),
-      () => shared.__clearSignals(), // judge removes findings
+      () => setSignal("findings", "some findings"),
+      () => clearSignals(), // judge removes findings
     ]);
 
     const result = await runReviewPipeline("diff content", {
@@ -91,8 +86,8 @@ describe("runReviewPipeline", () => {
   it("returns passed: false with findings when validated findings survive both stages", async () => {
     // Reviewer sets findings, judge updates but keeps them
     const runAgentFn = mockRunAgent([
-      () => shared.__setSignal("findings", "initial findings"),
-      () => shared.__setSignal("findings", "validated findings"),
+      () => setSignal("findings", "initial findings"),
+      () => setSignal("findings", "validated findings"),
     ]);
 
     const result = await runReviewPipeline("diff content", {

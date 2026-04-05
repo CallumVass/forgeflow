@@ -1,5 +1,5 @@
 import type * as fs from "node:fs";
-import { mockPipelineContext } from "@callumvass/forgeflow-shared";
+import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", async (importOriginal) => {
@@ -16,14 +16,10 @@ vi.mock("./qa-loop.js", () => ({
   runQaLoop: vi.fn(async () => ({ accepted: true })),
 }));
 
-// Mock runAgent and emptyStage for Phase 1 and Phase 3
-vi.mock("@callumvass/forgeflow-shared", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@callumvass/forgeflow-shared")>();
-  return {
-    ...actual,
-    runAgent: vi.fn(async () => ({ output: "done", status: "done", stderr: "" })),
-  };
-});
+// Mock runAgent for Phase 1 and Phase 3
+vi.mock("@callumvass/forgeflow-shared/agent", () => ({
+  runAgent: vi.fn(async () => ({ output: "done", status: "done", stderr: "" })),
+}));
 
 import { runContinue } from "./continue.js";
 import { runQaLoop } from "./qa-loop.js";

@@ -1,5 +1,7 @@
 import * as fs from "node:fs";
-import { emptyStage, type PipelineContext, runAgent, TOOLS_NO_EDIT, toAgentOpts } from "@callumvass/forgeflow-shared";
+import { runAgent } from "@callumvass/forgeflow-shared/agent";
+import { TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared/constants";
+import { emptyStage, type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/types";
 import { AGENTS_DIR } from "../resolve.js";
 
 export async function runCreateIssue(idea: string, pctx: PipelineContext) {

@@ -1,4 +1,4 @@
-import type { ExecFn } from "@callumvass/forgeflow-shared";
+import type { ExecFn } from "@callumvass/forgeflow-shared/exec";
 import { describe, expect, it, vi } from "vitest";
 import { ensurePr, mergePr, returnToMain, setupBranch, verifyOnBranch } from "./git-workflow.js";
 

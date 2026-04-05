@@ -1,13 +1,7 @@
-import {
-  cleanSignal,
-  emptyStage,
-  type RunAgentFn,
-  type RunAgentOpts,
-  readSignal,
-  resolveRunAgent,
-  signalExists,
-  TOOLS_NO_EDIT,
-} from "@callumvass/forgeflow-shared";
+import { TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared/constants";
+import { resolveRunAgent } from "@callumvass/forgeflow-shared/di";
+import { cleanSignal, readSignal, signalExists } from "@callumvass/forgeflow-shared/signals";
+import { emptyStage, type RunAgentFn, type RunAgentOpts } from "@callumvass/forgeflow-shared/types";
 import { AGENTS_DIR } from "../resolve.js";
 
 interface ReviewResult {

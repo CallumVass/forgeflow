@@ -1,4 +1,4 @@
-import { mockPipelineContext } from "@callumvass/forgeflow-shared";
+import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./review-diff.js", () => ({
@@ -13,15 +13,11 @@ vi.mock("./review-comments.js", () => ({
   proposeAndPostComments: vi.fn(async () => {}),
 }));
 
-vi.mock("@callumvass/forgeflow-shared", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@callumvass/forgeflow-shared")>();
-  return {
-    ...actual,
-    exec: vi.fn(async () => "diff output here"),
-  };
-});
+vi.mock("@callumvass/forgeflow-shared/exec", () => ({
+  exec: vi.fn(async () => "diff output here"),
+}));
 
-import { exec } from "@callumvass/forgeflow-shared";
+import { exec } from "@callumvass/forgeflow-shared/exec";
 import { runReview } from "./review.js";
 import { proposeAndPostComments } from "./review-comments.js";
 import { resolveDiffTarget } from "./review-diff.js";

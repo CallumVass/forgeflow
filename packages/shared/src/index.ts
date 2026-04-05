@@ -1,3 +1,7 @@
+/**
+ * @deprecated Import from sub-paths instead (e.g. '@callumvass/forgeflow-shared/types').
+ * This barrel re-export is kept for backwards compatibility during migration.
+ */
 export { extractFlags, type FlagResult, type FlagSpecs, splitFirstToken, unquote } from "./arg-parsing.js";
 export { type ConfluencePage, fetchConfluencePage } from "./confluence.js";
 export { SIGNALS, TOOLS_ALL, TOOLS_NO_EDIT, TOOLS_READONLY } from "./constants.js";
@@ -25,14 +29,6 @@ export {
 } from "./rendering.js";
 export { runAgent } from "./run-agent.js";
 export { cleanSignal, readSignal, signalExists, signalPath } from "./signals.js";
-export {
-  makeAssistantMessage,
-  makeStage,
-  mockForgeflowContext,
-  mockPipelineContext,
-  mockRunAgent,
-  mockTheme,
-} from "./test-utils.js";
 export {
   emptyStage,
   emptyUsage,

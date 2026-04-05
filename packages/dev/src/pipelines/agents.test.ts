@@ -1,20 +1,19 @@
-import { mockPipelineContext } from "@callumvass/forgeflow-shared";
+import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@callumvass/forgeflow-shared", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@callumvass/forgeflow-shared")>();
-  return {
-    ...actual,
-    exec: vi.fn(async () => "diff content"),
-    runAgent: vi.fn(async () => ({ output: "", status: "done" })),
-  };
-});
+vi.mock("@callumvass/forgeflow-shared/exec", () => ({
+  exec: vi.fn(async () => "diff content"),
+}));
+
+vi.mock("@callumvass/forgeflow-shared/agent", () => ({
+  runAgent: vi.fn(async () => ({ output: "", status: "done" })),
+}));
 
 vi.mock("./review-orchestrator.js", () => ({
   runReviewPipeline: vi.fn(async () => ({ passed: true })),
 }));
 
-import { exec } from "@callumvass/forgeflow-shared";
+import { exec } from "@callumvass/forgeflow-shared/exec";
 import { reviewAndFix } from "./agents.js";
 import { runReviewPipeline } from "./review-orchestrator.js";
 
