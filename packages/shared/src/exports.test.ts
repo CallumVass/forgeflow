@@ -53,7 +53,6 @@ describe("no production files import from the bare barrel", () => {
     "../../dev/src/utils/ui.ts",
     "../../dev/src/utils/git.ts",
     "../../dev/src/utils/git-workflow.ts",
-    "../../dev/src/pipelines/agents.ts",
     "../../dev/src/pipelines/architecture.ts",
     "../../dev/src/pipelines/discover-skills.ts",
     "../../dev/src/pipelines/implement.ts",
@@ -89,7 +88,6 @@ describe("no production files import from the bare barrel", () => {
 
 describe("no test file uses the barrel vi.mock importOriginal pattern", () => {
   const testFiles = [
-    "../../dev/src/pipelines/agents.test.ts",
     "../../dev/src/pipelines/review.test.ts",
     "../../dev/src/pipelines/review-orchestrator.test.ts",
     "../../dev/src/pipelines/implement.test.ts",
