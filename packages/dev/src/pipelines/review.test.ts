@@ -45,12 +45,13 @@ describe("runReview composition root", () => {
   });
 
   it("returns early with no-changes message when diff is empty", async () => {
+    vi.mocked(runReviewPipeline).mockClear();
     vi.mocked(exec).mockResolvedValueOnce("");
     const ctx = mockForgeflowContext();
     const result = await runReview("/tmp", "5", AbortSignal.timeout(5000), undefined, ctx);
 
     expect(result.content[0]?.text).toContain("No changes");
-    expect(runReviewPipeline).not.toHaveBeenCalledTimes(2); // not called again
+    expect(runReviewPipeline).not.toHaveBeenCalled();
   });
 
   it("returns passed message when review pipeline passes", async () => {

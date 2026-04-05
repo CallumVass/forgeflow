@@ -28,10 +28,11 @@ describe("reviewAndFix", () => {
   });
 
   it("skips review pipeline when diff is empty", async () => {
+    vi.mocked(runReviewPipeline).mockClear();
     vi.mocked(exec).mockResolvedValueOnce("");
     const ctx = mockForgeflowContext();
     await reviewAndFix("/tmp", AbortSignal.timeout(5000), undefined, ctx, []);
 
-    expect(runReviewPipeline).not.toHaveBeenCalledTimes(2);
+    expect(runReviewPipeline).not.toHaveBeenCalled();
   });
 });
