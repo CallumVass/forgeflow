@@ -1,9 +1,6 @@
 import { type ForgeflowContext, type OnUpdate, type StageResult, TOOLS_READONLY } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
-
-// Allow injection of runAgent for testing
-// biome-ignore lint/suspicious/noExplicitAny: flexible opts for DI
-type RunAgentFn = (agent: string, prompt: string, opts: any) => Promise<{ output: string; status: string }>;
+import { resolveRunAgent, type RunAgentFn } from "./run-agent-di.js";
 
 export interface PlanResult {
   plan: string;
@@ -60,12 +57,7 @@ export async function runPlanning(
 ): Promise<PlanResult> {
   const { signal, onUpdate, ctx, interactive, stages } = opts;
 
-  // Use injected runAgent or dynamically import the real one
-  let runAgentFn = opts.runAgentFn;
-  if (!runAgentFn) {
-    const mod = await import("@callumvass/forgeflow-shared");
-    runAgentFn = mod.runAgent as RunAgentFn;
-  }
+  const runAgentFn = await resolveRunAgent(opts.runAgentFn);
 
   const customPromptSection = customPrompt ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${customPrompt}` : "";
 

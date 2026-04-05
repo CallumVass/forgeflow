@@ -8,9 +8,7 @@ import {
   TOOLS_NO_EDIT,
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
-
-// biome-ignore lint/suspicious/noExplicitAny: flexible opts for DI
-type RunAgentFn = (agent: string, prompt: string, opts: any) => Promise<{ output: string; status: string }>;
+import { resolveRunAgent, type RunAgentFn } from "./run-agent-di.js";
 
 export interface ReviewResult {
   passed: boolean;
@@ -36,11 +34,7 @@ export async function runReviewPipeline(
 ): Promise<ReviewResult> {
   const { cwd, signal, stages, pipeline = "review", onUpdate, customPrompt } = opts;
 
-  let runAgentFn = opts.runAgentFn;
-  if (!runAgentFn) {
-    const mod = await import("@callumvass/forgeflow-shared");
-    runAgentFn = mod.runAgent as RunAgentFn;
-  }
+  const runAgentFn = await resolveRunAgent(opts.runAgentFn);
 
   const agentOpts = { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline, onUpdate };
   const extraInstructions = customPrompt ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${customPrompt}` : "";

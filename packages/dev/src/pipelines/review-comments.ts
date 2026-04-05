@@ -8,9 +8,7 @@ import {
   TOOLS_READONLY,
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
-
-// biome-ignore lint/suspicious/noExplicitAny: flexible opts for DI
-type RunAgentFn = (agent: string, prompt: string, opts: any) => Promise<{ output: string; status: string }>;
+import { resolveRunAgent, type RunAgentFn } from "./run-agent-di.js";
 
 /**
  * Build the prompt for the comment-proposal agent call.
@@ -95,11 +93,7 @@ export async function proposeAndPostComments(
   const { cwd, signal, stages, ctx, pipeline = "review", onUpdate } = opts;
   const execFn = opts.execFn ?? defaultExec;
 
-  let runAgentFn = opts.runAgentFn;
-  if (!runAgentFn) {
-    const mod = await import("@callumvass/forgeflow-shared");
-    runAgentFn = mod.runAgent as RunAgentFn;
-  }
+  const runAgentFn = await resolveRunAgent(opts.runAgentFn);
 
   const proposalPrompt = buildCommentProposalPrompt(findings, pr.number, pr.repo);
 
