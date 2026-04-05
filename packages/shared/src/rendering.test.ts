@@ -9,16 +9,9 @@ import {
   renderExpanded,
   stageIcon,
 } from "./rendering.js";
+import { mockTheme } from "./test-utils.js";
 import type { ForgeflowContext, ForgeflowTheme, ForgeflowUI, PipelineDetails, StageResult } from "./types.js";
 import { emptyStage } from "./types.js";
-
-// Helper: mock theme that passes through text with category prefix for assertions
-function mockTheme() {
-  return {
-    fg: (category: string, text: string) => `[${category}]${text}`,
-    bold: (text: string) => `**${text}**`,
-  };
-}
 
 function makeStage(overrides: Partial<StageResult> = {}): StageResult {
   return { ...emptyStage("test-stage"), ...overrides };
@@ -234,7 +227,7 @@ describe("extraction verification", () => {
     }
   });
 
-  it("dev/index.ts and pm/index.ts import renderResult from shared", () => {
+  it("dev/index.ts and pm/index.ts use createForgeflowExtension from shared (which handles renderResult internally)", () => {
     const devPath = resolve(__dirname, "../../dev/src/index.ts");
     const pmPath = resolve(__dirname, "../../pm/src/index.ts");
     const devSrc = readFileSync(devPath, "utf-8");
@@ -242,8 +235,12 @@ describe("extraction verification", () => {
 
     for (const src of [devSrc, pmSrc]) {
       expect(src).toContain("@callumvass/forgeflow-shared");
-      expect(src).toContain("renderResult");
+      expect(src).toContain("createForgeflowExtension");
     }
+
+    // renderResult is now called internally by the factory in extension.ts
+    const extensionSrc = readFileSync(resolve(__dirname, "extension.ts"), "utf-8");
+    expect(extensionSrc).toContain("renderResult");
   });
 });
 

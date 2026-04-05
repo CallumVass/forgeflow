@@ -3,7 +3,7 @@
   "workspaces": {
     "packages/shared": {
       "project": ["src/**/*.ts"],
-      "ignoreDependencies": ["@mariozechner/pi-*"]
+      "ignoreDependencies": ["@mariozechner/pi-*", "@sinclair/typebox"]
     },
     "packages/pm": {
       "project": ["src/**/*.ts"]
