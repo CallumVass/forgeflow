@@ -1,6 +1,6 @@
 import { execSafe as defaultExecSafe, type ExecFn } from "@callumvass/forgeflow-shared";
 
-export interface DiffTarget {
+interface DiffTarget {
   diffCmd: string;
   prNumber?: string;
 }

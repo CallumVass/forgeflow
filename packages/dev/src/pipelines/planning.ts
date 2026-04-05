@@ -8,7 +8,7 @@ import {
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 
-export interface PlanResult {
+interface PlanResult {
   plan: string;
   cancelled: boolean;
   failed?: boolean;

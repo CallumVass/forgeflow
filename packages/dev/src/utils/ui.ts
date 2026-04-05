@@ -4,7 +4,7 @@ export function setForgeflowStatus(ctx: ForgeflowContext, text: string | undefin
   if (ctx.hasUI) ctx.ui.setStatus("forgeflow-dev", text);
 }
 
-export function setForgeflowWidget(ctx: ForgeflowContext, lines: string[] | undefined): void {
+function setForgeflowWidget(ctx: ForgeflowContext, lines: string[] | undefined): void {
   if (ctx.hasUI) ctx.ui.setWidget("forgeflow-dev", lines);
 }
 
