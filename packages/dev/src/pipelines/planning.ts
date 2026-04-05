@@ -1,10 +1,11 @@
 import {
   type ForgeflowContext,
-  type OnUpdate,
+  type PipelineContext,
   type RunAgentFn,
   resolveRunAgent,
   type StageResult,
   TOOLS_READONLY,
+  toAgentOpts,
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 
@@ -49,28 +50,25 @@ export async function resolveQuestions(plan: string, ctx: ForgeflowContext): Pro
  * resolve questions, and get approval.
  */
 export async function runPlanning(
-  cwd: string,
   issueContext: string,
   customPrompt: string | undefined,
-  opts: {
-    signal: AbortSignal;
-    onUpdate: OnUpdate | undefined;
-    ctx: ForgeflowContext;
+  opts: PipelineContext & {
     interactive: boolean;
     stages: StageResult[];
     runAgentFn?: RunAgentFn;
   },
 ): Promise<PlanResult> {
-  const { signal, onUpdate, ctx, interactive, stages } = opts;
+  const { ctx, interactive, stages } = opts;
 
   const runAgentFn = await resolveRunAgent(opts.runAgentFn);
+  const agentOpts = toAgentOpts(opts, { agentsDir: AGENTS_DIR, stages, pipeline: "implement" });
 
   const customPromptSection = customPrompt ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${customPrompt}` : "";
 
   const planResult = await runAgentFn(
     "planner",
     `Plan the implementation for this issue by producing a sequenced list of test cases.\n\n${issueContext}${customPromptSection}`,
-    { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline: "implement", onUpdate, tools: TOOLS_READONLY },
+    { ...agentOpts, tools: TOOLS_READONLY },
   );
 
   if (planResult.status === "failed") {

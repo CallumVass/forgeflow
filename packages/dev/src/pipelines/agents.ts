@@ -2,11 +2,11 @@ import {
   cleanSignal,
   emptyStage,
   exec,
-  type ForgeflowContext,
-  type OnUpdate,
+  type PipelineContext,
   runAgent,
   type StageResult,
   TOOLS_ALL,
+  toAgentOpts,
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 import type { ResolvedIssue } from "../utils/git.js";
@@ -15,47 +15,32 @@ import { runReviewPipeline } from "./review-orchestrator.js";
 /**
  * Run the implementor agent with the given prompt.
  */
-export async function runImplementor(
-  cwd: string,
-  prompt: string,
-  signal: AbortSignal,
-  stages: StageResult[],
-  onUpdate: OnUpdate | undefined,
-): Promise<void> {
-  await runAgent("implementor", prompt, {
-    agentsDir: AGENTS_DIR,
-    cwd,
-    signal,
-    stages,
-    pipeline: "implement",
-    onUpdate,
-    tools: TOOLS_ALL,
-  });
+export async function runImplementor(prompt: string, pctx: PipelineContext, stages: StageResult[]): Promise<void> {
+  const opts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline: "implement" });
+  await runAgent("implementor", prompt, { ...opts, tools: TOOLS_ALL });
 }
 
 /**
  * Run review and fix any findings via implementor.
  */
 export async function reviewAndFix(
-  cwd: string,
-  signal: AbortSignal,
-  onUpdate: OnUpdate | undefined,
-  _ctx: ForgeflowContext,
+  pctx: PipelineContext,
   stages: StageResult[],
   pipeline = "implement",
 ): Promise<void> {
-  const diff = await exec("git diff main...HEAD", cwd);
+  const diff = await exec("git diff main...HEAD", pctx.cwd);
   if (!diff) return;
-  const reviewResult = await runReviewPipeline(diff, { cwd, signal, stages, pipeline, onUpdate });
+  const opts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline });
+  const reviewResult = await runReviewPipeline(diff, opts);
   if (!reviewResult.passed) {
     const findings = reviewResult.findings ?? "";
     stages.push(emptyStage("fix-findings"));
     await runAgent(
       "implementor",
       `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
-      { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL, stageName: "fix-findings" },
+      { ...opts, tools: TOOLS_ALL, stageName: "fix-findings" },
     );
-    cleanSignal(cwd, "findings");
+    cleanSignal(pctx.cwd, "findings");
   }
 }
 
@@ -63,23 +48,21 @@ export async function reviewAndFix(
  * Run refactorer then review+fix. Shared by fresh implementation and resume paths.
  */
 export async function refactorAndReview(
-  cwd: string,
-  signal: AbortSignal,
-  onUpdate: OnUpdate | undefined,
-  ctx: ForgeflowContext,
+  pctx: PipelineContext,
   stages: StageResult[],
   skipReview: boolean,
   pipeline = "implement",
 ): Promise<void> {
+  const opts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline });
   if (!stages.some((s) => s.name === "refactorer")) stages.push(emptyStage("refactorer"));
   await runAgent(
     "refactorer",
     "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit and push if changed.",
-    { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline, onUpdate, tools: TOOLS_ALL },
+    { ...opts, tools: TOOLS_ALL },
   );
 
   if (!skipReview) {
-    await reviewAndFix(cwd, signal, onUpdate, ctx, stages, pipeline);
+    await reviewAndFix(pctx, stages, pipeline);
   }
 }
 

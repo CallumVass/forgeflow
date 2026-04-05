@@ -1,4 +1,4 @@
-import { exec, type ForgeflowContext, type OnUpdate, type StageResult } from "@callumvass/forgeflow-shared";
+import { exec, type PipelineContext, type StageResult } from "@callumvass/forgeflow-shared";
 import { proposeAndPostComments } from "./review-comments.js";
 import { resolveDiffTarget } from "./review-diff.js";
 import { runReviewPipeline } from "./review-orchestrator.js";
@@ -14,14 +14,8 @@ const reviewResult = (text: string, stages: StageResult[], isError?: boolean): T
   details: { pipeline: "review", stages },
 });
 
-export async function runReview(
-  cwd: string,
-  target: string,
-  signal: AbortSignal,
-  onUpdate: OnUpdate | undefined,
-  ctx: ForgeflowContext,
-  customPrompt?: string,
-) {
+export async function runReview(target: string, pctx: PipelineContext, customPrompt?: string) {
+  const { cwd, signal, onUpdate, ctx } = pctx;
   const stages: StageResult[] = [];
   const { diffCmd, prNumber } = await resolveDiffTarget(cwd, target);
 
@@ -39,11 +33,7 @@ export async function runReview(
   const findings = result.findings ?? "";
   if (ctx.hasUI && prNumber) {
     const repo = await exec("gh repo view --json nameWithOwner --jq .nameWithOwner", cwd);
-    await proposeAndPostComments(
-      findings,
-      { number: prNumber, repo },
-      { cwd, signal, stages, ctx, pipeline: "review", onUpdate },
-    );
+    await proposeAndPostComments(findings, { number: prNumber, repo }, { ...pctx, stages, pipeline: "review" });
   }
 
   return reviewResult(findings, stages, true);

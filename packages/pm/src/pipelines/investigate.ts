@@ -1,22 +1,16 @@
 import {
   type ConfluencePage,
   emptyStage,
-  type ForgeflowContext,
   fetchConfluencePage,
-  type OnUpdate,
+  type PipelineContext,
   runAgent,
   TOOLS_ALL,
+  toAgentOpts,
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 
-export async function runInvestigate(
-  cwd: string,
-  description: string,
-  templateUrl: string,
-  signal: AbortSignal,
-  onUpdate: OnUpdate | undefined,
-  ctx: ForgeflowContext,
-) {
+export async function runInvestigate(description: string, templateUrl: string, pctx: PipelineContext) {
+  const { ctx } = pctx;
   const interactive = ctx.hasUI;
 
   // Ask for required description interactively if not provided
@@ -54,7 +48,7 @@ export async function runInvestigate(
   }
 
   const stages = [emptyStage("investigator")];
-  const opts = { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline: "investigate", onUpdate };
+  const opts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline: "investigate" });
 
   const task = `Investigate the following and produce a document using the template provided.
 

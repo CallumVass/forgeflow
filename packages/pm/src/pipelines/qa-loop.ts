@@ -1,26 +1,22 @@
 import * as fs from "node:fs";
 import {
   emptyStage,
-  type ForgeflowContext,
-  type OnUpdate,
+  type PipelineContext,
   type RunAgentFn,
   resolveRunAgent,
   type StageResult,
   signalExists,
   TOOLS_ALL,
   TOOLS_NO_EDIT,
+  toAgentOpts,
 } from "@callumvass/forgeflow-shared";
 
 export type SignalExistsFn = (cwd: string, signal: string) => boolean;
 
-export interface QaLoopOptions {
-  cwd: string;
-  signal: AbortSignal;
+export interface QaLoopOptions extends PipelineContext {
   stages: StageResult[];
   pipeline: string;
   agentsDir: string;
-  onUpdate: OnUpdate | undefined;
-  ctx: ForgeflowContext;
   maxIterations: number;
   criticPrompt: string;
   runAgentFn?: RunAgentFn;
@@ -33,12 +29,12 @@ interface QaLoopResult {
 }
 
 export async function runQaLoop(opts: QaLoopOptions): Promise<QaLoopResult> {
-  const { cwd, stages, pipeline, agentsDir, signal, onUpdate, ctx, maxIterations, criticPrompt } = opts;
+  const { cwd, stages, pipeline, agentsDir, ctx, maxIterations, criticPrompt } = opts;
 
   const runAgentFn = await resolveRunAgent(opts.runAgentFn);
   const signalExistsFn = opts.signalExistsFn ?? (signalExists as SignalExistsFn);
 
-  const agentOpts = { agentsDir, cwd, signal, stages, pipeline, onUpdate };
+  const agentOpts = toAgentOpts(opts, { agentsDir, stages, pipeline });
 
   for (let i = 1; i <= maxIterations; i++) {
     stages.push(emptyStage("prd-critic"));

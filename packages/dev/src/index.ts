@@ -1,10 +1,12 @@
-import { createForgeflowExtension } from "@callumvass/forgeflow-shared";
+import { createForgeflowExtension, toPipelineContext } from "@callumvass/forgeflow-shared";
 import { commands } from "./commands.js";
 import { runArchitecture } from "./pipelines/architecture.js";
 import { runDiscoverSkills } from "./pipelines/discover-skills.js";
 import { runImplement } from "./pipelines/implement.js";
 import { runImplementAll } from "./pipelines/implement-all.js";
 import { runReview } from "./pipelines/review.js";
+
+const pctx = toPipelineContext;
 
 export default createForgeflowExtension({
   toolName: "forgeflow-dev",
@@ -30,7 +32,7 @@ export default createForgeflowExtension({
     {
       name: "implement",
       execute: (cwd, p, s, u, c) =>
-        runImplement(cwd, (p.issue as string) ?? "", s, u, c, {
+        runImplement((p.issue as string) ?? "", pctx(cwd, s, u, c), {
           skipPlan: (p.skipPlan as boolean) ?? false,
           skipReview: (p.skipReview as boolean) ?? false,
           customPrompt: p.customPrompt as string | undefined,
@@ -39,7 +41,7 @@ export default createForgeflowExtension({
     {
       name: "implement-all",
       execute: (cwd, p, s, u, c) =>
-        runImplementAll(cwd, s, u, c, {
+        runImplementAll(pctx(cwd, s, u, c), {
           skipPlan: (p.skipPlan as boolean) ?? false,
           skipReview: (p.skipReview as boolean) ?? false,
         }),
@@ -47,12 +49,12 @@ export default createForgeflowExtension({
     {
       name: "review",
       execute: (cwd, p, s, u, c) =>
-        runReview(cwd, (p.target as string) ?? "", s, u, c, p.customPrompt as string | undefined),
+        runReview((p.target as string) ?? "", pctx(cwd, s, u, c), p.customPrompt as string | undefined),
     },
-    { name: "architecture", execute: (cwd, _p, s, u, c) => runArchitecture(cwd, s, u, c) },
+    { name: "architecture", execute: (cwd, _p, s, u, c) => runArchitecture(pctx(cwd, s, u, c)) },
     {
       name: "discover-skills",
-      execute: (cwd, p, s, u, c) => runDiscoverSkills(cwd, (p.issue as string) ?? "", s, u, c),
+      execute: (cwd, p, s, u, c) => runDiscoverSkills((p.issue as string) ?? "", pctx(cwd, s, u, c)),
     },
   ],
   commands,

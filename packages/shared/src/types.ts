@@ -55,6 +55,37 @@ export function emptyUsage(): UsageStats {
   return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 };
 }
 
+/** The 4 arguments that appear in every pipeline function, bundled as one object. */
+export interface PipelineContext {
+  cwd: string;
+  signal: AbortSignal;
+  onUpdate: OnUpdate | undefined;
+  ctx: ForgeflowContext;
+}
+
+/** Build a PipelineContext from the raw extension execute() arguments. */
+export function toPipelineContext(
+  cwd: string,
+  signal: AbortSignal,
+  onUpdate: OnUpdate,
+  ctx: ForgeflowContext,
+): PipelineContext {
+  return { cwd, signal, onUpdate: onUpdate as OnUpdate | undefined, ctx };
+}
+
+/** Convert a PipelineContext + pipeline-specific extras into RunAgentOpts. */
+export function toAgentOpts(
+  pctx: PipelineContext,
+  extra: { agentsDir: string; stages: StageResult[]; pipeline: string },
+): RunAgentOpts {
+  return {
+    cwd: pctx.cwd,
+    signal: pctx.signal,
+    onUpdate: pctx.onUpdate,
+    ...extra,
+  };
+}
+
 export type RunAgentOpts = {
   agentsDir: string;
   cwd: string;

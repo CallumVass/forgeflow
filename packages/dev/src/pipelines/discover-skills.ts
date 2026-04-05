@@ -1,26 +1,20 @@
 import {
   emptyStage,
-  type ForgeflowContext,
-  type OnUpdate,
+  type PipelineContext,
   runAgent,
   TOOLS_ALL,
   TOOLS_NO_EDIT,
+  toAgentOpts,
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 
-export async function runDiscoverSkills(
-  cwd: string,
-  query: string,
-  signal: AbortSignal,
-  onUpdate: OnUpdate | undefined,
-  _ctx: ForgeflowContext,
-) {
+export async function runDiscoverSkills(query: string, pctx: PipelineContext) {
   // If query looks like specific skill names (contains commas or known skill identifiers),
   // treat as install mode. Otherwise, discover mode.
   const isInstall = query.includes(",") || query.includes("/");
 
   const stages = [emptyStage("skill-discoverer")];
-  const opts = { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline: "discover-skills", onUpdate };
+  const opts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline: "discover-skills" });
 
   const task = isInstall
     ? `Install these skills as forgeflow plugins: ${query}`

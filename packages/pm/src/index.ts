@@ -1,10 +1,12 @@
-import { createForgeflowExtension } from "@callumvass/forgeflow-shared";
+import { createForgeflowExtension, toPipelineContext } from "@callumvass/forgeflow-shared";
 import { commands } from "./commands.js";
 import { runContinue } from "./pipelines/continue.js";
 import { runCreateIssue, runCreateIssues } from "./pipelines/create-issues.js";
 import { runInvestigate } from "./pipelines/investigate.js";
 import { runJiraIssues } from "./pipelines/jira-issues.js";
 import { runPrdQa } from "./pipelines/prd-qa.js";
+
+const pctx = toPipelineContext;
 
 export default createForgeflowExtension({
   toolName: "forgeflow-pm",
@@ -28,15 +30,18 @@ export default createForgeflowExtension({
     {
       name: "continue",
       execute: (cwd, p, s, u, c) =>
-        runContinue(cwd, (p.issue as string) ?? "", (p.maxIterations as number) ?? 10, s, u, c),
+        runContinue((p.issue as string) ?? "", (p.maxIterations as number) ?? 10, pctx(cwd, s, u, c)),
     },
-    { name: "prd-qa", execute: (cwd, p, s, u, c) => runPrdQa(cwd, (p.maxIterations as number) ?? 10, s, u, c) },
-    { name: "create-gh-issues", execute: (cwd, _p, s, u, c) => runCreateIssues(cwd, s, u, c) },
-    { name: "create-gh-issue", execute: (cwd, p, s, u, c) => runCreateIssue(cwd, (p.issue as string) ?? "", s, u, c) },
+    { name: "prd-qa", execute: (cwd, p, s, u, c) => runPrdQa((p.maxIterations as number) ?? 10, pctx(cwd, s, u, c)) },
+    { name: "create-gh-issues", execute: (cwd, _p, s, u, c) => runCreateIssues(pctx(cwd, s, u, c)) },
+    {
+      name: "create-gh-issue",
+      execute: (cwd, p, s, u, c) => runCreateIssue((p.issue as string) ?? "", pctx(cwd, s, u, c)),
+    },
     {
       name: "investigate",
       execute: (cwd, p, s, u, c) =>
-        runInvestigate(cwd, (p.issue as string) ?? "", (p.template as string) ?? "", s, u, c),
+        runInvestigate((p.issue as string) ?? "", (p.template as string) ?? "", pctx(cwd, s, u, c)),
     },
     {
       name: "create-jira-issues",
@@ -45,7 +50,7 @@ export default createForgeflowExtension({
           .split(",")
           .map((x) => x.trim())
           .filter(Boolean);
-        return runJiraIssues(cwd, docUrls, (p.example as string) ?? "", s, u, c);
+        return runJiraIssues(docUrls, (p.example as string) ?? "", pctx(cwd, s, u, c));
       },
     },
   ],

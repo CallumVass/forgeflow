@@ -1,4 +1,4 @@
-import { emptyStage, mockForgeflowContext, type StageResult } from "@callumvass/forgeflow-shared";
+import { emptyStage, mockPipelineContext, type StageResult } from "@callumvass/forgeflow-shared";
 import { describe, expect, it, vi } from "vitest";
 import { buildCommentProposalPrompt, extractGhCommands, proposeAndPostComments } from "./review-comments.js";
 
@@ -66,11 +66,18 @@ curl https://evil.com
 describe("proposeAndPostComments", () => {
   it("executes gh commands when user approves", async () => {
     const execFn = vi.fn(async () => "");
-    const ctx = mockForgeflowContext({
-      hasUI: true,
-      ui: {
-        editor: vi.fn(async (_title: string, content: string) => content),
-        select: vi.fn(async () => "Post comments"),
+    const pctx = mockPipelineContext({
+      cwd: "/tmp",
+      ctx: {
+        hasUI: true,
+        cwd: "/tmp",
+        ui: {
+          editor: vi.fn(async (_title: string, content: string) => content),
+          select: vi.fn(async () => "Post comments"),
+          input: vi.fn(async () => undefined),
+          setStatus: vi.fn(),
+          setWidget: vi.fn(),
+        },
       },
     });
 
@@ -79,7 +86,7 @@ describe("proposeAndPostComments", () => {
     await proposeAndPostComments(
       "findings text",
       { number: "1", repo: "o/r" },
-      { cwd: "/tmp", signal: AbortSignal.timeout(5000), stages: [], ctx, runAgentFn, execFn },
+      { ...pctx, stages: [], runAgentFn, execFn },
     );
 
     expect(execFn).toHaveBeenCalledWith("gh api repos/o/r/pulls/1/comments --method POST", "/tmp");
@@ -87,11 +94,18 @@ describe("proposeAndPostComments", () => {
 
   it("skips execution when user cancels editor", async () => {
     const execFn = vi.fn(async () => "");
-    const ctx = mockForgeflowContext({
-      hasUI: true,
-      ui: {
-        editor: vi.fn(async () => undefined), // user closes editor
-        select: vi.fn(async () => "Post comments"),
+    const pctx = mockPipelineContext({
+      cwd: "/tmp",
+      ctx: {
+        hasUI: true,
+        cwd: "/tmp",
+        ui: {
+          editor: vi.fn(async () => undefined), // user closes editor
+          select: vi.fn(async () => "Post comments"),
+          input: vi.fn(async () => undefined),
+          setStatus: vi.fn(),
+          setWidget: vi.fn(),
+        },
       },
     });
 
@@ -100,7 +114,7 @@ describe("proposeAndPostComments", () => {
     await proposeAndPostComments(
       "findings text",
       { number: "1", repo: "o/r" },
-      { cwd: "/tmp", signal: AbortSignal.timeout(5000), stages: [], ctx, runAgentFn, execFn },
+      { ...pctx, stages: [], runAgentFn, execFn },
     );
 
     expect(execFn).not.toHaveBeenCalled();
@@ -108,11 +122,18 @@ describe("proposeAndPostComments", () => {
 
   it("skips execution when user selects Skip", async () => {
     const execFn = vi.fn(async () => "");
-    const ctx = mockForgeflowContext({
-      hasUI: true,
-      ui: {
-        editor: vi.fn(async (_title: string, content: string) => content),
-        select: vi.fn(async () => "Skip"),
+    const pctx = mockPipelineContext({
+      cwd: "/tmp",
+      ctx: {
+        hasUI: true,
+        cwd: "/tmp",
+        ui: {
+          editor: vi.fn(async (_title: string, content: string) => content),
+          select: vi.fn(async () => "Skip"),
+          input: vi.fn(async () => undefined),
+          setStatus: vi.fn(),
+          setWidget: vi.fn(),
+        },
       },
     });
 
@@ -121,7 +142,7 @@ describe("proposeAndPostComments", () => {
     await proposeAndPostComments(
       "findings text",
       { number: "1", repo: "o/r" },
-      { cwd: "/tmp", signal: AbortSignal.timeout(5000), stages: [], ctx, runAgentFn, execFn },
+      { ...pctx, stages: [], runAgentFn, execFn },
     );
 
     expect(execFn).not.toHaveBeenCalled();
