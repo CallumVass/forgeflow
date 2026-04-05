@@ -30,11 +30,9 @@ export function formatToolCallShort(
       return fg("muted", "$ ") + fg("toolOutput", cmd.length > 60 ? `${cmd.slice(0, 60)}...` : cmd);
     }
     case "read":
-      return fg("muted", "read ") + fg("accent", (args.file_path || args.path || "...") as string);
     case "write":
-      return fg("muted", "write ") + fg("accent", (args.file_path || args.path || "...") as string);
     case "edit":
-      return fg("muted", "edit ") + fg("accent", (args.file_path || args.path || "...") as string);
+      return fg("muted", `${name} `) + fg("accent", (args.file_path || args.path || "...") as string);
     case "grep":
       return fg("muted", "grep ") + fg("accent", `/${args.pattern || ""}/`);
     case "find":
@@ -108,6 +106,15 @@ export function renderExpanded(details: PipelineDetails, theme: AnyCtx, toolLabe
   }
 
   return container;
+}
+
+export function renderResult(result: AnyCtx, expanded: boolean, theme: AnyCtx, toolLabel: string) {
+  const details = result.details as PipelineDetails | undefined;
+  if (!details || details.stages.length === 0) {
+    const text = result.content[0];
+    return new Text(text?.type === "text" ? text.text : "(no output)", 0, 0);
+  }
+  return expanded ? renderExpanded(details, theme, toolLabel) : renderCollapsed(details, theme, toolLabel);
 }
 
 export function renderCollapsed(details: PipelineDetails, theme: AnyCtx, toolLabel: string) {

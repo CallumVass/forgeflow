@@ -234,7 +234,7 @@ describe("extraction verification", () => {
     }
   });
 
-  it("dev/index.ts and pm/index.ts import rendering symbols from shared", () => {
+  it("dev/index.ts and pm/index.ts import renderResult from shared", () => {
     const devPath = resolve(__dirname, "../../dev/src/index.ts");
     const pmPath = resolve(__dirname, "../../pm/src/index.ts");
     const devSrc = readFileSync(devPath, "utf-8");
@@ -242,8 +242,7 @@ describe("extraction verification", () => {
 
     for (const src of [devSrc, pmSrc]) {
       expect(src).toContain("@callumvass/forgeflow-shared");
-      expect(src).toContain("renderExpanded");
-      expect(src).toContain("renderCollapsed");
+      expect(src).toContain("renderResult");
     }
   });
 });

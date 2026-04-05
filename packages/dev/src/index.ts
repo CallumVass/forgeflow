@@ -1,4 +1,4 @@
-import { type AnyCtx, type PipelineDetails, renderCollapsed, renderExpanded } from "@callumvass/forgeflow-shared";
+import { type AnyCtx, type PipelineDetails, renderResult } from "@callumvass/forgeflow-shared";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
@@ -161,16 +161,7 @@ function registerForgeflowDevTool(pi: ExtensionAPI) {
     },
 
     renderResult(result: AnyCtx, { expanded }: { expanded: boolean }, theme: AnyCtx) {
-      const details = result.details as PipelineDetails | undefined;
-      if (!details || details.stages.length === 0) {
-        const text = result.content[0];
-        return new Text(text?.type === "text" ? text.text : "(no output)", 0, 0);
-      }
-
-      if (expanded) {
-        return renderExpanded(details, theme, "forgeflow-dev");
-      }
-      return renderCollapsed(details, theme, "forgeflow-dev");
+      return renderResult(result, expanded, theme, "forgeflow-dev");
     },
   });
 }

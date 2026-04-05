@@ -7,6 +7,7 @@ export {
   getDisplayItems,
   renderCollapsed,
   renderExpanded,
+  renderResult,
   stageIcon,
 } from "./rendering.js";
 export { runAgent } from "./run-agent.js";
