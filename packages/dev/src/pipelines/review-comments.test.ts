@@ -1,4 +1,4 @@
-import { mockForgeflowContext, type StageResult } from "@callumvass/forgeflow-shared";
+import { emptyStage, mockForgeflowContext, type StageResult } from "@callumvass/forgeflow-shared";
 import { describe, expect, it, vi } from "vitest";
 import { buildCommentProposalPrompt, extractGhCommands, proposeAndPostComments } from "./review-comments.js";
 
@@ -68,7 +68,7 @@ describe("proposeAndPostComments", () => {
     const runAgentFn = vi.fn(async (_agent: string, _prompt: string, opts: { stages: StageResult[] }) => {
       const stage = opts.stages.find((s) => s.name === "propose-comments");
       if (stage) stage.output = "```bash\ngh api repos/o/r/pulls/1/comments --method POST\n```";
-      return { output: "", status: "done" };
+      return { ...emptyStage("mock"), output: "", status: "done" as const };
     });
 
     await proposeAndPostComments(
@@ -93,7 +93,7 @@ describe("proposeAndPostComments", () => {
     const runAgentFn = vi.fn(async (_agent: string, _prompt: string, opts: { stages: StageResult[] }) => {
       const stage = opts.stages.find((s) => s.name === "propose-comments");
       if (stage) stage.output = "```bash\ngh api repos/o/r/pulls/1/comments\n```";
-      return { output: "", status: "done" };
+      return { ...emptyStage("mock"), output: "", status: "done" as const };
     });
 
     await proposeAndPostComments(
@@ -118,7 +118,7 @@ describe("proposeAndPostComments", () => {
     const runAgentFn = vi.fn(async (_agent: string, _prompt: string, opts: { stages: StageResult[] }) => {
       const stage = opts.stages.find((s) => s.name === "propose-comments");
       if (stage) stage.output = "```bash\ngh api repos/o/r/pulls/1/comments\n```";
-      return { output: "", status: "done" };
+      return { ...emptyStage("mock"), output: "", status: "done" as const };
     });
 
     await proposeAndPostComments(

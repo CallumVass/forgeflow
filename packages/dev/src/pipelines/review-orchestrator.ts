@@ -2,13 +2,14 @@ import {
   cleanSignal,
   emptyStage,
   type OnUpdate,
+  type RunAgentFn,
   readSignal,
+  resolveRunAgent,
   type StageResult,
   signalExists,
   TOOLS_NO_EDIT,
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
-import { resolveRunAgent, type RunAgentFn } from "./run-agent-di.js";
 
 export interface ReviewResult {
   passed: boolean;

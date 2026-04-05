@@ -1,4 +1,5 @@
 import type { ForgeflowContext } from "@callumvass/forgeflow-shared";
+import { mockRunAgent } from "@callumvass/forgeflow-shared";
 import { describe, expect, it, vi } from "vitest";
 import { resolveQuestions, runPlanning } from "./planning.js";
 
@@ -17,10 +18,6 @@ function mockCtx(
       setWidget: vi.fn(),
     },
   };
-}
-
-function mockRunAgent(output = "The plan", status: "done" | "failed" = "done") {
-  return vi.fn(async () => ({ output, status }));
 }
 
 describe("runPlanning", () => {

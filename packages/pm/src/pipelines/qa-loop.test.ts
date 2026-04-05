@@ -8,6 +8,7 @@ vi.mock("node:fs", async (importOriginal) => {
 });
 
 import type { ForgeflowContext } from "@callumvass/forgeflow-shared";
+import { mockRunAgent } from "@callumvass/forgeflow-shared";
 
 function mockCtx(
   opts: { hasUI?: boolean; editorResult?: string | undefined; selectResult?: string | undefined } = {},
@@ -23,10 +24,6 @@ function mockCtx(
       setWidget: vi.fn(),
     },
   };
-}
-
-function mockRunAgent(output = "", status: "done" | "failed" = "done") {
-  return vi.fn(async () => ({ output, status, stderr: status === "failed" ? "something went wrong" : "" }));
 }
 
 function baseOpts(overrides: Partial<QaLoopOptions> = {}): QaLoopOptions {
@@ -78,7 +75,17 @@ describe("runQaLoop", () => {
   });
 
   it("returns error when critic fails and no QUESTIONS.md exists", async () => {
-    const runAgentFn = vi.fn(async () => ({ output: "", status: "failed", stderr: "agent crashed hard" }));
+    const runAgentFn = mockRunAgent("", "failed");
+    // Override the mock to include specific stderr for this test
+    runAgentFn.mockImplementation(async () => ({
+      name: "mock",
+      status: "failed" as const,
+      messages: [],
+      exitCode: 1,
+      stderr: "agent crashed hard",
+      output: "",
+      usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
+    }));
     const signalExistsFn = vi.fn(() => false);
 
     const result = await runQaLoop(baseOpts({ runAgentFn, signalExistsFn }));

@@ -11,9 +11,9 @@ export {
   renderResult,
   stageIcon,
 } from "./rendering.js";
-export { runAgent } from "./run-agent.js";
+export { resolveRunAgent, runAgent } from "./run-agent.js";
 export { cleanSignal, readSignal, signalExists, signalPath } from "./signals.js";
-export { mockForgeflowContext } from "./test-utils.js";
+export { mockForgeflowContext, mockRunAgent } from "./test-utils.js";
 export {
   emptyStage,
   emptyUsage,
@@ -23,6 +23,8 @@ export {
   getFinalOutput,
   type OnUpdate,
   type PipelineDetails,
+  type RunAgentFn,
+  type RunAgentOpts,
   type StageResult,
   sumUsage,
   type UsageStats,
