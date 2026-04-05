@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import type { RunAgentOpts } from "./types.js";
+import { emptyStage, type RunAgentOpts } from "./types.js";
 
 const stubOpts: RunAgentOpts = {
   agentsDir: "/agents",
@@ -14,13 +14,10 @@ describe("resolveRunAgent", () => {
   it("returns the injected function when one is provided", async () => {
     const { resolveRunAgent } = await import("./run-agent.js");
     const injected = vi.fn(async () => ({
-      name: "mock",
+      ...emptyStage("mock"),
       status: "done" as const,
-      messages: [],
       exitCode: 0,
-      stderr: "",
       output: "mock-output",
-      usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
     }));
 
     const result = await resolveRunAgent(injected);

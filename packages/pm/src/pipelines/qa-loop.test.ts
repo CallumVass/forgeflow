@@ -8,7 +8,7 @@ vi.mock("node:fs", async (importOriginal) => {
 });
 
 import type { ForgeflowContext } from "@callumvass/forgeflow-shared";
-import { mockRunAgent } from "@callumvass/forgeflow-shared";
+import { emptyStage, mockRunAgent } from "@callumvass/forgeflow-shared";
 
 function mockCtx(
   opts: { hasUI?: boolean; editorResult?: string | undefined; selectResult?: string | undefined } = {},
@@ -78,13 +78,10 @@ describe("runQaLoop", () => {
     const runAgentFn = mockRunAgent("", "failed");
     // Override the mock to include specific stderr for this test
     runAgentFn.mockImplementation(async () => ({
-      name: "mock",
+      ...emptyStage("mock"),
       status: "failed" as const,
-      messages: [],
       exitCode: 1,
       stderr: "agent crashed hard",
-      output: "",
-      usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
     }));
     const signalExistsFn = vi.fn(() => false);
 
