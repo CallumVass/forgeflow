@@ -63,6 +63,16 @@ export interface PipelineContext {
   ctx: ForgeflowContext;
 }
 
+/** Build a PipelineContext from the raw extension execute() arguments. */
+export function toPipelineContext(
+  cwd: string,
+  signal: AbortSignal,
+  onUpdate: OnUpdate,
+  ctx: ForgeflowContext,
+): PipelineContext {
+  return { cwd, signal, onUpdate: onUpdate as OnUpdate | undefined, ctx };
+}
+
 /** Convert a PipelineContext + pipeline-specific extras into RunAgentOpts. */
 export function toAgentOpts(
   pctx: PipelineContext,

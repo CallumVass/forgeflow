@@ -1,4 +1,4 @@
-import { createForgeflowExtension, type ForgeflowContext, type OnUpdate } from "@callumvass/forgeflow-shared";
+import { createForgeflowExtension, toPipelineContext } from "@callumvass/forgeflow-shared";
 import { commands } from "./commands.js";
 import { runContinue } from "./pipelines/continue.js";
 import { runCreateIssue, runCreateIssues } from "./pipelines/create-issues.js";
@@ -6,12 +6,7 @@ import { runInvestigate } from "./pipelines/investigate.js";
 import { runJiraIssues } from "./pipelines/jira-issues.js";
 import { runPrdQa } from "./pipelines/prd-qa.js";
 
-const pctx = (cwd: string, s: AbortSignal, u: OnUpdate, c: ForgeflowContext) => ({
-  cwd,
-  signal: s,
-  onUpdate: u as OnUpdate | undefined,
-  ctx: c,
-});
+const pctx = toPipelineContext;
 
 export default createForgeflowExtension({
   toolName: "forgeflow-pm",

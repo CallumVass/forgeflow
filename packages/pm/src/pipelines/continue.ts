@@ -6,6 +6,7 @@ import {
   type StageResult,
   TOOLS_ALL,
   TOOLS_NO_EDIT,
+  toAgentOpts,
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 import { runQaLoop } from "./qa-loop.js";
@@ -49,14 +50,7 @@ export async function runContinue(description: string, maxIterations: number, pc
   if (!fs.existsSync(`${cwd}/PRD.md`)) return result("PRD.md not found.", []);
 
   const stages: StageResult[] = [];
-  const agentOpts = {
-    agentsDir: AGENTS_DIR,
-    cwd,
-    signal: pctx.signal,
-    stages,
-    pipeline: "continue",
-    onUpdate: pctx.onUpdate,
-  };
+  const agentOpts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline: "continue" });
 
   // Phase 1: Update PRD with Done/Next structure
   stages.push(emptyStage("prd-architect"));

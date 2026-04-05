@@ -8,6 +8,7 @@ import {
   signalExists,
   TOOLS_ALL,
   TOOLS_NO_EDIT,
+  toAgentOpts,
 } from "@callumvass/forgeflow-shared";
 
 export type SignalExistsFn = (cwd: string, signal: string) => boolean;
@@ -28,12 +29,12 @@ interface QaLoopResult {
 }
 
 export async function runQaLoop(opts: QaLoopOptions): Promise<QaLoopResult> {
-  const { cwd, stages, pipeline, agentsDir, signal, onUpdate, ctx, maxIterations, criticPrompt } = opts;
+  const { cwd, stages, pipeline, agentsDir, ctx, maxIterations, criticPrompt } = opts;
 
   const runAgentFn = await resolveRunAgent(opts.runAgentFn);
   const signalExistsFn = opts.signalExistsFn ?? (signalExists as SignalExistsFn);
 
-  const agentOpts = { agentsDir, cwd, signal, stages, pipeline, onUpdate };
+  const agentOpts = toAgentOpts(opts, { agentsDir, stages, pipeline });
 
   for (let i = 1; i <= maxIterations; i++) {
     stages.push(emptyStage("prd-critic"));

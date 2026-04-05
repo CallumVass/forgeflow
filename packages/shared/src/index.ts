@@ -38,5 +38,6 @@ export {
   type StageResult,
   sumUsage,
   toAgentOpts,
+  toPipelineContext,
   type UsageStats,
 } from "./types.js";
