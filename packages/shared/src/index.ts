@@ -12,6 +12,7 @@ export {
 } from "./rendering.js";
 export { runAgent } from "./run-agent.js";
 export { cleanSignal, readSignal, signalExists, signalPath } from "./signals.js";
+export { mockForgeflowContext } from "./test-utils.js";
 export {
   emptyStage,
   emptyUsage,

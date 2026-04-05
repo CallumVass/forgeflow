@@ -1,5 +1,5 @@
 import type * as fs from "node:fs";
-import type { ForgeflowContext } from "@callumvass/forgeflow-shared";
+import { mockForgeflowContext } from "@callumvass/forgeflow-shared";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", async (importOriginal) => {
@@ -19,17 +19,7 @@ describe("runPrdQa", () => {
     const mockedRunQaLoop = vi.mocked(runQaLoop);
     mockedRunQaLoop.mockResolvedValue({ accepted: true });
 
-    const ctx: ForgeflowContext = {
-      hasUI: false,
-      cwd: "/tmp/test",
-      ui: {
-        input: vi.fn(async () => undefined),
-        editor: vi.fn(async () => undefined),
-        select: vi.fn(async () => undefined),
-        setStatus: vi.fn(),
-        setWidget: vi.fn(),
-      },
-    };
+    const ctx = mockForgeflowContext();
     const result = await runPrdQa("/tmp/test", 10, AbortSignal.timeout(5000), undefined, ctx);
 
     expect(mockedRunQaLoop).toHaveBeenCalledOnce();
@@ -48,17 +38,7 @@ describe("runPrdQa", () => {
     const mockedRunQaLoop = vi.mocked(runQaLoop);
     mockedRunQaLoop.mockResolvedValue({ accepted: false, error: { text: "Critic failed." } });
 
-    const ctx: ForgeflowContext = {
-      hasUI: false,
-      cwd: "/tmp/test",
-      ui: {
-        input: vi.fn(async () => undefined),
-        editor: vi.fn(async () => undefined),
-        select: vi.fn(async () => undefined),
-        setStatus: vi.fn(),
-        setWidget: vi.fn(),
-      },
-    };
+    const ctx = mockForgeflowContext();
     const result = await runPrdQa("/tmp/test", 10, AbortSignal.timeout(5000), undefined, ctx);
 
     expect(result.isError).toBe(true);

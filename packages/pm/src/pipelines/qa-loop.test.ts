@@ -119,17 +119,7 @@ describe("runQaLoop", () => {
     const runAgentFn = mockRunAgent();
     // iteration 1: questions exist, iteration 2: no questions
     const signalExistsFn = vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false);
-    const ctx: ForgeflowContext = {
-      hasUI: false,
-      cwd: "/tmp/test",
-      ui: {
-        editor: vi.fn(async () => undefined),
-        select: vi.fn(async () => undefined),
-        input: vi.fn(async () => undefined),
-        setStatus: vi.fn(),
-        setWidget: vi.fn(),
-      },
-    };
+    const ctx = mockCtx({ hasUI: false });
 
     const result = await runQaLoop(baseOpts({ runAgentFn, signalExistsFn, ctx }));
 
