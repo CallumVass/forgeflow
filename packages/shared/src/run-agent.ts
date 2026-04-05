@@ -4,7 +4,15 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { Message } from "@mariozechner/pi-ai";
 import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
-import { emptyStage, type OnUpdate, type StageResult } from "./types.js";
+import { emptyStage, type OnUpdate, type RunAgentFn, type StageResult } from "./types.js";
+
+/**
+ * Resolve a RunAgentFn — use the injected one for tests, or return the real one.
+ */
+export async function resolveRunAgent(injected?: RunAgentFn): Promise<RunAgentFn> {
+  if (injected) return injected;
+  return runAgent;
+}
 
 function getPiInvocation(args: string[]): { command: string; args: string[] } {
   const currentScript = process.argv[1];

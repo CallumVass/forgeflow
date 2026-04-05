@@ -1,4 +1,4 @@
-import type { StageResult } from "@callumvass/forgeflow-shared";
+import { emptyStage, type StageResult } from "@callumvass/forgeflow-shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { runReviewPipeline } from "./review-orchestrator.js";
 
@@ -32,7 +32,7 @@ function mockRunAgent(sideEffects: Array<() => void> = []) {
     const effect = sideEffects[callIndex];
     if (effect) effect();
     callIndex++;
-    return { output: "agent output", status: "done" };
+    return { ...emptyStage("mock"), output: "agent output", status: "done" as const };
   });
 }
 

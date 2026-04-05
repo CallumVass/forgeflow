@@ -4,11 +4,12 @@ import {
   emptyStage,
   type ForgeflowContext,
   type OnUpdate,
+  type RunAgentFn,
+  resolveRunAgent,
   type StageResult,
   TOOLS_READONLY,
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
-import { resolveRunAgent, type RunAgentFn } from "./run-agent-di.js";
 
 /**
  * Build the prompt for the comment-proposal agent call.

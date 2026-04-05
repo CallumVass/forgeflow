@@ -55,6 +55,19 @@ export function emptyUsage(): UsageStats {
   return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 };
 }
 
+export type RunAgentOpts = {
+  agentsDir: string;
+  cwd: string;
+  tools?: string[];
+  signal?: AbortSignal;
+  stages: StageResult[];
+  pipeline: string;
+  onUpdate?: OnUpdate;
+  stageName?: string;
+};
+
+export type RunAgentFn = (agent: string, prompt: string, opts: RunAgentOpts) => Promise<StageResult>;
+
 export function emptyStage(name: string): StageResult {
   return {
     name,

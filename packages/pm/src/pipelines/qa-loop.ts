@@ -3,17 +3,13 @@ import {
   emptyStage,
   type ForgeflowContext,
   type OnUpdate,
+  type RunAgentFn,
+  resolveRunAgent,
   type StageResult,
   TOOLS_ALL,
   TOOLS_NO_EDIT,
 } from "@callumvass/forgeflow-shared";
 
-export type RunAgentFn = (
-  agent: string,
-  prompt: string,
-  // biome-ignore lint/suspicious/noExplicitAny: flexible opts for DI
-  opts: any,
-) => Promise<{ output: string; status: string; stderr: string }>;
 export type SignalExistsFn = (cwd: string, signal: string) => boolean;
 
 export interface QaLoopOptions {
@@ -38,12 +34,11 @@ export interface QaLoopResult {
 export async function runQaLoop(opts: QaLoopOptions): Promise<QaLoopResult> {
   const { cwd, stages, pipeline, agentsDir, signal, onUpdate, ctx, maxIterations, criticPrompt } = opts;
 
-  let runAgentFn = opts.runAgentFn;
+  const runAgentFn = await resolveRunAgent(opts.runAgentFn);
   let signalExistsFn = opts.signalExistsFn;
-  if (!runAgentFn || !signalExistsFn) {
+  if (!signalExistsFn) {
     const mod = await import("@callumvass/forgeflow-shared");
-    if (!runAgentFn) runAgentFn = mod.runAgent as RunAgentFn;
-    if (!signalExistsFn) signalExistsFn = mod.signalExists as SignalExistsFn;
+    signalExistsFn = mod.signalExists as SignalExistsFn;
   }
 
   const agentOpts = { agentsDir, cwd, signal, stages, pipeline, onUpdate };
