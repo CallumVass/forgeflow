@@ -5,6 +5,7 @@ import {
   type OnUpdate,
   type RunAgentFn,
   resolveRunAgent,
+  signalExists,
   type StageResult,
   TOOLS_ALL,
   TOOLS_NO_EDIT,
@@ -35,11 +36,7 @@ export async function runQaLoop(opts: QaLoopOptions): Promise<QaLoopResult> {
   const { cwd, stages, pipeline, agentsDir, signal, onUpdate, ctx, maxIterations, criticPrompt } = opts;
 
   const runAgentFn = await resolveRunAgent(opts.runAgentFn);
-  let signalExistsFn = opts.signalExistsFn;
-  if (!signalExistsFn) {
-    const mod = await import("@callumvass/forgeflow-shared");
-    signalExistsFn = mod.signalExists as SignalExistsFn;
-  }
+  const signalExistsFn = opts.signalExistsFn ?? (signalExists as SignalExistsFn);
 
   const agentOpts = { agentsDir, cwd, signal, stages, pipeline, onUpdate };
 
