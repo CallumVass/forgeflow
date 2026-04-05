@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.5.0...forgeflow-dev-v0.6.0) (2026-04-05)
+
+
+### Features
+
+* support multi-candidate RFC creation in architecture pipeline ([3e5d3ef](https://github.com/CallumVass/forgeflow/commit/3e5d3ef95042c293c09ea723735938d84e03c442))
+
 ## [0.5.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.4.4...forgeflow-dev-v0.5.0) (2026-04-04)
 
 
