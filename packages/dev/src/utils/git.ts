@@ -54,27 +54,6 @@ const JIRA_KEY_RE = /^[A-Z]+-\d+$/;
 const JIRA_BRANCH_RE = /feat\/([A-Z]+-\d+)/;
 
 /**
- * Checkout a branch, creating it if it doesn't exist.
- */
-export async function ensureBranch(cwd: string, branch: string): Promise<void> {
-  const currentBranch = await exec("git branch --show-current", cwd);
-  if (currentBranch === branch) return;
-  const localExists = await exec(`git rev-parse --verify ${branch} 2>/dev/null && echo yes || echo no`, cwd);
-  if (localExists === "yes") {
-    await exec(`git checkout ${branch}`, cwd);
-    return;
-  }
-  // Check for remote-only branch and track it
-  await exec("git fetch origin", cwd);
-  const remoteExists = await exec(`git rev-parse --verify origin/${branch} 2>/dev/null && echo yes || echo no`, cwd);
-  if (remoteExists === "yes") {
-    await exec(`git checkout -b ${branch} origin/${branch}`, cwd);
-  } else {
-    await exec(`git checkout -b ${branch}`, cwd);
-  }
-}
-
-/**
  * Resolve which issue to implement:
  * 1. Jira key (CUS-123) → fetch from jira-cli
  * 2. Numeric GitHub issue → fetch from gh

@@ -26,7 +26,7 @@ export interface QaLoopOptions {
   signalExistsFn?: SignalExistsFn;
 }
 
-export interface QaLoopResult {
+interface QaLoopResult {
   accepted: boolean;
   error?: { text: string };
 }

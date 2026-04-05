@@ -1,0 +1,15 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "workspaces": {
+    "packages/shared": {
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["@mariozechner/pi-*"]
+    },
+    "packages/pm": {
+      "project": ["src/**/*.ts"]
+    },
+    "packages/dev": {
+      "project": ["src/**/*.ts"]
+    }
+  }
+}

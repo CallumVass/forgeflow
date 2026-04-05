@@ -11,7 +11,7 @@ import {
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 
-export interface ReviewResult {
+interface ReviewResult {
   passed: boolean;
   findings?: string;
 }

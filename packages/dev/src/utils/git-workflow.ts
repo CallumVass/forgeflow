@@ -3,13 +3,13 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { exec as defaultExec, type ExecFn } from "@callumvass/forgeflow-shared";
 
-export interface BranchSetupResult {
+interface BranchSetupResult {
   status: "fresh" | "resumed" | "failed";
   ahead?: number;
   error?: string;
 }
 
-export interface PrResult {
+interface PrResult {
   number: number;
   created: boolean;
 }
