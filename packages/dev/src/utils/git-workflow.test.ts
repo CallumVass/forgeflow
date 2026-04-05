@@ -1,10 +1,10 @@
+import type { ExecFn } from "@callumvass/forgeflow-shared";
 import { describe, expect, it, vi } from "vitest";
-import type { ExecFn } from "./git-workflow.js";
 import { ensurePr, mergePr, returnToMain, setupBranch, verifyOnBranch } from "./git-workflow.js";
 
 /** Helper: create an exec mock that resolves with scripted responses */
 function mockExec(responses: Record<string, string> = {}): ExecFn {
-  return vi.fn(async (cmd: string, _cwd: string) => {
+  return vi.fn(async (cmd: string, _cwd?: string) => {
     for (const [pattern, response] of Object.entries(responses)) {
       if (cmd.includes(pattern)) return response;
     }

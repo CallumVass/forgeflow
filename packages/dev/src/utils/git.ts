@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { exec } from "./exec.js";
+import { exec, execSafe } from "@callumvass/forgeflow-shared";
+import { findPrNumber } from "./git-workflow.js";
 
 const PR_TEMPLATE_PATHS = [
   ".github/pull_request_template.md",
@@ -114,7 +115,7 @@ export async function resolveIssue(cwd: string, issueArg?: string): Promise<Reso
 }
 
 async function resolveGitHubIssue(cwd: string, issueNum: number): Promise<ResolvedIssue | string> {
-  const issueJson = await exec(`gh issue view ${issueNum} --json number,title,body`, cwd);
+  const issueJson = await execSafe(`gh issue view ${issueNum} --json number,title,body`, cwd);
   if (!issueJson) return `Could not fetch issue #${issueNum}.`;
 
   let issue: { number: number; title: string; body: string };
@@ -125,8 +126,7 @@ async function resolveGitHubIssue(cwd: string, issueNum: number): Promise<Resolv
   }
 
   const branch = `feat/issue-${issueNum}`;
-  const prJson = await exec(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
-  const existingPR = prJson && prJson !== "null" ? parseInt(prJson, 10) : undefined;
+  const existingPR = (await findPrNumber(cwd, branch)) ?? undefined;
 
   return { source: "github", key: String(issueNum), ...issue, branch, existingPR };
 }
@@ -136,7 +136,7 @@ async function resolveJiraIssue(
   jiraKey: string,
   existingBranch?: string,
 ): Promise<ResolvedIssue | string> {
-  const raw = await exec(`jira issue view ${jiraKey} --raw`, cwd);
+  const raw = await execSafe(`jira issue view ${jiraKey} --raw`, cwd);
   if (!raw) return `Could not fetch Jira issue ${jiraKey}.`;
 
   // biome-ignore lint/suspicious/noExplicitAny: Jira JSON shape varies by instance
@@ -162,8 +162,7 @@ async function resolveJiraIssue(
   const body = bodyParts.join("\n\n");
   const branch = existingBranch ?? `feat/${jiraKey}-${slugify(title)}`;
 
-  const prJson = await exec(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
-  const existingPR = prJson && prJson !== "null" ? parseInt(prJson, 10) : undefined;
+  const existingPR = (await findPrNumber(cwd, branch)) ?? undefined;
 
   return { source: "jira", key: jiraKey, number: 0, title, body, branch, existingPR };
 }

@@ -1,11 +1,11 @@
 import {
   emptyStage,
+  exec,
   type ForgeflowContext,
   type OnUpdate,
   type StageResult,
   sumUsage,
 } from "@callumvass/forgeflow-shared";
-import { exec } from "../utils/exec.js";
 import { findPrNumber, mergePr, returnToMain } from "../utils/git-workflow.js";
 import { setForgeflowStatus, updateProgressWidget } from "../utils/ui.js";
 import { runImplement } from "./implement.js";
