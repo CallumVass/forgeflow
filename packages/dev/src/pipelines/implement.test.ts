@@ -26,10 +26,6 @@ vi.mock("../utils/ui.js", () => ({
   setForgeflowStatus: vi.fn(),
 }));
 
-vi.mock("./review.js", () => ({
-  runReviewInline: vi.fn(async () => ({ content: [{ type: "text", text: "LGTM" }] })),
-}));
-
 vi.mock("../utils/git-workflow.js", () => ({
   setupBranch: vi.fn(async () => ({ status: "fresh" })),
   ensurePr: vi.fn(async () => ({ number: 10, created: true })),
