@@ -1,8 +1,7 @@
 import * as fs from "node:fs";
 import {
   emptyStage,
-  type ForgeflowContext,
-  type OnUpdate,
+  type PipelineContext,
   runAgent,
   type StageResult,
   TOOLS_ALL,
@@ -45,22 +44,23 @@ CRITICAL RULES:
 /**
  * Continue pipeline: update PRD with Done/Next, run QA loop, create issues.
  */
-export async function runContinue(
-  cwd: string,
-  description: string,
-  maxIterations: number,
-  signal: AbortSignal,
-  onUpdate: OnUpdate | undefined,
-  ctx: ForgeflowContext,
-) {
+export async function runContinue(description: string, maxIterations: number, pctx: PipelineContext) {
+  const { cwd, ctx } = pctx;
   if (!fs.existsSync(`${cwd}/PRD.md`)) return result("PRD.md not found.", []);
 
   const stages: StageResult[] = [];
-  const opts = { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline: "continue", onUpdate };
+  const agentOpts = {
+    agentsDir: AGENTS_DIR,
+    cwd,
+    signal: pctx.signal,
+    stages,
+    pipeline: "continue",
+    onUpdate: pctx.onUpdate,
+  };
 
   // Phase 1: Update PRD with Done/Next structure
   stages.push(emptyStage("prd-architect"));
-  const archResult = await runAgent("prd-architect", updatePrompt(description), { ...opts, tools: TOOLS_ALL });
+  const archResult = await runAgent("prd-architect", updatePrompt(description), { ...agentOpts, tools: TOOLS_ALL });
   if (archResult.status === "failed") {
     return result(`PRD update failed.\nStderr: ${archResult.stderr.slice(0, 300)}`, stages, true);
   }
@@ -75,13 +75,10 @@ export async function runContinue(
 
   // Phase 2: PRD QA loop on the Next section
   const qaResult = await runQaLoop({
-    cwd,
-    signal,
+    ...pctx,
     stages,
     pipeline: "continue",
     agentsDir: AGENTS_DIR,
-    onUpdate,
-    ctx,
     maxIterations,
     criticPrompt:
       "Review PRD.md for completeness — focus on the ## Next section. If it needs refinement, create QUESTIONS.md. If it's complete, do NOT create QUESTIONS.md.",
@@ -93,7 +90,7 @@ export async function runContinue(
   await runAgent(
     "gh-issue-creator",
     "Decompose PRD.md into vertical-slice GitHub issues. Focus on the ## Next section — the ## Done section is context only. Read the issue-template skill for the standard format.",
-    { ...opts, tools: TOOLS_NO_EDIT },
+    { ...agentOpts, tools: TOOLS_NO_EDIT },
   );
 
   return result("Continue pipeline complete. PRD updated, QA'd, and issues created.", stages);

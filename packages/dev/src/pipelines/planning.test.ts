@@ -25,7 +25,8 @@ describe("runPlanning", () => {
     const ctx = mockCtx({ selectResult: "Approve and implement" });
     const runAgentFn = mockRunAgent("## Plan\n- Do thing 1\n- Do thing 2");
 
-    const result = await runPlanning("/tmp", "Issue context", undefined, {
+    const result = await runPlanning("Issue context", undefined, {
+      cwd: "/tmp",
       signal: AbortSignal.timeout(5000),
       onUpdate: undefined,
       ctx,
@@ -43,7 +44,8 @@ describe("runPlanning", () => {
     const ctx = mockCtx({ selectResult: "Cancel" });
     const runAgentFn = mockRunAgent("Some plan");
 
-    const result = await runPlanning("/tmp", "Issue context", undefined, {
+    const result = await runPlanning("Issue context", undefined, {
+      cwd: "/tmp",
       signal: AbortSignal.timeout(5000),
       onUpdate: undefined,
       ctx,
@@ -59,7 +61,8 @@ describe("runPlanning", () => {
     const ctx = mockCtx({ selectResult: undefined });
     const runAgentFn = mockRunAgent("Some plan");
 
-    const result = await runPlanning("/tmp", "Issue context", undefined, {
+    const result = await runPlanning("Issue context", undefined, {
+      cwd: "/tmp",
       signal: AbortSignal.timeout(5000),
       onUpdate: undefined,
       ctx,
@@ -75,7 +78,8 @@ describe("runPlanning", () => {
     const ctx = mockCtx();
     const runAgentFn = mockRunAgent("Auto plan");
 
-    const result = await runPlanning("/tmp", "Issue context", undefined, {
+    const result = await runPlanning("Issue context", undefined, {
+      cwd: "/tmp",
       signal: AbortSignal.timeout(5000),
       onUpdate: undefined,
       ctx,
@@ -94,7 +98,8 @@ describe("runPlanning", () => {
     const ctx = mockCtx();
     const runAgentFn = mockRunAgent("error details", "failed");
 
-    const result = await runPlanning("/tmp", "Issue context", undefined, {
+    const result = await runPlanning("Issue context", undefined, {
+      cwd: "/tmp",
       signal: AbortSignal.timeout(5000),
       onUpdate: undefined,
       ctx,

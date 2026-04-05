@@ -22,7 +22,7 @@ export {
 } from "./rendering.js";
 export { resolveRunAgent, runAgent } from "./run-agent.js";
 export { cleanSignal, readSignal, signalExists, signalPath } from "./signals.js";
-export { mockForgeflowContext, mockRunAgent, mockTheme } from "./test-utils.js";
+export { mockForgeflowContext, mockPipelineContext, mockRunAgent, mockTheme } from "./test-utils.js";
 export {
   emptyStage,
   emptyUsage,
@@ -31,10 +31,12 @@ export {
   type ForgeflowUI,
   getFinalOutput,
   type OnUpdate,
+  type PipelineContext,
   type PipelineDetails,
   type RunAgentFn,
   type RunAgentOpts,
   type StageResult,
   sumUsage,
+  toAgentOpts,
   type UsageStats,
 } from "./types.js";

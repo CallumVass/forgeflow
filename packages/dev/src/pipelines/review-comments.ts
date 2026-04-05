@@ -2,12 +2,12 @@ import {
   exec as defaultExec,
   type ExecFn,
   emptyStage,
-  type ForgeflowContext,
-  type OnUpdate,
+  type PipelineContext,
   type RunAgentFn,
   resolveRunAgent,
   type StageResult,
   TOOLS_READONLY,
+  toAgentOpts,
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 
@@ -80,32 +80,25 @@ export function extractGhCommands(text: string): string[] {
 export async function proposeAndPostComments(
   findings: string,
   pr: { number: string; repo: string },
-  opts: {
-    cwd: string;
-    signal: AbortSignal;
+  opts: PipelineContext & {
     stages: StageResult[];
-    ctx: ForgeflowContext;
     pipeline?: string;
-    onUpdate?: OnUpdate;
     runAgentFn?: RunAgentFn;
     execFn?: ExecFn;
   },
 ): Promise<void> {
-  const { cwd, signal, stages, ctx, pipeline = "review", onUpdate } = opts;
+  const { cwd, ctx, stages } = opts;
+  const pipeline = opts.pipeline ?? "review";
   const execFn = opts.execFn ?? defaultExec;
 
   const runAgentFn = await resolveRunAgent(opts.runAgentFn);
+  const agentOpts = toAgentOpts(opts, { agentsDir: AGENTS_DIR, stages, pipeline });
 
   const proposalPrompt = buildCommentProposalPrompt(findings, pr.number, pr.repo);
 
   stages.push(emptyStage("propose-comments"));
   await runAgentFn("review-judge", proposalPrompt, {
-    agentsDir: AGENTS_DIR,
-    cwd,
-    signal,
-    stages,
-    pipeline,
-    onUpdate,
+    ...agentOpts,
     tools: TOOLS_READONLY,
   });
 

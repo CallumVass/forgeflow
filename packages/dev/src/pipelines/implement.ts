@@ -1,8 +1,7 @@
 import {
   cleanSignal,
   emptyStage,
-  type ForgeflowContext,
-  type OnUpdate,
+  type PipelineContext,
   readSignal,
   type StageResult,
   signalExists,
@@ -22,16 +21,14 @@ function result(text: string, stages: StageResult[], isError?: boolean) {
 }
 
 export async function runImplement(
-  cwd: string,
   issueArg: string,
-  signal: AbortSignal,
-  onUpdate: OnUpdate | undefined,
-  ctx: ForgeflowContext,
+  pctx: PipelineContext,
   flags: { skipPlan: boolean; skipReview: boolean; autonomous?: boolean; customPrompt?: string } = {
     skipPlan: false,
     skipReview: false,
   },
 ) {
+  const { cwd, onUpdate, ctx } = pctx;
   const interactive = ctx.hasUI && !flags.autonomous;
   const resolved = await resolveIssue(cwd, issueArg || undefined);
   if (typeof resolved === "string") return result(resolved, []);
@@ -53,7 +50,7 @@ export async function runImplement(
   // --- Resumability ---
   if (resolved.existingPR) {
     const stages: StageResult[] = [];
-    if (!flags.skipReview) await reviewAndFix(cwd, signal, onUpdate, ctx, stages);
+    if (!flags.skipReview) await reviewAndFix(pctx, stages);
     return result(`Resumed ${issueLabel} — PR #${resolved.existingPR} already exists.`, stages);
   }
 
@@ -63,7 +60,7 @@ export async function runImplement(
     if (branchResult.status === "resumed") {
       await ensurePr(cwd, resolved.title, buildPrBody(cwd, resolved), resolved.branch);
       const stages: StageResult[] = [];
-      await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
+      await refactorAndReview(pctx, stages, flags.skipReview);
       return result(`Resumed ${issueLabel} — pushed existing commits and created PR.`, stages);
     }
     if (branchResult.status === "failed")
@@ -77,10 +74,8 @@ export async function runImplement(
 
   let plan = "";
   if (!flags.skipPlan) {
-    const planResult = await runPlanning(cwd, issueContext, flags.customPrompt, {
-      signal,
-      onUpdate,
-      ctx,
+    const planResult = await runPlanning(issueContext, flags.customPrompt, {
+      ...pctx,
       interactive,
       stages,
     });
@@ -92,13 +87,13 @@ export async function runImplement(
   // --- Implementor ---
   cleanSignal(cwd, "blocked");
   const prompt = buildImplementorPrompt(issueContext, plan, flags.customPrompt, resolved, flags.autonomous);
-  await runImplementor(cwd, prompt, signal, stages, onUpdate);
+  await runImplementor(prompt, pctx, stages);
 
   if (signalExists(cwd, "blocked"))
     return result(`Implementor blocked:\n${readSignal(cwd, "blocked") ?? ""}`, stages, true);
 
   // --- Refactor + Review ---
-  await refactorAndReview(cwd, signal, onUpdate, ctx, stages, flags.skipReview);
+  await refactorAndReview(pctx, stages, flags.skipReview);
 
   // --- PR + Merge ---
   let prNumber = 0;

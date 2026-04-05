@@ -4,6 +4,7 @@ import {
   type ForgeflowContext,
   type ForgeflowTheme,
   type ForgeflowUI,
+  type PipelineContext,
   type RunAgentFn,
   type StageResult,
 } from "./types.js";
@@ -23,6 +24,17 @@ export function mockRunAgent(output = "", status: StageResult["status"] = "done"
     output,
     status,
   }));
+}
+
+/** Create a minimal PipelineContext for testing. */
+export function mockPipelineContext(overrides?: Partial<PipelineContext>): PipelineContext {
+  return {
+    cwd: "/tmp/test",
+    signal: AbortSignal.timeout(5000),
+    onUpdate: undefined,
+    ctx: mockForgeflowContext(overrides?.ctx ? { hasUI: overrides.ctx.hasUI, cwd: overrides.ctx.cwd } : undefined),
+    ...overrides,
+  };
 }
 
 /** Create a minimal ForgeflowContext for testing. All UI methods are no-op stubs. */

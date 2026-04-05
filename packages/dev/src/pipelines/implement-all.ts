@@ -1,11 +1,4 @@
-import {
-  emptyStage,
-  exec,
-  type ForgeflowContext,
-  type OnUpdate,
-  type StageResult,
-  sumUsage,
-} from "@callumvass/forgeflow-shared";
+import { emptyStage, exec, type PipelineContext, type StageResult, sumUsage } from "@callumvass/forgeflow-shared";
 import { findPrNumber, mergePr, returnToMain } from "../utils/git-workflow.js";
 import { setForgeflowStatus, updateProgressWidget } from "../utils/ui.js";
 import { runImplement } from "./implement.js";
@@ -32,13 +25,8 @@ function getReadyIssues(issues: IssueInfo[], completed: Set<number>): number[] {
     .map((i) => i.number);
 }
 
-export async function runImplementAll(
-  cwd: string,
-  signal: AbortSignal,
-  onUpdate: OnUpdate | undefined,
-  ctx: ForgeflowContext,
-  flags: { skipPlan: boolean; skipReview: boolean },
-) {
+export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: boolean; skipReview: boolean }) {
+  const { cwd, signal, ctx } = pctx;
   const allStages: StageResult[] = [];
   const issueProgress = new Map<number, { title: string; status: "pending" | "running" | "done" | "failed" }>();
 
@@ -110,7 +98,7 @@ export async function runImplementAll(
 
     // Run implement for this issue
     allStages.push(emptyStage(`implement-${issueNum}`));
-    const implResult = await runImplement(cwd, String(issueNum), signal, onUpdate, ctx, {
+    const implResult = await runImplement(String(issueNum), pctx, {
       ...flags,
       autonomous: true,
     });

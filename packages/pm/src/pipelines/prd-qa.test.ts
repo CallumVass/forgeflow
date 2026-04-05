@@ -1,5 +1,5 @@
 import type * as fs from "node:fs";
-import { mockForgeflowContext } from "@callumvass/forgeflow-shared";
+import { mockPipelineContext } from "@callumvass/forgeflow-shared";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", async (importOriginal) => {
@@ -19,8 +19,8 @@ describe("runPrdQa", () => {
     const mockedRunQaLoop = vi.mocked(runQaLoop);
     mockedRunQaLoop.mockResolvedValue({ accepted: true });
 
-    const ctx = mockForgeflowContext();
-    const result = await runPrdQa("/tmp/test", 10, AbortSignal.timeout(5000), undefined, ctx);
+    const pctx = mockPipelineContext();
+    const result = await runPrdQa(10, pctx);
 
     expect(mockedRunQaLoop).toHaveBeenCalledOnce();
     expect(mockedRunQaLoop).toHaveBeenCalledWith(
@@ -38,8 +38,8 @@ describe("runPrdQa", () => {
     const mockedRunQaLoop = vi.mocked(runQaLoop);
     mockedRunQaLoop.mockResolvedValue({ accepted: false, error: { text: "Critic failed." } });
 
-    const ctx = mockForgeflowContext();
-    const result = await runPrdQa("/tmp/test", 10, AbortSignal.timeout(5000), undefined, ctx);
+    const pctx = mockPipelineContext();
+    const result = await runPrdQa(10, pctx);
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain("Critic failed.");

@@ -41,6 +41,7 @@ describe("runReviewPipeline", () => {
     cwd: "/tmp",
     signal: AbortSignal.timeout(5000),
     stages: [] as StageResult[],
+    pipeline: "review",
   });
 
   beforeEach(() => {

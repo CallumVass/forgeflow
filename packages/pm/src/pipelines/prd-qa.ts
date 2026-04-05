@@ -1,5 +1,5 @@
 import * as fs from "node:fs";
-import type { ForgeflowContext, OnUpdate, StageResult } from "@callumvass/forgeflow-shared";
+import type { PipelineContext, StageResult } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 import { runQaLoop } from "./qa-loop.js";
 
@@ -11,24 +11,15 @@ function result(text: string, pipeline: string, stages: StageResult[], isError?:
   };
 }
 
-export async function runPrdQa(
-  cwd: string,
-  maxIterations: number,
-  signal: AbortSignal,
-  onUpdate: OnUpdate | undefined,
-  ctx: ForgeflowContext,
-) {
-  if (!fs.existsSync(`${cwd}/PRD.md`)) return result("PRD.md not found.", "prd-qa", []);
+export async function runPrdQa(maxIterations: number, pctx: PipelineContext) {
+  if (!fs.existsSync(`${pctx.cwd}/PRD.md`)) return result("PRD.md not found.", "prd-qa", []);
 
   const stages: StageResult[] = [];
   const qaResult = await runQaLoop({
-    cwd,
-    signal,
+    ...pctx,
     stages,
     pipeline: "prd-qa",
     agentsDir: AGENTS_DIR,
-    onUpdate,
-    ctx,
     maxIterations,
     criticPrompt:
       "Review PRD.md for completeness. If it needs refinement, create QUESTIONS.md. If it's complete, do NOT create QUESTIONS.md.",

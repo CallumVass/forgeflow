@@ -1,11 +1,10 @@
 import {
   cleanSignal,
   emptyStage,
-  type OnUpdate,
   type RunAgentFn,
+  type RunAgentOpts,
   readSignal,
   resolveRunAgent,
-  type StageResult,
   signalExists,
   TOOLS_NO_EDIT,
 } from "@callumvass/forgeflow-shared";
@@ -23,12 +22,7 @@ interface ReviewResult {
  */
 export async function runReviewPipeline(
   diff: string,
-  opts: {
-    cwd: string;
-    signal: AbortSignal;
-    stages: StageResult[];
-    pipeline?: string;
-    onUpdate?: OnUpdate;
+  opts: Pick<RunAgentOpts, "cwd" | "signal" | "stages" | "pipeline" | "onUpdate"> & {
     customPrompt?: string;
     runAgentFn?: RunAgentFn;
   },

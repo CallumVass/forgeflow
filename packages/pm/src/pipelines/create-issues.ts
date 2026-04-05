@@ -1,20 +1,9 @@
 import * as fs from "node:fs";
-import {
-  emptyStage,
-  type ForgeflowContext,
-  type OnUpdate,
-  runAgent,
-  TOOLS_NO_EDIT,
-} from "@callumvass/forgeflow-shared";
+import { emptyStage, type PipelineContext, runAgent, TOOLS_NO_EDIT, toAgentOpts } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
 
-export async function runCreateIssue(
-  cwd: string,
-  idea: string,
-  signal: AbortSignal,
-  onUpdate: OnUpdate | undefined,
-  ctx: ForgeflowContext,
-) {
+export async function runCreateIssue(idea: string, pctx: PipelineContext) {
+  const { ctx } = pctx;
   // Ask for feature idea interactively if not provided
   if (!idea && ctx.hasUI) {
     const input = await ctx.ui.input("Feature idea?", "");
@@ -28,7 +17,7 @@ export async function runCreateIssue(
   }
 
   const stages = [emptyStage("gh-single-issue-creator")];
-  const opts = { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline: "create-issue", onUpdate };
+  const opts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline: "create-issue" });
 
   await runAgent("gh-single-issue-creator", idea, { ...opts, tools: TOOLS_NO_EDIT });
 
@@ -38,13 +27,8 @@ export async function runCreateIssue(
   };
 }
 
-export async function runCreateIssues(
-  cwd: string,
-  signal: AbortSignal,
-  onUpdate: OnUpdate | undefined,
-  _ctx: ForgeflowContext,
-) {
-  if (!fs.existsSync(`${cwd}/PRD.md`)) {
+export async function runCreateIssues(pctx: PipelineContext) {
+  if (!fs.existsSync(`${pctx.cwd}/PRD.md`)) {
     return {
       content: [{ type: "text" as const, text: "PRD.md not found." }],
       details: { pipeline: "create-issues", stages: [] },
@@ -52,7 +36,7 @@ export async function runCreateIssues(
   }
 
   const stages = [emptyStage("gh-issue-creator")];
-  const opts = { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline: "create-issues", onUpdate };
+  const opts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline: "create-issues" });
 
   await runAgent(
     "gh-issue-creator",

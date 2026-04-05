@@ -1,4 +1,4 @@
-import { mockForgeflowContext } from "@callumvass/forgeflow-shared";
+import { mockPipelineContext } from "@callumvass/forgeflow-shared";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@callumvass/forgeflow-shared", async (importOriginal) => {
@@ -20,8 +20,8 @@ import { runReviewPipeline } from "./review-orchestrator.js";
 
 describe("reviewAndFix", () => {
   it("imports from review-orchestrator (not review.ts) and calls runReviewPipeline", async () => {
-    const ctx = mockForgeflowContext();
-    await reviewAndFix("/tmp", AbortSignal.timeout(5000), undefined, ctx, []);
+    const pctx = mockPipelineContext({ cwd: "/tmp" });
+    await reviewAndFix(pctx, []);
 
     expect(exec).toHaveBeenCalledWith("git diff main...HEAD", "/tmp");
     expect(runReviewPipeline).toHaveBeenCalledWith("diff content", expect.objectContaining({ cwd: "/tmp" }));
@@ -30,8 +30,8 @@ describe("reviewAndFix", () => {
   it("skips review pipeline when diff is empty", async () => {
     vi.mocked(runReviewPipeline).mockClear();
     vi.mocked(exec).mockResolvedValueOnce("");
-    const ctx = mockForgeflowContext();
-    await reviewAndFix("/tmp", AbortSignal.timeout(5000), undefined, ctx, []);
+    const pctx = mockPipelineContext({ cwd: "/tmp" });
+    await reviewAndFix(pctx, []);
 
     expect(runReviewPipeline).not.toHaveBeenCalled();
   });

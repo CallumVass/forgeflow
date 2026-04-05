@@ -45,15 +45,15 @@ vi.mock("./agents.js", () => ({
   runImplementor: vi.fn(async () => {}),
 }));
 
-import { mockForgeflowContext } from "@callumvass/forgeflow-shared";
+import { mockPipelineContext } from "@callumvass/forgeflow-shared";
 import { ensurePr, mergePr, setupBranch } from "../utils/git-workflow.js";
 import { runImplement } from "./implement.js";
 import { runPlanning } from "./planning.js";
 
 describe("runImplement orchestrator", () => {
   it("calls setupBranch, runPlanning, and ensurePr/mergePr in sequence", async () => {
-    const ctx = mockForgeflowContext({ cwd: "/tmp" });
-    const result = await runImplement("/tmp", "42", AbortSignal.timeout(5000), undefined, ctx, {
+    const pctx = mockPipelineContext({ cwd: "/tmp" });
+    const result = await runImplement("42", pctx, {
       skipPlan: false,
       skipReview: false,
     });
