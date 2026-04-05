@@ -1,5 +1,20 @@
 import { type Mock, vi } from "vitest";
-import { emptyStage, type ForgeflowContext, type ForgeflowUI, type RunAgentFn, type StageResult } from "./types.js";
+import {
+  emptyStage,
+  type ForgeflowContext,
+  type ForgeflowTheme,
+  type ForgeflowUI,
+  type RunAgentFn,
+  type StageResult,
+} from "./types.js";
+
+/** Create a mock theme that prefixes text with the category for test assertions. */
+export function mockTheme(): ForgeflowTheme {
+  return {
+    fg: (category: string, text: string) => `[${category}]${text}`,
+    bold: (text: string) => `**${text}**`,
+  };
+}
 
 /** Create a mock RunAgentFn that returns a StageResult with configurable output and status. */
 export function mockRunAgent(output = "", status: StageResult["status"] = "done"): Mock<RunAgentFn> {

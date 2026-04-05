@@ -3,17 +3,10 @@ import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { ExtensionConfig } from "./extension.js";
 import { buildSendMessage, createForgeflowExtension } from "./extension.js";
-import { mockForgeflowContext } from "./test-utils.js";
+import { mockForgeflowContext, mockTheme } from "./test-utils.js";
 import type { PipelineDetails } from "./types.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────
-
-function mockTheme() {
-  return {
-    fg: (category: string, text: string) => `[${category}]${text}`,
-    bold: (text: string) => `**${text}**`,
-  };
-}
 
 function mockPi() {
   return {
@@ -23,8 +16,8 @@ function mockPi() {
   };
 }
 
-// biome-ignore lint/style/noNonNullAssertion: test helper accessing mock calls by known index
 function getToolDef(pi: ReturnType<typeof mockPi>) {
+  // biome-ignore lint/style/noNonNullAssertion: test helper accessing mock calls by known index
   return pi.registerTool.mock.calls[0]![0]!;
 }
 

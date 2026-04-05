@@ -22,7 +22,7 @@ export {
 } from "./rendering.js";
 export { resolveRunAgent, runAgent } from "./run-agent.js";
 export { cleanSignal, readSignal, signalExists, signalPath } from "./signals.js";
-export { mockForgeflowContext, mockRunAgent } from "./test-utils.js";
+export { mockForgeflowContext, mockRunAgent, mockTheme } from "./test-utils.js";
 export {
   emptyStage,
   emptyUsage,
