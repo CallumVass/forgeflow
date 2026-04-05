@@ -1,6 +1,8 @@
 import {
   cleanSignal,
   emptyStage,
+  exec,
+  execSafe,
   type ForgeflowContext,
   type OnUpdate,
   readSignal,
@@ -11,7 +13,6 @@ import {
   TOOLS_READONLY,
 } from "@callumvass/forgeflow-shared";
 import { AGENTS_DIR } from "../resolve.js";
-import { exec } from "../utils/exec.js";
 
 /**
  * Shared review logic — used by both standalone /review and chained from /implement.
@@ -171,7 +172,7 @@ export async function runReview(
     diffCmd = `git diff main...${branch}`;
   } else {
     // Try to detect PR from current branch
-    const pr = await exec("gh pr view --json number --jq .number 2>/dev/null", cwd);
+    const pr = await execSafe("gh pr view --json number --jq .number", cwd);
     if (pr && pr !== "") prNumber = pr;
   }
 
