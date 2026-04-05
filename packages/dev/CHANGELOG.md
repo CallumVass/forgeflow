@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.6.0...forgeflow-dev-v0.7.0) (2026-04-05)
+
+
+### Features
+
+* add knip for dead code detection and extend check script with test ([#32](https://github.com/CallumVass/forgeflow/issues/32)) ([0fb4fd6](https://github.com/CallumVass/forgeflow/commit/0fb4fd625e9adefe70cd3a25b07ed0a703fa21ce))
+
 ## [0.6.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.5.0...forgeflow-dev-v0.6.0) (2026-04-05)
 
 
