@@ -1,4 +1,5 @@
-import { exec, type PipelineContext, type StageResult } from "@callumvass/forgeflow-shared";
+import { exec } from "@callumvass/forgeflow-shared/exec";
+import type { PipelineContext, StageResult } from "@callumvass/forgeflow-shared/types";
 import { proposeAndPostComments } from "./review-comments.js";
 import { resolveDiffTarget } from "./review-diff.js";
 import { runReviewPipeline } from "./review-orchestrator.js";

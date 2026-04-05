@@ -1,5 +1,5 @@
 import * as fs from "node:fs";
-import type { PipelineContext, StageResult } from "@callumvass/forgeflow-shared";
+import type { PipelineContext, StageResult } from "@callumvass/forgeflow-shared/types";
 import { AGENTS_DIR } from "../resolve.js";
 import { runQaLoop } from "./qa-loop.js";
 

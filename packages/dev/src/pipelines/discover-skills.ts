@@ -1,11 +1,6 @@
-import {
-  emptyStage,
-  type PipelineContext,
-  runAgent,
-  TOOLS_ALL,
-  TOOLS_NO_EDIT,
-  toAgentOpts,
-} from "@callumvass/forgeflow-shared";
+import { runAgent } from "@callumvass/forgeflow-shared/agent";
+import { TOOLS_ALL, TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared/constants";
+import { emptyStage, type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/types";
 import { AGENTS_DIR } from "../resolve.js";
 
 export async function runDiscoverSkills(query: string, pctx: PipelineContext) {

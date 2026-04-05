@@ -1,4 +1,5 @@
-import { createForgeflowExtension, toPipelineContext } from "@callumvass/forgeflow-shared";
+import { createForgeflowExtension } from "@callumvass/forgeflow-shared/extension";
+import { toPipelineContext } from "@callumvass/forgeflow-shared/types";
 import { commands } from "./commands.js";
 import { runArchitecture } from "./pipelines/architecture.js";
 import { runDiscoverSkills } from "./pipelines/discover-skills.js";

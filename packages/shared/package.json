@@ -6,6 +6,39 @@
   "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./types": "./dist/types.js",
+    "./exec": "./dist/exec.js",
+    "./agent": "./dist/run-agent.js",
+    "./signals": "./dist/signals.js",
+    "./rendering": "./dist/rendering.js",
+    "./confluence": "./dist/confluence.js",
+    "./testing": "./dist/test-utils.js",
+    "./constants": "./dist/constants.js",
+    "./extension": "./dist/extension.js",
+    "./di": "./dist/di.js",
+    "./arg-parsing": "./dist/arg-parsing.js",
+    "./progress": "./dist/progress.js",
+    "./message-parser": "./dist/message-parser.js"
+  },
+  "typesVersions": {
+    "*": {
+      "types": ["dist/types.d.ts"],
+      "exec": ["dist/exec.d.ts"],
+      "agent": ["dist/run-agent.d.ts"],
+      "signals": ["dist/signals.d.ts"],
+      "rendering": ["dist/rendering.d.ts"],
+      "confluence": ["dist/confluence.d.ts"],
+      "testing": ["dist/test-utils.d.ts"],
+      "constants": ["dist/constants.d.ts"],
+      "extension": ["dist/extension.d.ts"],
+      "di": ["dist/di.d.ts"],
+      "arg-parsing": ["dist/arg-parsing.d.ts"],
+      "progress": ["dist/progress.d.ts"],
+      "message-parser": ["dist/message-parser.d.ts"]
+    }
+  },
   "scripts": {
     "build": "tsc -b"
   },

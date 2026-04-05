@@ -1,4 +1,5 @@
-import { type CommandDefinition, extractFlags, unquote } from "@callumvass/forgeflow-shared";
+import { extractFlags, unquote } from "@callumvass/forgeflow-shared/arg-parsing";
+import type { CommandDefinition } from "@callumvass/forgeflow-shared/extension";
 
 export const commands: CommandDefinition[] = [
   {

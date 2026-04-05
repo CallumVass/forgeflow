@@ -1,5 +1,5 @@
 import type * as fs from "node:fs";
-import { mockPipelineContext } from "@callumvass/forgeflow-shared";
+import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs", async (importOriginal) => {

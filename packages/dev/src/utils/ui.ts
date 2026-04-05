@@ -1,4 +1,4 @@
-import type { ForgeflowContext } from "@callumvass/forgeflow-shared";
+import type { ForgeflowContext } from "@callumvass/forgeflow-shared/types";
 
 export function setForgeflowStatus(ctx: ForgeflowContext, text: string | undefined): void {
   if (ctx.hasUI) ctx.ui.setStatus("forgeflow-dev", text);

@@ -5,11 +5,6 @@ vi.mock("../utils/exec.js", () => ({
   exec: vi.fn(async () => ""),
 }));
 
-vi.mock("@callumvass/forgeflow-shared", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@callumvass/forgeflow-shared")>();
-  return { ...actual };
-});
-
 vi.mock("../utils/git.js", () => ({
   buildPrBody: vi.fn(() => "PR body"),
   resolveIssue: vi.fn(async () => ({
@@ -45,7 +40,7 @@ vi.mock("./agents.js", () => ({
   runImplementor: vi.fn(async () => {}),
 }));
 
-import { mockPipelineContext } from "@callumvass/forgeflow-shared";
+import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { ensurePr, mergePr, setupBranch } from "../utils/git-workflow.js";
 import { runImplement } from "./implement.js";
 import { runPlanning } from "./planning.js";

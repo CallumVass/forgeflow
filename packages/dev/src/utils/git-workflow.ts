@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { exec as defaultExec, type ExecFn } from "@callumvass/forgeflow-shared";
+import { exec as defaultExec, type ExecFn } from "@callumvass/forgeflow-shared/exec";
 
 interface BranchSetupResult {
   status: "fresh" | "resumed" | "failed";

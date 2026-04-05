@@ -1,11 +1,5 @@
-import {
-  cleanSignal,
-  emptyStage,
-  type PipelineContext,
-  readSignal,
-  type StageResult,
-  signalExists,
-} from "@callumvass/forgeflow-shared";
+import { cleanSignal, readSignal, signalExists } from "@callumvass/forgeflow-shared/signals";
+import { emptyStage, type PipelineContext, type StageResult } from "@callumvass/forgeflow-shared/types";
 import { buildPrBody, resolveIssue } from "../utils/git.js";
 import { ensurePr, mergePr, returnToMain, setupBranch } from "../utils/git-workflow.js";
 import { setForgeflowStatus } from "../utils/ui.js";

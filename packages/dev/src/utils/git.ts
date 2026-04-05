@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { exec, execSafe } from "@callumvass/forgeflow-shared";
+import { exec, execSafe } from "@callumvass/forgeflow-shared/exec";
 import { findPrNumber } from "./git-workflow.js";
 
 const PR_TEMPLATE_PATHS = [
