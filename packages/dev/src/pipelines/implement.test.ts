@@ -12,7 +12,6 @@ vi.mock("@callumvass/forgeflow-shared", async (importOriginal) => {
 
 vi.mock("../utils/git.js", () => ({
   buildPrBody: vi.fn(() => "PR body"),
-  createPr: vi.fn(async () => {}),
   resolveIssue: vi.fn(async () => ({
     source: "github",
     key: "42",

@@ -71,10 +71,9 @@ export async function ensurePr(
   await execFn(`git push -u origin ${branch}`, cwd);
 
   // Check for existing PR
-  const existing = await execFn(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
-
-  if (existing && existing !== "null") {
-    return { number: parseInt(existing, 10), created: false };
+  const existingNum = await findPrNumber(cwd, branch, execFn);
+  if (existingNum != null) {
+    return { number: existingNum, created: false };
   }
 
   // Create PR using temp file for body (avoids shell escaping issues)
@@ -90,8 +89,8 @@ export async function ensurePr(
     }
 
     // Fallback: list the PR we just created
-    const prNum = await execFn(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
-    return { number: parseInt(prNum, 10) || 0, created: true };
+    const createdNum = await findPrNumber(cwd, branch, execFn);
+    return { number: createdNum ?? 0, created: true };
   } finally {
     try {
       fs.unlinkSync(tmp);
