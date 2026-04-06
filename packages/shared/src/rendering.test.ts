@@ -96,8 +96,6 @@ describe("formatToolCall", () => {
   });
 });
 
-
-
 describe("formatUsage", () => {
   it("formats tokens with k-suffix above 1000, includes turns/cost/model", () => {
     expect(formatUsage({ input: 500, output: 200, cost: 0.0123, turns: 5 }, "gpt-4")).toBe(
