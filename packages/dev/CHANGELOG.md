@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.10.0...forgeflow-dev-v0.10.1) (2026-04-06)
+
+
+### Bug Fixes
+
+* remove fixed candidate count from architecture-reviewer prompt ([ee26380](https://github.com/CallumVass/forgeflow/commit/ee263807b99b6faa163c8c8100afc9c4f04a17f7))
+
 ## [0.10.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.9.1...forgeflow-dev-v0.10.0) (2026-04-06)
 
 
