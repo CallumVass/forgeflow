@@ -3,7 +3,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
-import { emitUpdate, emptyStage, type RunAgentFn, type RunAgentOpts, type StageResult } from "./pipeline.js";
+import { emptyStage, type RunAgentFn, type RunAgentOpts, type StageResult } from "./pipeline.js";
+import { emitUpdate } from "./progress.js";
 import { applyMessageToStage, extractFinalOutput, parseMessageLine } from "./rendering.js";
 
 /**
