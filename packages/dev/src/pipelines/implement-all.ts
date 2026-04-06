@@ -14,7 +14,7 @@ interface IssueInfo {
 /**
  * Get issue numbers whose dependencies (referenced as #N in ## Dependencies section) are satisfied.
  */
-function getReadyIssues(issues: IssueInfo[], completed: Set<number>): number[] {
+export function getReadyIssues(issues: IssueInfo[], completed: Set<number>): number[] {
   return issues
     .filter((issue) => {
       if (completed.has(issue.number)) return false;
@@ -88,10 +88,8 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
 
     // Update status + widget
     issueProgress.set(issueNum, { title: issueTitle, status: "running" });
-    setForgeflowStatus(
-      ctx,
-      `implement-all · ${completed.size}/${completed.size + issues.length} · #${issueNum} ${issueTitle}`,
-    );
+    const done = [...issueProgress.values()].filter((v) => v.status === "done").length;
+    setForgeflowStatus(ctx, `implement-all · ${done}/${issueProgress.size} · #${issueNum} ${issueTitle}`);
     updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
 
     // Run implement for this issue
@@ -149,9 +147,10 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
 
     // Mark done and update widget
     issueProgress.set(issueNum, { title: issueTitle, status: "done" });
+    const doneAfter = [...issueProgress.values()].filter((v) => v.status === "done").length;
     setForgeflowStatus(
       ctx,
-      `implement-all · ${completed.size}/${completed.size + issues.length - 1} · $${sumUsage(allStages).cost.toFixed(2)}`,
+      `implement-all · ${doneAfter}/${issueProgress.size} · $${sumUsage(allStages).cost.toFixed(2)}`,
     );
     updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
   }
