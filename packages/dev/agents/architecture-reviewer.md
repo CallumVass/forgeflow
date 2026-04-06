@@ -31,7 +31,7 @@ Use concrete data, not vibes:
 
 ### Output Format
 
-Present a numbered list of **3-5 candidates**, ranked by severity:
+Present a numbered list of candidates ranked by severity. Only include candidates that are genuinely distinct — do not pad the list. If there are 2 real issues, present 2. If there are 6, present 6. Never split one problem into multiple candidates to fill a quota, and never present a candidate that is a subset of another:
 
 ```
 ## Candidates
