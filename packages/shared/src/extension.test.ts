@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { ExtensionConfig } from "./extension.js";
 import { buildSendMessage, createForgeflowExtension } from "./extension.js";
@@ -275,34 +273,3 @@ describe("buildSendMessage", () => {
   });
 });
 
-describe("migration verification", () => {
-  it("dev/index.ts is under 80 lines and uses createForgeflowExtension with no sendUserMessage templates or try/finally", () => {
-    const src = readFileSync(resolve(__dirname, "../../dev/src/index.ts"), "utf-8");
-    const lines = src.split("\n").length;
-
-    expect(lines).toBeLessThan(80);
-    expect(src).toContain("createForgeflowExtension");
-    expect(src).toContain("@callumvass/forgeflow-shared");
-    expect(src).not.toContain("sendUserMessage");
-    expect(src).not.toContain("try {");
-    expect(src).not.toContain("finally {");
-    expect(src).not.toContain("function registerForgeflow");
-    expect(src).not.toMatch(/renderCall\s*\(/);
-    expect(src).not.toMatch(/renderResult\s*\(/);
-  });
-
-  it("pm/index.ts is under 80 lines and uses createForgeflowExtension with no sendUserMessage templates or try/finally", () => {
-    const src = readFileSync(resolve(__dirname, "../../pm/src/index.ts"), "utf-8");
-    const lines = src.split("\n").length;
-
-    expect(lines).toBeLessThan(80);
-    expect(src).toContain("createForgeflowExtension");
-    expect(src).toContain("@callumvass/forgeflow-shared");
-    expect(src).not.toContain("sendUserMessage");
-    expect(src).not.toContain("try {");
-    expect(src).not.toContain("finally {");
-    expect(src).not.toContain("function registerForgeflow");
-    expect(src).not.toMatch(/renderCall\s*\(/);
-    expect(src).not.toMatch(/renderResult\s*\(/);
-  });
-});

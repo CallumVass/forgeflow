@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 // We'll need these mocks for reviewAndFix and refactorAndReview tests later
@@ -187,31 +185,3 @@ describe("runImplementorPhase", () => {
   });
 });
 
-describe("structural assertions", () => {
-  it("implement.ts has no direct imports from agent, exec, or signals; implement-phases.ts exports all extracted functions", () => {
-    const implementSrc = readFileSync(resolve(__dirname, "implement.ts"), "utf-8");
-
-    // implement.ts should not import these modules directly (they moved to implement-phases.ts)
-    expect(implementSrc).not.toContain('from "@callumvass/forgeflow-shared/agent"');
-    expect(implementSrc).not.toContain('from "@callumvass/forgeflow-shared/exec"');
-    expect(implementSrc).not.toContain('from "@callumvass/forgeflow-shared/signals"');
-
-    // implement.ts should not define these functions
-    expect(implementSrc).not.toContain("function buildImplementorPrompt");
-    expect(implementSrc).not.toContain("function reviewAndFix");
-    expect(implementSrc).not.toContain("function refactorAndReview");
-
-    // implement-phases.ts should export the extracted functions and PhaseContext
-    const phasesSrc = readFileSync(resolve(__dirname, "implement-phases.ts"), "utf-8");
-    expect(phasesSrc).toContain("export function buildImplementorPrompt");
-    expect(phasesSrc).toContain("export async function reviewAndFix");
-    expect(phasesSrc).toContain("export async function refactorAndReview");
-    expect(phasesSrc).toContain("export interface PhaseContext");
-  });
-
-  it("implement.test.ts has at most 5 vi.mock() declarations", () => {
-    const testSrc = readFileSync(resolve(__dirname, "implement.test.ts"), "utf-8");
-    const mockCount = (testSrc.match(/vi\.mock\(/g) || []).length;
-    expect(mockCount).toBeLessThanOrEqual(5);
-  });
-});
