@@ -42,6 +42,7 @@
     "build": "tsc -b"
   },
   "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
     "@mariozechner/pi-tui": "*"
   }
 }

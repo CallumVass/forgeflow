@@ -1,5 +1,6 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
+import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import type { ForgeflowTheme } from "./context.js";
 import { getFinalOutput } from "./message-parser.js";
@@ -101,12 +102,7 @@ export function renderExpanded(details: PipelineDetails, theme: ForgeflowTheme, 
     const output = getFinalOutput(stage.messages);
     if (output) {
       container.addChild(new Spacer(1));
-      try {
-        const { getMarkdownTheme } = require("@mariozechner/pi-coding-agent");
-        container.addChild(new Markdown(output.trim(), 0, 0, getMarkdownTheme()));
-      } catch {
-        container.addChild(new Text(theme.fg("toolOutput", output.slice(0, 500)), 0, 0));
-      }
+      container.addChild(new Markdown(output.trim(), 0, 0, getMarkdownTheme()));
     }
 
     const usageStr = formatUsage(stage.usage, stage.model);
