@@ -58,8 +58,8 @@ export async function runArchitecture(pctx: PipelineContext, opts?: { runAgentFn
   const candidates = parseCandidates(exploreResult.output);
   const validatedCandidates: typeof candidates = [];
 
-  for (const candidate of candidates) {
-    const judgeStageName = `architecture-judge-${candidates.indexOf(candidate) + 1}`;
+  for (const [i, candidate] of candidates.entries()) {
+    const judgeStageName = `architecture-judge-${i + 1}`;
     stages.push(emptyStage(judgeStageName));
     const judgeResult = await runAgentFn(
       "architecture-judge",
@@ -80,18 +80,13 @@ export async function runArchitecture(pctx: PipelineContext, opts?: { runAgentFn
     );
   }
 
-  // Non-interactive: return validated output
-  if (!ctx.hasUI) {
-    if (validatedCandidates.length > 0) {
-      const output = validatedCandidates.map((c) => c.body).join("\n\n");
-      return pipelineResult(output, "architecture", stages);
-    }
-    return pipelineResult(exploreResult.output, "architecture", stages);
-  }
-
-  // Interactive gate: user reviews validated candidates
   const validatedOutput =
     validatedCandidates.length > 0 ? validatedCandidates.map((c) => c.body).join("\n\n") : exploreResult.output;
+
+  // Non-interactive: return validated output
+  if (!ctx.hasUI) {
+    return pipelineResult(validatedOutput, "architecture", stages);
+  }
 
   const edited = await ctx.ui.editor("Review architecture candidates (edit to highlight your pick)", validatedOutput);
   const candidateContext = edited ?? validatedOutput;
@@ -127,8 +122,8 @@ export async function runArchitecture(pctx: PipelineContext, opts?: { runAgentFn
   // Phase 2: Generate RFC and create GitHub issue for each selected candidate
   const createdIssues: string[] = [];
 
-  for (const candidate of selectedCandidates) {
-    const stageName = `architecture-rfc-${selectedCandidates.indexOf(candidate) + 1}`;
+  for (const [i, candidate] of selectedCandidates.entries()) {
+    const stageName = `architecture-rfc-${i + 1}`;
     stages.push(emptyStage(stageName));
 
     const rfcResult = await runAgentFn(
