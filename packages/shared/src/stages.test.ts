@@ -1,14 +1,7 @@
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import {
-  emitUpdate,
-  emptyStage,
-  getLastToolCall,
-  pipelineResult,
-  resolveAgentsDir,
-  sumUsage,
-} from "./stages.js";
+import { emitUpdate, emptyStage, getLastToolCall, pipelineResult, resolveAgentsDir, sumUsage } from "./stages.js";
 import { makeAssistantMessage, makeStage } from "./test-utils.js";
 
 describe("emptyStage", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { toAgentOpts, toPipelineContext } from "./context.js";
 import type { PipelineContext } from "./context.js";
+import { toAgentOpts, toPipelineContext } from "./context.js";
 import { mockForgeflowContext } from "./test-utils.js";
 
 describe("toPipelineContext", () => {
