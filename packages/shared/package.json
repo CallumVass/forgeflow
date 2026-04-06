@@ -6,6 +6,10 @@
   "license": "MIT",
   "exports": {
     "./pipeline": "./dist/pipeline.js",
+    "./tools": "./dist/tools.js",
+    "./signals": "./dist/signals.js",
+    "./stages": "./dist/stages.js",
+    "./context": "./dist/context.js",
     "./exec": "./dist/exec.js",
     "./agent": "./dist/run-agent.js",
     "./rendering": "./dist/rendering.js",
@@ -17,6 +21,10 @@
   "typesVersions": {
     "*": {
       "pipeline": ["dist/pipeline.d.ts"],
+      "tools": ["dist/tools.d.ts"],
+      "signals": ["dist/signals.d.ts"],
+      "stages": ["dist/stages.d.ts"],
+      "context": ["dist/context.d.ts"],
       "exec": ["dist/exec.d.ts"],
       "agent": ["dist/run-agent.d.ts"],
       "rendering": ["dist/rendering.d.ts"],

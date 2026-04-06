@@ -2,7 +2,8 @@ import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
 import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
-import type { ForgeflowTheme, PipelineDetails, StageResult } from "./pipeline.js";
+import type { ForgeflowTheme } from "./context.js";
+import type { PipelineDetails, StageResult } from "./stages.js";
 
 // ─── Message parser (merged from message-parser.ts) ───────────────────
 
