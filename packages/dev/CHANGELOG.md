@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.9.1...forgeflow-dev-v0.10.0) (2026-04-06)
+
+
+### Features
+
+* remove customPrompt from pipeline params — use interactive ui.input instead ([#68](https://github.com/CallumVass/forgeflow/issues/68)) ([dfb4578](https://github.com/CallumVass/forgeflow/commit/dfb4578316a9fe5c72ee64a123e8426d379f1e4c))
+
 ## [0.9.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.9.0...forgeflow-dev-v0.9.1) (2026-04-06)
 
 
