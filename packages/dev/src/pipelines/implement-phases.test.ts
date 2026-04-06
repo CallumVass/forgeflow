@@ -24,7 +24,7 @@ vi.mock("./review-orchestrator.js", () => ({
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { exec } from "@callumvass/forgeflow-shared/exec";
 import { readSignal, signalExists } from "@callumvass/forgeflow-shared/signals";
-import type { RunAgentOpts } from "@callumvass/forgeflow-shared/types";
+import type { RunAgentOpts } from "@callumvass/forgeflow-shared/stage";
 import {
   buildImplementorPrompt,
   type PhaseContext,

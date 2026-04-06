@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { emptyStage, type RunAgentOpts } from "./types.js";
+import { emptyStage, type RunAgentOpts } from "./stage.js";
 
 const stubOpts: RunAgentOpts = {
   agentsDir: "/agents",

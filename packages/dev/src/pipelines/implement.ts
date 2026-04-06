@@ -1,10 +1,5 @@
-import {
-  emptyStage,
-  type PipelineContext,
-  pipelineResult,
-  type StageResult,
-  toAgentOpts,
-} from "@callumvass/forgeflow-shared/types";
+import { type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/context";
+import { emptyStage, pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/stage";
 import { buildPrBody, resolveIssue } from "../utils/git.js";
 import { ensurePr, mergePr, returnToMain, setupBranch } from "../utils/git-workflow.js";
 import { setForgeflowStatus } from "../utils/ui.js";

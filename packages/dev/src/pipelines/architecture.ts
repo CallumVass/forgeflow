@@ -1,6 +1,7 @@
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { TOOLS_READONLY } from "@callumvass/forgeflow-shared/constants";
-import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/types";
+import { type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/context";
+import { emptyStage, pipelineResult } from "@callumvass/forgeflow-shared/stage";
 
 /**
  * Parse numbered candidates from the architecture reviewer output.

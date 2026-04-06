@@ -2,14 +2,9 @@ import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
+import type { ForgeflowContext, ForgeflowTheme } from "./context.js";
 import { renderResult as sharedRenderResult } from "./rendering.js";
-import {
-  type ForgeflowContext,
-  type ForgeflowTheme,
-  type OnUpdate,
-  type PipelineDetails,
-  pipelineResult,
-} from "./types.js";
+import { type OnUpdate, type PipelineDetails, pipelineResult } from "./stage.js";
 
 // ─── Types ────────────────────────────────────────────────────────────
 

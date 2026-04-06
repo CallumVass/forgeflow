@@ -1,8 +1,9 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
-import type { ForgeflowTheme, PipelineDetails, StageResult } from "./types.js";
-import { getFinalOutput } from "./types.js";
+import type { ForgeflowTheme } from "./context.js";
+import { getFinalOutput } from "./message-parser.js";
+import type { PipelineDetails, StageResult } from "./stage.js";
 
 export type DisplayItem =
   | { type: "text"; text: string }

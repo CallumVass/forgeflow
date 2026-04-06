@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { ForgeflowContext, ForgeflowTheme, ForgeflowUI } from "./context.js";
 import {
   formatToolCall,
   formatToolCallShort,
@@ -10,8 +11,8 @@ import {
   renderExpanded,
   stageIcon,
 } from "./rendering.js";
+import type { PipelineDetails } from "./stage.js";
 import { makeStage, mockTheme } from "./test-utils.js";
-import type { ForgeflowContext, ForgeflowTheme, ForgeflowUI, PipelineDetails } from "./types.js";
 
 describe("rendering exports", () => {
   it("exports all eight symbols", () => {

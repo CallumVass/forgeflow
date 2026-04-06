@@ -1,7 +1,8 @@
 import * as fs from "node:fs";
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared/constants";
-import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/types";
+import { type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/context";
+import { emptyStage, pipelineResult } from "@callumvass/forgeflow-shared/stage";
 
 export async function runCreateIssue(idea: string, pctx: PipelineContext) {
   const { ctx } = pctx;

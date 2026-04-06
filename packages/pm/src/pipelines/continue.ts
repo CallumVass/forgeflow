@@ -1,13 +1,8 @@
 import * as fs from "node:fs";
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { TOOLS_ALL, TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared/constants";
-import {
-  emptyStage,
-  type PipelineContext,
-  pipelineResult,
-  type StageResult,
-  toAgentOpts,
-} from "@callumvass/forgeflow-shared/types";
+import { type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/context";
+import { emptyStage, pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/stage";
 import { runQaLoop } from "./qa-loop.js";
 
 function updatePrompt(description: string) {

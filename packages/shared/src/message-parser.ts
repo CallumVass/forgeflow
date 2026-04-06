@@ -1,6 +1,5 @@
 import type { Message } from "@mariozechner/pi-ai";
-import type { StageResult } from "./types.js";
-import { getFinalOutput } from "./types.js";
+import type { StageResult } from "./stage.js";
 
 /** Parse a single NDJSON line into a structured event. Returns null for unparseable lines. */
 export function parseMessageLine(line: string): { type: string; message?: Message } | null {
@@ -38,7 +37,23 @@ export function applyMessageToStage(event: { type?: string; message?: Message },
   return false;
 }
 
-/** Extract final text output from a stage's messages. Delegates to getFinalOutput. */
+/** Walk assistant messages backwards to extract the last text block. */
+export function getFinalOutput(messages: Message[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    // biome-ignore lint/style/noNonNullAssertion: index within bounds
+    const msg = messages[i]!;
+    if (msg.role === "assistant") {
+      for (const part of msg.content) {
+        if (typeof part === "object" && "type" in part && part.type === "text" && "text" in part) {
+          return part.text as string;
+        }
+      }
+    }
+  }
+  return "";
+}
+
+/** Extract final text output from a stage's messages. */
 export function extractFinalOutput(stage: StageResult): void {
   stage.output = getFinalOutput(stage.messages);
 }

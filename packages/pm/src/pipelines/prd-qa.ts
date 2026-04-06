@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
-import { type PipelineContext, pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/types";
+import type { PipelineContext } from "@callumvass/forgeflow-shared/context";
+import { pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/stage";
 import { runQaLoop } from "./qa-loop.js";
 
 export async function runPrdQa(maxIterations: number, pctx: PipelineContext) {

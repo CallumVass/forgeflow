@@ -1,13 +1,6 @@
 import { type Mock, vi } from "vitest";
-import {
-  emptyStage,
-  type ForgeflowContext,
-  type ForgeflowTheme,
-  type ForgeflowUI,
-  type PipelineContext,
-  type RunAgentFn,
-  type StageResult,
-} from "./types.js";
+import type { ForgeflowContext, ForgeflowTheme, ForgeflowUI, PipelineContext } from "./context.js";
+import { emptyStage, type RunAgentFn, type StageResult } from "./stage.js";
 
 /** Create a StageResult with defaults, overridable for tests. */
 export function makeStage(overrides: Partial<StageResult> = {}): StageResult {
