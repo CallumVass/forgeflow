@@ -3,7 +3,13 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { renderResult as sharedRenderResult } from "./rendering.js";
-import type { ForgeflowContext, ForgeflowTheme, OnUpdate, PipelineDetails } from "./types.js";
+import {
+  type ForgeflowContext,
+  type ForgeflowTheme,
+  type OnUpdate,
+  type PipelineDetails,
+  pipelineResult,
+} from "./types.js";
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -118,10 +124,7 @@ export function createForgeflowExtension(config: ExtensionConfig): (pi: Extensio
         try {
           if (!pipeline) {
             const names = config.pipelines.map((p) => p.name).join(", ");
-            return {
-              content: [{ type: "text", text: `Unknown pipeline: ${params.pipeline}. Use: ${names}` }],
-              details: { pipeline: params.pipeline as string, stages: [] } as PipelineDetails,
-            };
+            return pipelineResult(`Unknown pipeline: ${params.pipeline}. Use: ${names}`, params.pipeline as string, []);
           }
           return await pipeline.execute(cwd, params, sig, onUpdate as OnUpdate, ctx as unknown as ForgeflowContext);
         } finally {
