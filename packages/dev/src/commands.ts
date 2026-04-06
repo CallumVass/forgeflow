@@ -5,7 +5,7 @@ export const commands: CommandDefinition[] = [
   {
     name: "implement",
     description:
-      "Implement a single issue using TDD. Usage: /implement <issue#|JIRA-KEY> [custom prompt] [--skip-plan] [--skip-review]",
+      "Implement a single issue using TDD. Usage: /implement <issue#|JIRA-KEY> [--skip-plan] [--skip-review]",
     pipeline: "implement",
     parseArgs: (args) => {
       const { flags, rest } = extractFlags(args, { boolean: ["--skip-plan", "--skip-review"] });
@@ -40,7 +40,7 @@ export const commands: CommandDefinition[] = [
   },
   {
     name: "review",
-    description: "Run code review: deterministic checks → reviewer → judge. Usage: /review [target] [custom prompt]",
+    description: "Run code review: deterministic checks → reviewer → judge. Usage: /review [target]",
     pipeline: "review",
     parseArgs: (args) => {
       const { flags, rest } = extractFlags(args, { value: ["--branch"] });
