@@ -4,7 +4,6 @@ import {
   applyMessageToStage,
   extractFinalOutput,
   formatToolCall,
-  formatToolCallShort,
   formatUsage,
   getDisplayItems,
   parseMessageLine,
@@ -15,12 +14,11 @@ import {
 import { makeAssistantMessage, makeStage, mockTheme } from "./test-utils.js";
 
 describe("rendering exports", () => {
-  it("exports all eight symbols", () => {
+  it("exports expected symbols", () => {
     // DisplayItem is a type-only export, verified by the import above compiling.
-    // The seven functions must be real functions.
+    // The six functions must be real functions.
     expect(typeof getDisplayItems).toBe("function");
     expect(typeof formatToolCall).toBe("function");
-    expect(typeof formatToolCallShort).toBe("function");
     expect(typeof formatUsage).toBe("function");
     expect(typeof stageIcon).toBe("function");
     expect(typeof renderExpanded).toBe("function");
@@ -98,12 +96,7 @@ describe("formatToolCall", () => {
   });
 });
 
-describe("formatToolCallShort (deprecated alias)", () => {
-  it("delegates to formatToolCall", () => {
-    const fg = (c: string, t: string) => `[${c}]${t}`;
-    expect(formatToolCallShort("bash", { command: "ls" }, fg)).toBe(formatToolCall("bash", { command: "ls" }, fg));
-  });
-});
+
 
 describe("formatUsage", () => {
   it("formats tokens with k-suffix above 1000, includes turns/cost/model", () => {

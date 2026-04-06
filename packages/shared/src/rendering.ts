@@ -106,15 +106,6 @@ export function formatToolCall(name: string, args: Record<string, unknown>, fg: 
   }
 }
 
-/** @deprecated Use `formatToolCall` instead. */
-export function formatToolCallShort(
-  name: string,
-  args: Record<string, unknown>,
-  fg: (c: string, t: string) => string,
-): string {
-  return formatToolCall(name, args, fg);
-}
-
 export function formatUsage(
   usage: { input: number; output: number; cost: number; turns: number },
   model?: string,
