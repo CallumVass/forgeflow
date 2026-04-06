@@ -4,7 +4,7 @@ import { Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import type { ForgeflowContext, ForgeflowTheme } from "./pipeline.js";
 import { type OnUpdate, type PipelineDetails, pipelineResult } from "./pipeline.js";
-import { renderResult as sharedRenderResult } from "./rendering.js";
+import { renderResult as sharedRenderResult } from "./stage-renderer.js";
 
 // ─── Types ────────────────────────────────────────────────────────────
 

@@ -3,9 +3,9 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
+import { applyMessageToStage, extractFinalOutput, parseMessageLine } from "./message-parser.js";
 import { emptyStage, type RunAgentFn, type RunAgentOpts, type StageResult } from "./pipeline.js";
 import { emitUpdate } from "./progress.js";
-import { applyMessageToStage, extractFinalOutput, parseMessageLine } from "./rendering.js";
 
 /**
  * Resolve a RunAgentFn — use the injected one for tests, or return the real one.
