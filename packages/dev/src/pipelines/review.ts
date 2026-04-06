@@ -1,19 +1,17 @@
 import type { PipelineContext } from "@callumvass/forgeflow-shared/context";
 import { exec } from "@callumvass/forgeflow-shared/exec";
 import { pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/stage";
+import { askCustomPrompt } from "../utils/ui.js";
 import { proposeAndPostComments } from "./review-comments.js";
 import { resolveDiffTarget } from "./review-diff.js";
 import { runReviewPipeline } from "./review-orchestrator.js";
 
-export async function runReview(target: string, pctx: PipelineContext, customPrompt?: string) {
+export async function runReview(target: string, pctx: PipelineContext) {
   const { cwd, signal, onUpdate, ctx, agentsDir } = pctx;
   const stages: StageResult[] = [];
   const { diffCmd, prNumber } = await resolveDiffTarget(cwd, target);
 
-  if (ctx.hasUI && !customPrompt) {
-    const extra = await ctx.ui.input("Additional instructions?", "Skip");
-    if (extra?.trim()) customPrompt = extra.trim();
-  }
+  const customPrompt = await askCustomPrompt(ctx, ctx.hasUI);
 
   const diff = await exec(diffCmd, cwd);
   if (!diff) return pipelineResult("No changes to review.", "review", stages);

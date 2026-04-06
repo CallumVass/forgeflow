@@ -12,9 +12,10 @@ vi.mock("../utils/git.js", () => ({
   })),
 }));
 
-vi.mock("../utils/ui.js", () => ({
-  setForgeflowStatus: vi.fn(),
-}));
+vi.mock("../utils/ui.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../utils/ui.js")>();
+  return { ...actual, setForgeflowStatus: vi.fn() };
+});
 
 vi.mock("../utils/git-workflow.js", () => ({
   setupBranch: vi.fn(async () => ({ status: "fresh" })),
@@ -34,7 +35,7 @@ vi.mock("./implement-phases.js", () => ({
   runImplementorPhase: vi.fn(async () => null),
 }));
 
-import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
+import { mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { resolveIssue } from "../utils/git.js";
 import { ensurePr, mergePr, setupBranch } from "../utils/git-workflow.js";
 import { runImplement } from "./implement.js";
@@ -90,5 +91,57 @@ describe("runImplement orchestrator", () => {
 
     expect(refactorAndReview).toHaveBeenCalled();
     expect(result.content[0]?.text).toContain("Resumed");
+  });
+
+  it("calls ui.input in interactive mode and forwards answer to runPlanning and buildImplementorPrompt", async () => {
+    const inputFn = vi.fn(async () => "check the openapi spec");
+    vi.mocked(runPlanning).mockClear();
+    vi.mocked(buildImplementorPrompt).mockClear();
+
+    const pctx = mockPipelineContext({
+      cwd: "/tmp",
+      ctx: mockForgeflowContext({ hasUI: true, cwd: "/tmp", ui: { input: inputFn } }),
+    });
+    await runImplement("42", pctx, { skipPlan: false, skipReview: false });
+
+    expect(inputFn).toHaveBeenCalledWith("Additional instructions?", "Skip");
+    expect(runPlanning).toHaveBeenCalledWith(
+      expect.any(String),
+      "check the openapi spec",
+      expect.objectContaining({ interactive: true }),
+    );
+    expect(buildImplementorPrompt).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      "check the openapi spec",
+      expect.any(Object),
+      undefined,
+    );
+  });
+
+  it("passes undefined customPrompt when user skips the interactive prompt", async () => {
+    const inputFn = vi.fn(async () => "");
+    vi.mocked(runPlanning).mockClear();
+    vi.mocked(buildImplementorPrompt).mockClear();
+
+    const pctx = mockPipelineContext({
+      cwd: "/tmp",
+      ctx: mockForgeflowContext({ hasUI: true, cwd: "/tmp", ui: { input: inputFn } }),
+    });
+    await runImplement("42", pctx, { skipPlan: false, skipReview: false });
+
+    expect(inputFn).toHaveBeenCalled();
+    expect(runPlanning).toHaveBeenCalledWith(
+      expect.any(String),
+      undefined,
+      expect.objectContaining({ interactive: true }),
+    );
+    expect(buildImplementorPrompt).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      undefined,
+      expect.any(Object),
+      undefined,
+    );
   });
 });

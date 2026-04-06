@@ -2,7 +2,7 @@ import { type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/
 import { emptyStage, pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/stage";
 import { buildPrBody, resolveIssue } from "../utils/git.js";
 import { ensurePr, mergePr, returnToMain, setupBranch } from "../utils/git-workflow.js";
-import { setForgeflowStatus } from "../utils/ui.js";
+import { askCustomPrompt, setForgeflowStatus } from "../utils/ui.js";
 import {
   buildImplementorPrompt,
   type PhaseContext,
@@ -15,7 +15,7 @@ import { runPlanning } from "./planning.js";
 export async function runImplement(
   issueArg: string,
   pctx: PipelineContext,
-  flags: { skipPlan: boolean; skipReview: boolean; autonomous?: boolean; customPrompt?: string } = {
+  flags: { skipPlan: boolean; skipReview: boolean; autonomous?: boolean } = {
     skipPlan: false,
     skipReview: false,
   },
@@ -34,10 +34,7 @@ export async function runImplement(
   if (!flags.autonomous && (resolved.number || resolved.key))
     setForgeflowStatus(ctx, `${isGH ? `#${resolved.number}` : resolved.key} ${resolved.title} · ${resolved.branch}`);
 
-  if (interactive && !flags.customPrompt) {
-    const extra = await ctx.ui.input("Additional instructions?", "Skip");
-    if (extra?.trim()) flags.customPrompt = extra.trim();
-  }
+  const customPrompt = await askCustomPrompt(ctx, interactive);
 
   const buildPhaseContext = (stages: StageResult[]): PhaseContext => ({
     cwd,
@@ -73,7 +70,7 @@ export async function runImplement(
 
   let plan = "";
   if (!flags.skipPlan) {
-    const planResult = await runPlanning(issueContext, flags.customPrompt, {
+    const planResult = await runPlanning(issueContext, customPrompt, {
       ...pctx,
       interactive,
       stages,
@@ -84,7 +81,7 @@ export async function runImplement(
   }
 
   // --- Implementor ---
-  const prompt = buildImplementorPrompt(issueContext, plan, flags.customPrompt, resolved, flags.autonomous);
+  const prompt = buildImplementorPrompt(issueContext, plan, customPrompt, resolved, flags.autonomous);
   const blocked = await runImplementorPhase(buildPhaseContext(stages), prompt);
   if (blocked != null) return pipelineResult(`Implementor blocked:\n${blocked}`, "implement", stages, true);
 

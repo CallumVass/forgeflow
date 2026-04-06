@@ -27,10 +27,6 @@ export default createForgeflowExtension({
     target: { type: "string", description: "PR number or --branch for review pipeline" },
     skipPlan: { type: "boolean", description: "Skip planner, implement directly (default false)" },
     skipReview: { type: "boolean", description: "Skip code review after implementation (default false)" },
-    customPrompt: {
-      type: "string",
-      description: "Additional user instructions passed to agents (e.g. 'check the openapi spec')",
-    },
   },
   pipelines: [
     {
@@ -39,7 +35,6 @@ export default createForgeflowExtension({
         runImplement((p.issue as string) ?? "", pctx(cwd, s, u, c), {
           skipPlan: (p.skipPlan as boolean) ?? false,
           skipReview: (p.skipReview as boolean) ?? false,
-          customPrompt: p.customPrompt as string | undefined,
         }),
     },
     {
@@ -52,8 +47,7 @@ export default createForgeflowExtension({
     },
     {
       name: "review",
-      execute: (cwd, p, s, u, c) =>
-        runReview((p.target as string) ?? "", pctx(cwd, s, u, c), p.customPrompt as string | undefined),
+      execute: (cwd, p, s, u, c) => runReview((p.target as string) ?? "", pctx(cwd, s, u, c)),
     },
     { name: "architecture", execute: (cwd, _p, s, u, c) => runArchitecture(pctx(cwd, s, u, c)) },
     {
