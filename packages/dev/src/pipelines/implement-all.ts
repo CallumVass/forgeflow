@@ -11,10 +11,16 @@ interface IssueInfo {
   body: string;
 }
 
+type IssueStatus = "pending" | "running" | "done" | "failed";
+
+function countDone(progress: Map<number, { status: IssueStatus }>): number {
+  return [...progress.values()].filter((v) => v.status === "done").length;
+}
+
 /**
  * Get issue numbers whose dependencies (referenced as #N in ## Dependencies section) are satisfied.
  */
-function getReadyIssues(issues: IssueInfo[], completed: Set<number>): number[] {
+export function getReadyIssues(issues: IssueInfo[], completed: Set<number>): number[] {
   return issues
     .filter((issue) => {
       if (completed.has(issue.number)) return false;
@@ -30,7 +36,7 @@ function getReadyIssues(issues: IssueInfo[], completed: Set<number>): number[] {
 export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: boolean; skipReview: boolean }) {
   const { cwd, signal, ctx } = pctx;
   const allStages: StageResult[] = [];
-  const issueProgress = new Map<number, { title: string; status: "pending" | "running" | "done" | "failed" }>();
+  const issueProgress = new Map<number, { title: string; status: IssueStatus }>();
 
   // Seed completed set with already-closed issues
   const closedJson = await exec(
@@ -88,10 +94,7 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
 
     // Update status + widget
     issueProgress.set(issueNum, { title: issueTitle, status: "running" });
-    setForgeflowStatus(
-      ctx,
-      `implement-all · ${completed.size}/${completed.size + issues.length} · #${issueNum} ${issueTitle}`,
-    );
+    setForgeflowStatus(ctx, `implement-all · ${countDone(issueProgress)}/${issueProgress.size} · #${issueNum} ${issueTitle}`);
     updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
 
     // Run implement for this issue
@@ -151,7 +154,7 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
     issueProgress.set(issueNum, { title: issueTitle, status: "done" });
     setForgeflowStatus(
       ctx,
-      `implement-all · ${completed.size}/${completed.size + issues.length - 1} · $${sumUsage(allStages).cost.toFixed(2)}`,
+      `implement-all · ${countDone(issueProgress)}/${issueProgress.size} · $${sumUsage(allStages).cost.toFixed(2)}`,
     );
     updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
   }
