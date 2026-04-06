@@ -12,9 +12,10 @@ vi.mock("../utils/git.js", () => ({
   })),
 }));
 
-vi.mock("../utils/ui.js", () => ({
-  setForgeflowStatus: vi.fn(),
-}));
+vi.mock("../utils/ui.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../utils/ui.js")>();
+  return { ...actual, setForgeflowStatus: vi.fn() };
+});
 
 vi.mock("../utils/git-workflow.js", () => ({
   setupBranch: vi.fn(async () => ({ status: "fresh" })),
@@ -34,7 +35,7 @@ vi.mock("./implement-phases.js", () => ({
   runImplementorPhase: vi.fn(async () => null),
 }));
 
-import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
+import { mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { resolveIssue } from "../utils/git.js";
 import { ensurePr, mergePr, setupBranch } from "../utils/git-workflow.js";
 import { runImplement } from "./implement.js";
@@ -99,17 +100,7 @@ describe("runImplement orchestrator", () => {
 
     const pctx = mockPipelineContext({
       cwd: "/tmp",
-      ctx: {
-        hasUI: true,
-        cwd: "/tmp",
-        ui: {
-          input: inputFn,
-          editor: vi.fn(async () => undefined),
-          select: vi.fn(async () => undefined),
-          setStatus: vi.fn(),
-          setWidget: vi.fn(),
-        },
-      },
+      ctx: mockForgeflowContext({ hasUI: true, cwd: "/tmp", ui: { input: inputFn } }),
     });
     await runImplement("42", pctx, { skipPlan: false, skipReview: false });
 
@@ -135,17 +126,7 @@ describe("runImplement orchestrator", () => {
 
     const pctx = mockPipelineContext({
       cwd: "/tmp",
-      ctx: {
-        hasUI: true,
-        cwd: "/tmp",
-        ui: {
-          input: inputFn,
-          editor: vi.fn(async () => undefined),
-          select: vi.fn(async () => undefined),
-          setStatus: vi.fn(),
-          setWidget: vi.fn(),
-        },
-      },
+      ctx: mockForgeflowContext({ hasUI: true, cwd: "/tmp", ui: { input: inputFn } }),
     });
     await runImplement("42", pctx, { skipPlan: false, skipReview: false });
 

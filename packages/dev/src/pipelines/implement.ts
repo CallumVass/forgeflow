@@ -2,7 +2,7 @@ import { type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/
 import { emptyStage, pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/stage";
 import { buildPrBody, resolveIssue } from "../utils/git.js";
 import { ensurePr, mergePr, returnToMain, setupBranch } from "../utils/git-workflow.js";
-import { setForgeflowStatus } from "../utils/ui.js";
+import { askCustomPrompt, setForgeflowStatus } from "../utils/ui.js";
 import {
   buildImplementorPrompt,
   type PhaseContext,
@@ -34,11 +34,7 @@ export async function runImplement(
   if (!flags.autonomous && (resolved.number || resolved.key))
     setForgeflowStatus(ctx, `${isGH ? `#${resolved.number}` : resolved.key} ${resolved.title} · ${resolved.branch}`);
 
-  let customPrompt: string | undefined;
-  if (interactive) {
-    const extra = await ctx.ui.input("Additional instructions?", "Skip");
-    if (extra?.trim()) customPrompt = extra.trim();
-  }
+  const customPrompt = await askCustomPrompt(ctx, interactive);
 
   const buildPhaseContext = (stages: StageResult[]): PhaseContext => ({
     cwd,

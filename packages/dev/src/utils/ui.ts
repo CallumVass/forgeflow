@@ -4,6 +4,13 @@ export function setForgeflowStatus(ctx: ForgeflowContext, text: string | undefin
   if (ctx.hasUI) ctx.ui.setStatus("forgeflow-dev", text);
 }
 
+/** Prompt the user for additional instructions when running interactively. */
+export async function askCustomPrompt(ctx: ForgeflowContext, interactive: boolean): Promise<string | undefined> {
+  if (!interactive) return undefined;
+  const extra = await ctx.ui.input("Additional instructions?", "Skip");
+  return extra?.trim() || undefined;
+}
+
 function setForgeflowWidget(ctx: ForgeflowContext, lines: string[] | undefined): void {
   if (ctx.hasUI) ctx.ui.setWidget("forgeflow-dev", lines);
 }

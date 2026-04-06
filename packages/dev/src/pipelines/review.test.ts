@@ -1,4 +1,4 @@
-import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
+import { mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./review-diff.js", () => ({
@@ -71,17 +71,7 @@ describe("runReview composition root", () => {
 
     const pctx = mockPipelineContext({
       cwd: "/tmp",
-      ctx: {
-        hasUI: true,
-        cwd: "/tmp",
-        ui: {
-          input: inputFn,
-          editor: vi.fn(async () => undefined),
-          select: vi.fn(async () => undefined),
-          setStatus: vi.fn(),
-          setWidget: vi.fn(),
-        },
-      },
+      ctx: mockForgeflowContext({ hasUI: true, cwd: "/tmp", ui: { input: inputFn } }),
     });
     await runReview("5", pctx);
 
@@ -100,17 +90,7 @@ describe("runReview composition root", () => {
 
     const pctx = mockPipelineContext({
       cwd: "/tmp",
-      ctx: {
-        hasUI: true,
-        cwd: "/tmp",
-        ui: {
-          input: inputFn,
-          editor: vi.fn(async () => undefined),
-          select: vi.fn(async () => undefined),
-          setStatus: vi.fn(),
-          setWidget: vi.fn(),
-        },
-      },
+      ctx: mockForgeflowContext({ hasUI: true, cwd: "/tmp", ui: { input: inputFn } }),
     });
     await runReview("5", pctx);
 
