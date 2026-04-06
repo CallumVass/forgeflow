@@ -1,7 +1,16 @@
 import type { ForgeflowContext } from "@callumvass/forgeflow-shared/context";
-import { mockPipelineContext, mockRunAgent } from "@callumvass/forgeflow-shared/testing";
+import { mockPipelineContext, mockRunAgent, sequencedRunAgent } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
+import { appendArchitecturalNotes } from "./plan-architecture.js";
 import { resolveQuestions, runPlanning } from "./planning.js";
+
+const TWO_CANDIDATES = [
+  "### 1. Reuse shared logger",
+  "The plan creates a new logger in pipeline.ts. Use the existing logger from @forgeflow/shared/logger instead.",
+  "",
+  "### 2. Avoid god module",
+  "Adding these functions to pipeline.ts would push it past 300 lines. Extract to a dedicated module.",
+].join("\n");
 
 function mockCtx(
   opts: { editorResult?: string; selectResult?: string; inputAnswers?: (string | undefined)[] } = {},
@@ -34,7 +43,8 @@ describe("runPlanning", () => {
 
     expect(result.cancelled).toBe(false);
     expect(result.plan).toContain("Do thing 1");
-    expect(runAgentFn).toHaveBeenCalledOnce();
+    // planner + architecture-reviewer (no candidates found, so no judge calls)
+    expect(runAgentFn).toHaveBeenCalledTimes(2);
   });
 
   it("returns cancelled: true when user selects 'Cancel'", async () => {
@@ -82,9 +92,150 @@ describe("runPlanning", () => {
     expect(ctx.ui.select).not.toHaveBeenCalled();
   });
 
-  it("returns plan with error flag when planner agent fails", async () => {
+  it("appends architectural notes when reviewer recommends and judge keeps all", async () => {
+    const ctx = mockCtx({ selectResult: "Approve and implement" });
+    const runAgentFn = sequencedRunAgent([
+      { output: "## Plan\n- Step 1\n- Step 2" }, // planner
+      { output: TWO_CANDIDATES }, // architecture-reviewer
+      { output: "VERDICT: KEEP" }, // judge candidate 1
+      { output: "VERDICT: KEEP" }, // judge candidate 2
+    ]);
+
+    const result = await runPlanning("Issue context", undefined, {
+      ...mockPipelineContext({ ctx }),
+      interactive: true,
+      stages: [],
+      runAgentFn,
+    });
+
+    expect(result.plan).toContain("### Architectural Notes");
+    expect(result.plan).toContain("Reuse shared logger");
+    expect(result.plan).toContain("Avoid god module");
+  });
+
+  it("omits architectural notes when judge rejects all recommendations", async () => {
     const ctx = mockCtx();
-    const runAgentFn = mockRunAgent("error details", "failed");
+    const runAgentFn = sequencedRunAgent([
+      { output: "## Plan\n- Step 1" }, // planner
+      { output: TWO_CANDIDATES }, // architecture-reviewer
+      { output: "VERDICT: REJECT\nNo evidence." }, // judge candidate 1
+      { output: "VERDICT: REJECT\nFile not found." }, // judge candidate 2
+    ]);
+
+    const result = await runPlanning("Issue context", undefined, {
+      ...mockPipelineContext({ ctx }),
+      interactive: false,
+      stages: [],
+      runAgentFn,
+    });
+
+    expect(result.plan).not.toContain("### Architectural Notes");
+    expect(result.plan).toBe("## Plan\n- Step 1");
+  });
+
+  it("proceeds unchanged when reviewer returns no parseable candidates", async () => {
+    const ctx = mockCtx();
+    const runAgentFn = sequencedRunAgent([
+      { output: "## Plan\n- Step 1" }, // planner
+      { output: "No architectural recommendations" }, // architecture-reviewer (no candidates)
+    ]);
+
+    const result = await runPlanning("Issue context", undefined, {
+      ...mockPipelineContext({ ctx }),
+      interactive: false,
+      stages: [],
+      runAgentFn,
+    });
+
+    expect(result.plan).toBe("## Plan\n- Step 1");
+    expect(result.plan).not.toContain("### Architectural Notes");
+    // Only planner + reviewer called, no judge calls
+    expect(runAgentFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("includes only surviving recommendations when judge keeps some and rejects others", async () => {
+    const threeRecs = [
+      "### 1. Reuse shared logger",
+      "Use existing logger.",
+      "",
+      "### 2. Avoid god module",
+      "Split the file.",
+      "",
+      "### 3. Use shared types",
+      "Import from @forgeflow/shared.",
+    ].join("\n");
+
+    const ctx = mockCtx();
+    const runAgentFn = sequencedRunAgent([
+      { output: "## Plan\n- Step 1" }, // planner
+      { output: threeRecs }, // architecture-reviewer
+      { output: "VERDICT: REJECT" }, // judge candidate 1
+      { output: "VERDICT: KEEP" }, // judge candidate 2
+      { output: "VERDICT: REJECT" }, // judge candidate 3
+    ]);
+
+    const result = await runPlanning("Issue context", undefined, {
+      ...mockPipelineContext({ ctx }),
+      interactive: false,
+      stages: [],
+      runAgentFn,
+    });
+
+    expect(result.plan).toContain("### Architectural Notes");
+    expect(result.plan).toContain("Avoid god module");
+    expect(result.plan).not.toContain("Reuse shared logger");
+    expect(result.plan).not.toContain("Use shared types");
+  });
+
+  it("shows augmented plan with architectural notes in the editor for interactive mode", async () => {
+    const editorFn = vi.fn(async (_title: string, content: string) => content);
+    const ctx = mockCtx({ selectResult: "Approve and implement" });
+    ctx.ui.editor = editorFn;
+
+    const runAgentFn = sequencedRunAgent([
+      { output: "## Plan\n- Step 1" }, // planner
+      { output: TWO_CANDIDATES }, // architecture-reviewer
+      { output: "VERDICT: KEEP" }, // judge candidate 1
+      { output: "VERDICT: KEEP" }, // judge candidate 2
+    ]);
+
+    await runPlanning("Issue context", undefined, {
+      ...mockPipelineContext({ ctx }),
+      interactive: true,
+      stages: [],
+      runAgentFn,
+    });
+
+    expect(editorFn).toHaveBeenCalledOnce();
+    const editorContent = editorFn.mock.calls[0]?.[1] as string;
+    expect(editorContent).toContain("### Architectural Notes");
+    expect(editorContent).toContain("Reuse shared logger");
+  });
+
+  it("in non-interactive mode augmented plan passes through without editor", async () => {
+    const ctx = mockCtx();
+    const runAgentFn = sequencedRunAgent([
+      { output: "## Plan\n- Step 1" }, // planner
+      { output: TWO_CANDIDATES }, // architecture-reviewer
+      { output: "VERDICT: KEEP" }, // judge candidate 1
+      { output: "VERDICT: KEEP" }, // judge candidate 2
+    ]);
+
+    const result = await runPlanning("Issue context", undefined, {
+      ...mockPipelineContext({ ctx }),
+      interactive: false,
+      stages: [],
+      runAgentFn,
+    });
+
+    expect(result.plan).toContain("### Architectural Notes");
+    expect(ctx.ui.editor).not.toHaveBeenCalled();
+    expect(ctx.ui.select).not.toHaveBeenCalled();
+  });
+
+  it("returns plan with error flag when planner agent fails, skipping architecture critique", async () => {
+    const ctx = mockCtx();
+    const runAgentFn = sequencedRunAgent([{ output: "error details", status: "failed" }]);
 
     const result = await runPlanning("Issue context", undefined, {
       ...mockPipelineContext({ ctx }),
@@ -95,6 +246,32 @@ describe("runPlanning", () => {
 
     expect(result.failed).toBe(true);
     expect(result.plan).toContain("error details");
+    // Only planner called — no reviewer or judge
+    expect(runAgentFn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("appendArchitecturalNotes", () => {
+  it("appends formatted recommendations when non-empty; returns plan unchanged when empty", () => {
+    const plan = "## Plan\n- Step 1\n- Step 2";
+    const recommendations = [
+      {
+        label: "1. Reuse shared logger",
+        body: "### 1. Reuse shared logger\nUse the existing logger from shared/utils.",
+      },
+      { label: "2. Avoid god module", body: "### 2. Avoid god module\nSplit pipeline.ts before it exceeds 300 lines." },
+    ];
+
+    const result = appendArchitecturalNotes(plan, recommendations);
+
+    expect(result).toContain("### Architectural Notes");
+    expect(result).toContain("Reuse shared logger");
+    expect(result).toContain("Avoid god module");
+    expect(result.startsWith("## Plan")).toBe(true);
+
+    // Empty recommendations: plan unchanged
+    const unchanged = appendArchitecturalNotes(plan, []);
+    expect(unchanged).toBe(plan);
   });
 });
 

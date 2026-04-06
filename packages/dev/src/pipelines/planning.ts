@@ -2,6 +2,7 @@ import { TOOLS_READONLY } from "@callumvass/forgeflow-shared/constants";
 import { type ForgeflowContext, type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/context";
 import { resolveRunAgent } from "@callumvass/forgeflow-shared/di";
 import type { RunAgentFn, StageResult } from "@callumvass/forgeflow-shared/stage";
+import { runArchitectureCritique } from "./plan-architecture.js";
 
 interface PlanResult {
   plan: string;
@@ -70,6 +71,12 @@ export async function runPlanning(
   }
 
   let plan = planResult.output;
+
+  // Architecture critique: reviewer → judge → append notes
+  plan = await runArchitectureCritique(plan, issueContext, {
+    runAgentFn,
+    agentOpts,
+  });
 
   // Interactive mode: let user review/edit the plan before proceeding
   if (interactive && plan) {
