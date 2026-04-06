@@ -92,11 +92,7 @@ export function renderExpanded(details: PipelineDetails, theme: ForgeflowTheme, 
     for (const item of items) {
       if (item.type === "toolCall") {
         container.addChild(
-          new Text(
-            `  ${theme.fg("muted", "→ ")}${formatToolCall(item.name, item.args, theme.fg.bind(theme))}`,
-            0,
-            0,
-          ),
+          new Text(`  ${theme.fg("muted", "→ ")}${formatToolCall(item.name, item.args, theme.fg.bind(theme))}`, 0, 0),
         );
       }
     }

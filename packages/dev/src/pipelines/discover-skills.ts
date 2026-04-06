@@ -1,7 +1,6 @@
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { TOOLS_ALL, TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared/constants";
 import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/types";
-import { AGENTS_DIR } from "../resolve.js";
 
 export async function runDiscoverSkills(query: string, pctx: PipelineContext) {
   // If query looks like specific skill names (contains commas or known skill identifiers),
@@ -9,7 +8,7 @@ export async function runDiscoverSkills(query: string, pctx: PipelineContext) {
   const isInstall = query.includes(",") || query.includes("/");
 
   const stages = [emptyStage("skill-discoverer")];
-  const opts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline: "discover-skills" });
+  const opts = toAgentOpts(pctx, { stages, pipeline: "discover-skills" });
 
   const task = isInstall
     ? `Install these skills as forgeflow plugins: ${query}`

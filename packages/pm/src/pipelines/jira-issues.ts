@@ -2,7 +2,6 @@ import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { type ConfluencePage, fetchConfluencePage } from "@callumvass/forgeflow-shared/confluence";
 import { TOOLS_ALL } from "@callumvass/forgeflow-shared/constants";
 import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/types";
-import { AGENTS_DIR } from "../resolve.js";
 
 export async function runJiraIssues(docUrls: string[], exampleUrl: string, pctx: PipelineContext) {
   const { ctx } = pctx;
@@ -50,7 +49,7 @@ export async function runJiraIssues(docUrls: string[], exampleUrl: string, pctx:
   const docSections = docs.map((d, i) => `DOCUMENT ${i + 1}: "${d.title}"\n\n${d.body}`).join("\n\n---\n\n");
 
   const stages = [emptyStage("jira-issue-creator")];
-  const opts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline: "create-jira-issues" });
+  const opts = toAgentOpts(pctx, { stages, pipeline: "create-jira-issues" });
 
   const task = `Decompose the following PM documents into vertical-slice Jira issues.
 

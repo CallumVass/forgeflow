@@ -7,7 +7,6 @@ import {
   type StageResult,
   toAgentOpts,
 } from "@callumvass/forgeflow-shared/types";
-import { AGENTS_DIR } from "../resolve.js";
 
 interface PlanResult {
   plan: string;
@@ -61,7 +60,7 @@ export async function runPlanning(
   const { ctx, interactive, stages } = opts;
 
   const runAgentFn = await resolveRunAgent(opts.runAgentFn);
-  const agentOpts = toAgentOpts(opts, { agentsDir: AGENTS_DIR, stages, pipeline: "implement" });
+  const agentOpts = toAgentOpts(opts, { stages, pipeline: "implement" });
 
   const customPromptSection = customPrompt ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${customPrompt}` : "";
 

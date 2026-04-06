@@ -8,7 +8,6 @@ import {
   type StageResult,
   toAgentOpts,
 } from "@callumvass/forgeflow-shared/types";
-import { AGENTS_DIR } from "../resolve.js";
 
 /**
  * Build the prompt for the comment-proposal agent call.
@@ -91,7 +90,7 @@ export async function proposeAndPostComments(
   const execFn = opts.execFn ?? defaultExec;
 
   const runAgentFn = await resolveRunAgent(opts.runAgentFn);
-  const agentOpts = toAgentOpts(opts, { agentsDir: AGENTS_DIR, stages, pipeline });
+  const agentOpts = toAgentOpts(opts, { stages, pipeline });
 
   const proposalPrompt = buildCommentProposalPrompt(findings, pr.number, pr.repo);
 

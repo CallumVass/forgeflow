@@ -1,13 +1,15 @@
 import { createForgeflowExtension } from "@callumvass/forgeflow-shared/extension";
-import { toPipelineContext } from "@callumvass/forgeflow-shared/types";
+import { type ForgeflowContext, type OnUpdate, toPipelineContext } from "@callumvass/forgeflow-shared/types";
 import { commands } from "./commands.js";
 import { runArchitecture } from "./pipelines/architecture.js";
 import { runDiscoverSkills } from "./pipelines/discover-skills.js";
 import { runImplement } from "./pipelines/implement.js";
 import { runImplementAll } from "./pipelines/implement-all.js";
 import { runReview } from "./pipelines/review.js";
+import { AGENTS_DIR } from "./resolve.js";
 
-const pctx = toPipelineContext;
+const pctx = (cwd: string, s: AbortSignal, u: OnUpdate, c: ForgeflowContext) =>
+  toPipelineContext(cwd, s, u, c, AGENTS_DIR);
 
 export default createForgeflowExtension({
   toolName: "forgeflow-dev",
