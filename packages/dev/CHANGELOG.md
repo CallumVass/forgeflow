@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.8.0...forgeflow-dev-v0.9.0) (2026-04-06)
+
+
+### Features
+
+* add architecture-judge to validate candidates before user selection ([#59](https://github.com/CallumVass/forgeflow/issues/59)) ([5880095](https://github.com/CallumVass/forgeflow/commit/5880095b62110575f9e726af80b2d827db09abcb))
+* integrate architecture critique into planning pipeline ([#61](https://github.com/CallumVass/forgeflow/issues/61)) ([9e13e39](https://github.com/CallumVass/forgeflow/commit/9e13e39168160651fe67a1aa4de6f654e287d961))
+
+
+### Bug Fixes
+
+* resolve typecheck and lint errors in architecture tests and formatting ([ebe9c1b](https://github.com/CallumVass/forgeflow/commit/ebe9c1bbd9232e103f76533c83b8b133fc5a4e41))
+* status bar showing inflated issue count from historical closed issues ([#65](https://github.com/CallumVass/forgeflow/issues/65)) ([bfab5dc](https://github.com/CallumVass/forgeflow/commit/bfab5dc7e67afaee97e6c021c9a8266f4eaea13a))
+
 ## [0.8.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.7.0...forgeflow-dev-v0.8.0) (2026-04-05)
 
 
