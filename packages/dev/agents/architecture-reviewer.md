@@ -61,7 +61,19 @@ Step-by-step plan to get there without a big-bang rewrite. Each step should leav
 What gets better (testability, readability, change isolation). What gets worse or more complex (indirection, import depth). Be honest.
 
 ### Acceptance Criteria
-How do you know the refactor is done? Concrete, verifiable checks:
-- "Module X has no direct imports from module Y"
+
+Split criteria into two categories so downstream agents handle them correctly:
+
+#### Behavioural (become permanent tests)
+These describe observable behaviour through public interfaces. The implementor writes tests for these.
+- "Calling X with input Y returns Z"
 - "All tests in X pass without mocking internals of Y"
+- "Error E is returned when condition C is met"
+
+#### Structural (verified once at PR time)
+These describe code organisation — import patterns, file sizes, module boundaries. The implementor verifies these with `grep`/`find` before committing. They do **NOT** become permanent test cases.
+- "Module X has no direct imports from module Y"
 - "File Z is under 300 lines"
+- "No references to deleted type T remain in source files"
+
+Label each criterion as **(behavioural)** or **(structural)** so the planner and implementor can distinguish them.

@@ -72,6 +72,19 @@ Tests at these two levels cover your internal modules (stores, hooks, services, 
 - **Individual UI components** — covered by route/page tests that render the full page including those components
 - **Config files** (CI workflows, bundler config, deploy config) — not behavioral; breaks when config format changes, catches nothing useful
 - **Design tokens / CSS classes** — testing class name presence doesn't verify visual fidelity; either trust the design system or use visual regression tools
+- **Source file contents / code structure** — reading source files to assert on import paths, export patterns, line counts, or absence of tokens. These are source-scanning tests: they verify code organisation, not behaviour. They break on innocent refactors and duplicate what the compiler already enforces.
+
+```text
+// BAD: Source-scanning test — reads source to check imports
+test "api module has no direct imports from internal utils":
+  source = fs.readFileSync("src/api/client.ts", "utf-8")
+  assert not source.contains("from '../internal-utils'")
+
+// GOOD: Verify once with grep before committing, then rely on the compiler
+// In the shell (not a test file):
+//   grep -r "from.*internal-utils" src/api/ → expect no matches
+// If the import would cause a type error, the compiler catches it permanently.
+```
 
 **Do write separate unit tests for:**
 

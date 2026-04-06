@@ -86,3 +86,4 @@ For each matched plugin, read the plugin body and incorporate its guidance into 
 - **Use existing test file conventions.** Match the project's test file naming and location patterns.
 - **Concise.** The implementor will figure out assertions and test code — just name the behavior and the file.
 - **No code.** Do not write test code, implementation code, or pseudocode.
+- **Drop structural criteria from the test plan.** If an acceptance criterion describes code organisation rather than behaviour — import patterns, file sizes, module boundaries, "no references to X remain" — it is NOT a test entry. Structural criteria are verified once by the implementor with `grep`/`find` before committing. Only behavioural criteria (observable through public interfaces) become test plan entries.
