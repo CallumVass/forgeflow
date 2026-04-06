@@ -1,5 +1,11 @@
 import { exec } from "@callumvass/forgeflow-shared/exec";
-import { emptyStage, type PipelineContext, type StageResult, sumUsage } from "@callumvass/forgeflow-shared/types";
+import {
+  emptyStage,
+  type PipelineContext,
+  pipelineResult,
+  type StageResult,
+  sumUsage,
+} from "@callumvass/forgeflow-shared/types";
 import { findPrNumber, mergePr, returnToMain } from "../utils/git-workflow.js";
 import { setForgeflowStatus, updateProgressWidget } from "../utils/ui.js";
 import { runImplement } from "./implement.js";
@@ -60,10 +66,7 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
     }
 
     if (issues.length === 0) {
-      return {
-        content: [{ type: "text" as const, text: "All issues implemented." }],
-        details: { pipeline: "implement-all", stages: allStages },
-      };
+      return pipelineResult("All issues implemented.", "implement-all", allStages);
     }
 
     // Track all known issues in progress widget
@@ -76,13 +79,12 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
     // Find ready issues (deps satisfied)
     const ready = getReadyIssues(issues, completed);
     if (ready.length === 0) {
-      return {
-        content: [
-          { type: "text" as const, text: `${issues.length} issues remain but all have unresolved dependencies.` },
-        ],
-        details: { pipeline: "implement-all", stages: allStages },
-        isError: true,
-      };
+      return pipelineResult(
+        `${issues.length} issues remain but all have unresolved dependencies.`,
+        "implement-all",
+        allStages,
+        true,
+      );
     }
 
     // biome-ignore lint/style/noNonNullAssertion: ready is non-empty (checked above)
@@ -116,16 +118,12 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
     if (implResult.isError) {
       issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
       updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Failed on issue #${issueNum}: ${implResult.content[0]?.type === "text" ? implResult.content[0].text : "unknown error"}`,
-          },
-        ],
-        details: { pipeline: "implement-all", stages: allStages },
-        isError: true,
-      };
+      return pipelineResult(
+        `Failed on issue #${issueNum}: ${implResult.content[0]?.type === "text" ? implResult.content[0].text : "unknown error"}`,
+        "implement-all",
+        allStages,
+        true,
+      );
     }
 
     // Merge PR and return to main
@@ -141,20 +139,17 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
       } catch {
         issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
         updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
-        return {
-          content: [{ type: "text" as const, text: `Failed to merge PR #${prNum} for issue #${issueNum}.` }],
-          details: { pipeline: "implement-all", stages: allStages },
-          isError: true,
-        };
+        return pipelineResult(`Failed to merge PR #${prNum} for issue #${issueNum}.`, "implement-all", allStages, true);
       }
     } else {
       issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
       updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
-      return {
-        content: [{ type: "text" as const, text: `No PR found for issue #${issueNum} after implementation.` }],
-        details: { pipeline: "implement-all", stages: allStages },
-        isError: true,
-      };
+      return pipelineResult(
+        `No PR found for issue #${issueNum} after implementation.`,
+        "implement-all",
+        allStages,
+        true,
+      );
     }
 
     // Mark done and update widget
@@ -166,8 +161,5 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
     updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
   }
 
-  return {
-    content: [{ type: "text" as const, text: `Reached max iterations (${maxIterations}).` }],
-    details: { pipeline: "implement-all", stages: allStages },
-  };
+  return pipelineResult(`Reached max iterations (${maxIterations}).`, "implement-all", allStages);
 }

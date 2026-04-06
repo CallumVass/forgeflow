@@ -1,6 +1,6 @@
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { TOOLS_READONLY } from "@callumvass/forgeflow-shared/constants";
-import { emptyStage, type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/types";
+import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/types";
 import { AGENTS_DIR } from "../resolve.js";
 
 /**
@@ -40,19 +40,12 @@ export async function runArchitecture(pctx: PipelineContext) {
   );
 
   if (exploreResult.status === "failed") {
-    return {
-      content: [{ type: "text" as const, text: `Exploration failed: ${exploreResult.output}` }],
-      details: { pipeline: "architecture", stages },
-      isError: true,
-    };
+    return pipelineResult(`Exploration failed: ${exploreResult.output}`, "architecture", stages, true);
   }
 
   // Non-interactive: return candidates
   if (!ctx.hasUI) {
-    return {
-      content: [{ type: "text" as const, text: exploreResult.output }],
-      details: { pipeline: "architecture", stages },
-    };
+    return pipelineResult(exploreResult.output, "architecture", stages);
   }
 
   // Interactive gate: user reviews candidates, can edit/annotate
@@ -74,10 +67,7 @@ export async function runArchitecture(pctx: PipelineContext) {
   const action = await ctx.ui.select("Create RFC issues for which candidates?", selectOptions);
 
   if (action === "Skip" || action == null) {
-    return {
-      content: [{ type: "text" as const, text: "Architecture review complete. No RFC created." }],
-      details: { pipeline: "architecture", stages },
-    };
+    return pipelineResult("Architecture review complete. No RFC created.", "architecture", stages);
   }
 
   // Determine which candidates to create RFCs for
@@ -120,8 +110,5 @@ export async function runArchitecture(pctx: PipelineContext) {
       ? `Architecture RFC issue created:\n${createdIssues[0]}`
       : `Architecture RFC issues created (${createdIssues.length}):\n${createdIssues.join("\n")}`;
 
-  return {
-    content: [{ type: "text" as const, text: summary }],
-    details: { pipeline: "architecture", stages },
-  };
+  return pipelineResult(summary, "architecture", stages);
 }

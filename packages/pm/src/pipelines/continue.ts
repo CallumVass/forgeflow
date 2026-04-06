@@ -1,17 +1,15 @@
 import * as fs from "node:fs";
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { TOOLS_ALL, TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared/constants";
-import { emptyStage, type PipelineContext, type StageResult, toAgentOpts } from "@callumvass/forgeflow-shared/types";
+import {
+  emptyStage,
+  type PipelineContext,
+  pipelineResult,
+  type StageResult,
+  toAgentOpts,
+} from "@callumvass/forgeflow-shared/types";
 import { AGENTS_DIR } from "../resolve.js";
 import { runQaLoop } from "./qa-loop.js";
-
-function result(text: string, stages: StageResult[], isError?: boolean) {
-  return {
-    content: [{ type: "text" as const, text }],
-    details: { pipeline: "continue", stages },
-    ...(isError ? { isError } : {}),
-  };
-}
 
 function updatePrompt(description: string) {
   const focus = description ? ` The user wants the next phase to focus on: ${description}` : "";
@@ -41,7 +39,7 @@ CRITICAL RULES:
  */
 export async function runContinue(description: string, maxIterations: number, pctx: PipelineContext) {
   const { cwd, ctx } = pctx;
-  if (!fs.existsSync(`${cwd}/PRD.md`)) return result("PRD.md not found.", []);
+  if (!fs.existsSync(`${cwd}/PRD.md`)) return pipelineResult("PRD.md not found.", "continue", []);
 
   const stages: StageResult[] = [];
   const agentOpts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline: "continue" });
@@ -50,7 +48,7 @@ export async function runContinue(description: string, maxIterations: number, pc
   stages.push(emptyStage("prd-architect"));
   const archResult = await runAgent("prd-architect", updatePrompt(description), { ...agentOpts, tools: TOOLS_ALL });
   if (archResult.status === "failed") {
-    return result(`PRD update failed.\nStderr: ${archResult.stderr.slice(0, 300)}`, stages, true);
+    return pipelineResult(`PRD update failed.\nStderr: ${archResult.stderr.slice(0, 300)}`, "continue", stages, true);
   }
 
   if (ctx.hasUI) {
@@ -58,7 +56,8 @@ export async function runContinue(description: string, maxIterations: number, pc
     const edited = await ctx.ui.editor("Review updated PRD (Done/Next structure)", prdContent);
     if (edited != null && edited !== prdContent) fs.writeFileSync(`${cwd}/PRD.md`, edited, "utf-8");
     const action = await ctx.ui.select("PRD updated with Done/Next. What next?", ["Continue to QA", "Stop here"]);
-    if (action === "Stop here" || action == null) return result("PRD updated. Stopped before QA.", stages);
+    if (action === "Stop here" || action == null)
+      return pipelineResult("PRD updated. Stopped before QA.", "continue", stages);
   }
 
   // Phase 2: PRD QA loop on the Next section
@@ -71,7 +70,7 @@ export async function runContinue(description: string, maxIterations: number, pc
     criticPrompt:
       "Review PRD.md for completeness — focus on the ## Next section. If it needs refinement, create QUESTIONS.md. If it's complete, do NOT create QUESTIONS.md.",
   });
-  if (qaResult.error) return result(qaResult.error.text, stages, true);
+  if (qaResult.error) return pipelineResult(qaResult.error.text, "continue", stages, true);
 
   // Phase 3: Create issues from the Next section
   stages.push(emptyStage("gh-issue-creator"));
@@ -81,5 +80,5 @@ export async function runContinue(description: string, maxIterations: number, pc
     { ...agentOpts, tools: TOOLS_NO_EDIT },
   );
 
-  return result("Continue pipeline complete. PRD updated, QA'd, and issues created.", stages);
+  return pipelineResult("Continue pipeline complete. PRD updated, QA'd, and issues created.", "continue", stages);
 }

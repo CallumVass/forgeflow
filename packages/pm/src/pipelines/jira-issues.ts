@@ -1,7 +1,7 @@
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { type ConfluencePage, fetchConfluencePage } from "@callumvass/forgeflow-shared/confluence";
 import { TOOLS_ALL } from "@callumvass/forgeflow-shared/constants";
-import { emptyStage, type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/types";
+import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/types";
 import { AGENTS_DIR } from "../resolve.js";
 
 export async function runJiraIssues(docUrls: string[], exampleUrl: string, pctx: PipelineContext) {
@@ -16,10 +16,7 @@ export async function runJiraIssues(docUrls: string[], exampleUrl: string, pctx:
     }
   }
   if (docUrls.length === 0) {
-    return {
-      content: [{ type: "text" as const, text: "No document URLs provided." }],
-      details: { pipeline: "create-jira-issues", stages: [] },
-    };
+    return pipelineResult("No document URLs provided.", "create-jira-issues", []);
   }
 
   // Ask for optional example URL interactively if not provided
@@ -35,11 +32,7 @@ export async function runJiraIssues(docUrls: string[], exampleUrl: string, pctx:
   for (const url of docUrls) {
     const result = await fetchConfluencePage(url);
     if (typeof result === "string") {
-      return {
-        content: [{ type: "text" as const, text: `Failed to fetch doc: ${result}` }],
-        details: { pipeline: "create-jira-issues", stages: [] },
-        isError: true,
-      };
+      return pipelineResult(`Failed to fetch doc: ${result}`, "create-jira-issues", [], true);
     }
     docs.push(result as ConfluencePage);
   }
@@ -48,11 +41,7 @@ export async function runJiraIssues(docUrls: string[], exampleUrl: string, pctx:
   if (exampleUrl) {
     const result = await fetchConfluencePage(exampleUrl);
     if (typeof result === "string") {
-      return {
-        content: [{ type: "text" as const, text: `Failed to fetch example: ${result}` }],
-        details: { pipeline: "create-jira-issues", stages: [] },
-        isError: true,
-      };
+      return pipelineResult(`Failed to fetch example: ${result}`, "create-jira-issues", [], true);
     }
     const page = result as ConfluencePage;
     exampleSection = `\n\nEXAMPLE TICKET (match this format):\nTitle: ${page.title}\n\n${page.body}`;
@@ -73,8 +62,5 @@ Read the writing-style skill before writing any issue content.`;
 
   await runAgent("jira-issue-creator", task, { ...opts, tools: TOOLS_ALL });
 
-  return {
-    content: [{ type: "text" as const, text: "Jira issue creation complete." }],
-    details: { pipeline: "create-jira-issues", stages },
-  };
+  return pipelineResult("Jira issue creation complete.", "create-jira-issues", stages);
 }

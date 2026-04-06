@@ -126,6 +126,25 @@ export function getFinalOutput(messages: Message[]): string {
   return "";
 }
 
+export type PipelineResult = {
+  content: [{ type: "text"; text: string }];
+  details: PipelineDetails;
+  isError?: true;
+};
+
+export function pipelineResult(
+  text: string,
+  pipeline: string,
+  stages: StageResult[],
+  isError?: boolean,
+): PipelineResult {
+  return {
+    content: [{ type: "text", text }],
+    details: { pipeline, stages },
+    ...(isError ? { isError: true as const } : {}),
+  };
+}
+
 export function sumUsage(stages: StageResult[]): UsageStats {
   const total = emptyUsage();
   for (const s of stages) {

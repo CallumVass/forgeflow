@@ -2,21 +2,19 @@ import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { TOOLS_ALL } from "@callumvass/forgeflow-shared/constants";
 import { exec } from "@callumvass/forgeflow-shared/exec";
 import { cleanSignal, readSignal, signalExists } from "@callumvass/forgeflow-shared/signals";
-import { emptyStage, type PipelineContext, type StageResult, toAgentOpts } from "@callumvass/forgeflow-shared/types";
+import {
+  emptyStage,
+  type PipelineContext,
+  pipelineResult,
+  type StageResult,
+  toAgentOpts,
+} from "@callumvass/forgeflow-shared/types";
 import { AGENTS_DIR } from "../resolve.js";
 import { buildPrBody, type ResolvedIssue, resolveIssue } from "../utils/git.js";
 import { ensurePr, mergePr, returnToMain, setupBranch } from "../utils/git-workflow.js";
 import { setForgeflowStatus } from "../utils/ui.js";
 import { runPlanning } from "./planning.js";
 import { runReviewPipeline } from "./review-orchestrator.js";
-
-function result(text: string, stages: StageResult[], isError?: boolean) {
-  return {
-    content: [{ type: "text" as const, text }],
-    details: { pipeline: "implement", stages },
-    ...(isError ? { isError } : {}),
-  };
-}
 
 export async function runImplement(
   issueArg: string,
@@ -29,7 +27,7 @@ export async function runImplement(
   const { cwd, onUpdate, ctx } = pctx;
   const interactive = ctx.hasUI && !flags.autonomous;
   const resolved = await resolveIssue(cwd, issueArg || undefined);
-  if (typeof resolved === "string") return result(resolved, []);
+  if (typeof resolved === "string") return pipelineResult(resolved, "implement", []);
 
   const isGH = resolved.source === "github" && resolved.number > 0;
   const issueLabel = isGH ? `#${resolved.number}: ${resolved.title}` : `${resolved.key}: ${resolved.title}`;
@@ -49,7 +47,7 @@ export async function runImplement(
   if (resolved.existingPR) {
     const stages: StageResult[] = [];
     if (!flags.skipReview) await reviewAndFix(pctx, stages);
-    return result(`Resumed ${issueLabel} — PR #${resolved.existingPR} already exists.`, stages);
+    return pipelineResult(`Resumed ${issueLabel} — PR #${resolved.existingPR} already exists.`, "implement", stages);
   }
 
   // --- Branch setup ---
@@ -59,10 +57,10 @@ export async function runImplement(
       await ensurePr(cwd, resolved.title, buildPrBody(cwd, resolved), resolved.branch);
       const stages: StageResult[] = [];
       await refactorAndReview(pctx, stages, flags.skipReview);
-      return result(`Resumed ${issueLabel} — pushed existing commits and created PR.`, stages);
+      return pipelineResult(`Resumed ${issueLabel} — pushed existing commits and created PR.`, "implement", stages);
     }
     if (branchResult.status === "failed")
-      return result(branchResult.error || `Failed to switch to ${resolved.branch}.`, [], true);
+      return pipelineResult(branchResult.error || `Failed to switch to ${resolved.branch}.`, "implement", [], true);
   }
 
   // --- Planning ---
@@ -77,8 +75,8 @@ export async function runImplement(
       interactive,
       stages,
     });
-    if (planResult.failed) return result(`Planner failed: ${planResult.plan}`, stages, true);
-    if (planResult.cancelled) return result("Implementation cancelled.", stages);
+    if (planResult.failed) return pipelineResult(`Planner failed: ${planResult.plan}`, "implement", stages, true);
+    if (planResult.cancelled) return pipelineResult("Implementation cancelled.", "implement", stages);
     plan = planResult.plan;
   }
 
@@ -89,7 +87,7 @@ export async function runImplement(
   await runAgent("implementor", prompt, { ...opts, tools: TOOLS_ALL });
 
   if (signalExists(cwd, "blocked"))
-    return result(`Implementor blocked:\n${readSignal(cwd, "blocked") ?? ""}`, stages, true);
+    return pipelineResult(`Implementor blocked:\n${readSignal(cwd, "blocked") ?? ""}`, "implement", stages, true);
 
   // --- Refactor + Review ---
   await refactorAndReview(pctx, stages, flags.skipReview);
@@ -108,10 +106,10 @@ export async function runImplement(
     await returnToMain(cwd);
     mergeStage.status = "done";
     mergeStage.output = `Merged PR #${prNumber}`;
-    onUpdate?.({ content: [{ type: "text", text: "Pipeline complete" }], details: { pipeline: "implement", stages } });
+    onUpdate?.(pipelineResult("Pipeline complete", "implement", stages));
   }
 
-  return result(`Implementation of ${issueLabel} complete.`, stages);
+  return pipelineResult(`Implementation of ${issueLabel} complete.`, "implement", stages);
 }
 
 // --- Private helpers ---
