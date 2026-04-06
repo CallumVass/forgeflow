@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ExtensionConfig } from "./extension.js";
 import { buildSendMessage, createForgeflowExtension } from "./extension.js";
-import type { PipelineDetails } from "./stage.js";
+import type { PipelineDetails } from "./pipeline.js";
 import { mockForgeflowContext, mockTheme } from "./test-utils.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────

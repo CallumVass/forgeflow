@@ -1,4 +1,4 @@
-import type { ForgeflowContext } from "@callumvass/forgeflow-shared/context";
+import type { ForgeflowContext } from "@callumvass/forgeflow-shared/pipeline";
 import { mockPipelineContext, mockRunAgent, sequencedRunAgent } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
 import { appendArchitecturalNotes } from "./plan-architecture.js";

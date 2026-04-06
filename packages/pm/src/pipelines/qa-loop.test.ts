@@ -7,8 +7,7 @@ vi.mock("node:fs", async (importOriginal) => {
   return { ...actual, readFileSync: vi.fn(() => "# PRD content"), writeFileSync: vi.fn() };
 });
 
-import type { ForgeflowContext } from "@callumvass/forgeflow-shared/context";
-import { emptyStage } from "@callumvass/forgeflow-shared/stage";
+import { emptyStage, type ForgeflowContext } from "@callumvass/forgeflow-shared/pipeline";
 import { mockRunAgent } from "@callumvass/forgeflow-shared/testing";
 
 function mockCtx(

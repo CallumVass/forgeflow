@@ -1,7 +1,10 @@
-import { resolveAgentsDir } from "@callumvass/forgeflow-shared/constants";
-import { type ForgeflowContext, toPipelineContext } from "@callumvass/forgeflow-shared/context";
 import { createForgeflowExtension } from "@callumvass/forgeflow-shared/extension";
-import type { OnUpdate } from "@callumvass/forgeflow-shared/stage";
+import {
+  type ForgeflowContext,
+  type OnUpdate,
+  resolveAgentsDir,
+  toPipelineContext,
+} from "@callumvass/forgeflow-shared/pipeline";
 import { commands } from "./commands.js";
 import { runArchitecture } from "./pipelines/architecture.js";
 import { runDiscoverSkills } from "./pipelines/discover-skills.js";

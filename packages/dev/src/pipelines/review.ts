@@ -1,6 +1,5 @@
-import type { PipelineContext } from "@callumvass/forgeflow-shared/context";
 import { exec } from "@callumvass/forgeflow-shared/exec";
-import { pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/stage";
+import { type PipelineContext, pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
 import { askCustomPrompt } from "../utils/ui.js";
 import { proposeAndPostComments } from "./review-comments.js";
 import { resolveDiffTarget } from "./review-diff.js";
