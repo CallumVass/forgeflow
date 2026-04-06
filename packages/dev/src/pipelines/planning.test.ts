@@ -1,4 +1,4 @@
-import { mockRunAgent } from "@callumvass/forgeflow-shared/testing";
+import { mockPipelineContext, mockRunAgent } from "@callumvass/forgeflow-shared/testing";
 import type { ForgeflowContext } from "@callumvass/forgeflow-shared/types";
 import { describe, expect, it, vi } from "vitest";
 import { resolveQuestions, runPlanning } from "./planning.js";
@@ -26,11 +26,7 @@ describe("runPlanning", () => {
     const runAgentFn = mockRunAgent("## Plan\n- Do thing 1\n- Do thing 2");
 
     const result = await runPlanning("Issue context", undefined, {
-      cwd: "/tmp",
-      signal: AbortSignal.timeout(5000),
-      onUpdate: undefined,
-      ctx,
-      agentsDir: "/tmp/agents",
+      ...mockPipelineContext({ ctx }),
       interactive: true,
       stages: [],
       runAgentFn,
@@ -46,11 +42,7 @@ describe("runPlanning", () => {
     const runAgentFn = mockRunAgent("Some plan");
 
     const result = await runPlanning("Issue context", undefined, {
-      cwd: "/tmp",
-      signal: AbortSignal.timeout(5000),
-      onUpdate: undefined,
-      ctx,
-      agentsDir: "/tmp/agents",
+      ...mockPipelineContext({ ctx }),
       interactive: true,
       stages: [],
       runAgentFn,
@@ -64,11 +56,7 @@ describe("runPlanning", () => {
     const runAgentFn = mockRunAgent("Some plan");
 
     const result = await runPlanning("Issue context", undefined, {
-      cwd: "/tmp",
-      signal: AbortSignal.timeout(5000),
-      onUpdate: undefined,
-      ctx,
-      agentsDir: "/tmp/agents",
+      ...mockPipelineContext({ ctx }),
       interactive: true,
       stages: [],
       runAgentFn,
@@ -82,11 +70,7 @@ describe("runPlanning", () => {
     const runAgentFn = mockRunAgent("Auto plan");
 
     const result = await runPlanning("Issue context", undefined, {
-      cwd: "/tmp",
-      signal: AbortSignal.timeout(5000),
-      onUpdate: undefined,
-      ctx,
-      agentsDir: "/tmp/agents",
+      ...mockPipelineContext({ ctx }),
       interactive: false,
       stages: [],
       runAgentFn,
@@ -103,11 +87,7 @@ describe("runPlanning", () => {
     const runAgentFn = mockRunAgent("error details", "failed");
 
     const result = await runPlanning("Issue context", undefined, {
-      cwd: "/tmp",
-      signal: AbortSignal.timeout(5000),
-      onUpdate: undefined,
-      ctx,
-      agentsDir: "/tmp/agents",
+      ...mockPipelineContext({ ctx }),
       interactive: true,
       stages: [],
       runAgentFn,
