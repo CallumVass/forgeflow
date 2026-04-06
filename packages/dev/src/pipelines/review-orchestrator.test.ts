@@ -37,6 +37,7 @@ describe("runReviewPipeline", () => {
     signal: AbortSignal.timeout(5000),
     stages: [] as StageResult[],
     pipeline: "review",
+    agentsDir: "/tmp/agents",
   });
 
   beforeEach(() => {

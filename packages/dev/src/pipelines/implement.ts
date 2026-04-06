@@ -5,7 +5,6 @@ import {
   type StageResult,
   toAgentOpts,
 } from "@callumvass/forgeflow-shared/types";
-import { AGENTS_DIR } from "../resolve.js";
 import { buildPrBody, resolveIssue } from "../utils/git.js";
 import { ensurePr, mergePr, returnToMain, setupBranch } from "../utils/git-workflow.js";
 import { setForgeflowStatus } from "../utils/ui.js";
@@ -47,7 +46,7 @@ export async function runImplement(
 
   const buildPhaseContext = (stages: StageResult[]): PhaseContext => ({
     cwd,
-    agentOpts: toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline: "implement" }),
+    agentOpts: toAgentOpts(pctx, { stages, pipeline: "implement" }),
     stages,
   });
 

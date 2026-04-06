@@ -2,7 +2,6 @@ import { TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared/constants";
 import { resolveRunAgent } from "@callumvass/forgeflow-shared/di";
 import { cleanSignal, readSignal, signalExists } from "@callumvass/forgeflow-shared/signals";
 import { emptyStage, type RunAgentFn, type RunAgentOpts } from "@callumvass/forgeflow-shared/types";
-import { AGENTS_DIR } from "../resolve.js";
 
 interface ReviewResult {
   passed: boolean;
@@ -16,16 +15,16 @@ interface ReviewResult {
  */
 export async function runReviewPipeline(
   diff: string,
-  opts: Pick<RunAgentOpts, "cwd" | "signal" | "stages" | "pipeline" | "onUpdate"> & {
+  opts: Pick<RunAgentOpts, "cwd" | "signal" | "stages" | "pipeline" | "onUpdate" | "agentsDir"> & {
     customPrompt?: string;
     runAgentFn?: RunAgentFn;
   },
 ): Promise<ReviewResult> {
-  const { cwd, signal, stages, pipeline = "review", onUpdate, customPrompt } = opts;
+  const { cwd, signal, stages, pipeline = "review", onUpdate, customPrompt, agentsDir } = opts;
 
   const runAgentFn = await resolveRunAgent(opts.runAgentFn);
 
-  const agentOpts = { agentsDir: AGENTS_DIR, cwd, signal, stages, pipeline, onUpdate };
+  const agentOpts = { agentsDir, cwd, signal, stages, pipeline, onUpdate };
   const extraInstructions = customPrompt ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${customPrompt}` : "";
 
   // Clean up stale findings

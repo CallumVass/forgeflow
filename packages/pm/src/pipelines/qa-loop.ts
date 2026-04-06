@@ -15,7 +15,6 @@ export type SignalExistsFn = (cwd: string, signal: string) => boolean;
 export interface QaLoopOptions extends PipelineContext {
   stages: StageResult[];
   pipeline: string;
-  agentsDir: string;
   maxIterations: number;
   criticPrompt: string;
   runAgentFn?: RunAgentFn;
@@ -28,12 +27,12 @@ interface QaLoopResult {
 }
 
 export async function runQaLoop(opts: QaLoopOptions): Promise<QaLoopResult> {
-  const { cwd, stages, pipeline, agentsDir, ctx, maxIterations, criticPrompt } = opts;
+  const { cwd, stages, pipeline, ctx, maxIterations, criticPrompt } = opts;
 
   const runAgentFn = await resolveRunAgent(opts.runAgentFn);
   const signalExistsFn = opts.signalExistsFn ?? (signalExists as SignalExistsFn);
 
-  const agentOpts = toAgentOpts(opts, { agentsDir, stages, pipeline });
+  const agentOpts = toAgentOpts(opts, { stages, pipeline });
 
   for (let i = 1; i <= maxIterations; i++) {
     stages.push(emptyStage("prd-critic"));

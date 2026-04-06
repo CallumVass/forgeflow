@@ -1,13 +1,15 @@
 import { createForgeflowExtension } from "@callumvass/forgeflow-shared/extension";
-import { toPipelineContext } from "@callumvass/forgeflow-shared/types";
+import { type ForgeflowContext, type OnUpdate, toPipelineContext } from "@callumvass/forgeflow-shared/types";
 import { commands } from "./commands.js";
 import { runContinue } from "./pipelines/continue.js";
 import { runCreateIssue, runCreateIssues } from "./pipelines/create-issues.js";
 import { runInvestigate } from "./pipelines/investigate.js";
 import { runJiraIssues } from "./pipelines/jira-issues.js";
 import { runPrdQa } from "./pipelines/prd-qa.js";
+import { AGENTS_DIR } from "./resolve.js";
 
-const pctx = toPipelineContext;
+const pctx = (cwd: string, s: AbortSignal, u: OnUpdate, c: ForgeflowContext) =>
+  toPipelineContext(cwd, s, u, c, AGENTS_DIR);
 
 export default createForgeflowExtension({
   toolName: "forgeflow-pm",

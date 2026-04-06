@@ -1,7 +1,6 @@
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { TOOLS_READONLY } from "@callumvass/forgeflow-shared/constants";
 import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/types";
-import { AGENTS_DIR } from "../resolve.js";
 
 /**
  * Parse numbered candidates from the architecture reviewer output.
@@ -30,7 +29,7 @@ function parseCandidates(text: string): { label: string; body: string }[] {
 export async function runArchitecture(pctx: PipelineContext) {
   const { ctx } = pctx;
   const stages = [emptyStage("architecture-reviewer")];
-  const opts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline: "architecture" });
+  const opts = toAgentOpts(pctx, { stages, pipeline: "architecture" });
 
   // Phase 1: Explore codebase for friction
   const exploreResult = await runAgent(

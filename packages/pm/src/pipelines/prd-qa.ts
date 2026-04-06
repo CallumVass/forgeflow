@@ -1,6 +1,5 @@
 import * as fs from "node:fs";
 import { type PipelineContext, pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/types";
-import { AGENTS_DIR } from "../resolve.js";
 import { runQaLoop } from "./qa-loop.js";
 
 export async function runPrdQa(maxIterations: number, pctx: PipelineContext) {
@@ -11,7 +10,6 @@ export async function runPrdQa(maxIterations: number, pctx: PipelineContext) {
     ...pctx,
     stages,
     pipeline: "prd-qa",
-    agentsDir: AGENTS_DIR,
     maxIterations,
     criticPrompt:
       "Review PRD.md for completeness. If it needs refinement, create QUESTIONS.md. If it's complete, do NOT create QUESTIONS.md.",

@@ -2,7 +2,6 @@ import * as fs from "node:fs";
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared/constants";
 import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/types";
-import { AGENTS_DIR } from "../resolve.js";
 
 export async function runCreateIssue(idea: string, pctx: PipelineContext) {
   const { ctx } = pctx;
@@ -16,7 +15,7 @@ export async function runCreateIssue(idea: string, pctx: PipelineContext) {
   }
 
   const stages = [emptyStage("gh-single-issue-creator")];
-  const opts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline: "create-issue" });
+  const opts = toAgentOpts(pctx, { stages, pipeline: "create-issue" });
 
   await runAgent("gh-single-issue-creator", idea, { ...opts, tools: TOOLS_NO_EDIT });
 
@@ -29,7 +28,7 @@ export async function runCreateIssues(pctx: PipelineContext) {
   }
 
   const stages = [emptyStage("gh-issue-creator")];
-  const opts = toAgentOpts(pctx, { agentsDir: AGENTS_DIR, stages, pipeline: "create-issues" });
+  const opts = toAgentOpts(pctx, { stages, pipeline: "create-issues" });
 
   await runAgent(
     "gh-issue-creator",

@@ -5,7 +5,7 @@ import { resolveDiffTarget } from "./review-diff.js";
 import { runReviewPipeline } from "./review-orchestrator.js";
 
 export async function runReview(target: string, pctx: PipelineContext, customPrompt?: string) {
-  const { cwd, signal, onUpdate, ctx } = pctx;
+  const { cwd, signal, onUpdate, ctx, agentsDir } = pctx;
   const stages: StageResult[] = [];
   const { diffCmd, prNumber } = await resolveDiffTarget(cwd, target);
 
@@ -17,7 +17,15 @@ export async function runReview(target: string, pctx: PipelineContext, customPro
   const diff = await exec(diffCmd, cwd);
   if (!diff) return pipelineResult("No changes to review.", "review", stages);
 
-  const result = await runReviewPipeline(diff, { cwd, signal, stages, pipeline: "review", onUpdate, customPrompt });
+  const result = await runReviewPipeline(diff, {
+    cwd,
+    signal,
+    stages,
+    pipeline: "review",
+    onUpdate,
+    agentsDir,
+    customPrompt,
+  });
   if (result.passed) return pipelineResult("Review passed — no actionable findings.", "review", stages);
 
   const findings = result.findings ?? "";

@@ -60,6 +60,7 @@ export function mockPipelineContext(overrides?: Partial<PipelineContext>): Pipel
     signal: AbortSignal.timeout(5000),
     onUpdate: undefined,
     ctx: mockForgeflowContext(overrides?.ctx ? { hasUI: overrides.ctx.hasUI, cwd: overrides.ctx.cwd } : undefined),
+    agentsDir: "/tmp/agents",
     ...overrides,
   };
 }
