@@ -1,6 +1,5 @@
 import type { ForgeflowContext } from "@callumvass/forgeflow-shared/context";
-import { emptyStage, type RunAgentFn, type StageResult } from "@callumvass/forgeflow-shared/stage";
-import { mockPipelineContext, mockRunAgent } from "@callumvass/forgeflow-shared/testing";
+import { mockPipelineContext, mockRunAgent, sequencedRunAgent } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
 import { appendArchitecturalNotes } from "./plan-architecture.js";
 import { resolveQuestions, runPlanning } from "./planning.js";
@@ -12,15 +11,6 @@ const TWO_CANDIDATES = [
   "### 2. Avoid god module",
   "Adding these functions to pipeline.ts would push it past 300 lines. Extract to a dedicated module.",
 ].join("\n");
-
-function sequencedRunAgent(responses: Array<{ output: string; status?: StageResult["status"] }>) {
-  let callIndex = 0;
-  return vi.fn(async () => {
-    const response = responses[callIndex] ?? { output: "", status: "done" as const };
-    callIndex++;
-    return { ...emptyStage("mock"), output: response.output, status: response.status ?? ("done" as const) };
-  }) as unknown as RunAgentFn;
-}
 
 function mockCtx(
   opts: { editorResult?: string; selectResult?: string; inputAnswers?: (string | undefined)[] } = {},

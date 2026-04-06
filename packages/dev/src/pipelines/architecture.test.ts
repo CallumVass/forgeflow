@@ -1,5 +1,4 @@
-import { emptyStage, type RunAgentFn, type StageResult } from "@callumvass/forgeflow-shared/stage";
-import { mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
+import { mockForgeflowContext, mockPipelineContext, sequencedRunAgent } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
 import { parseCandidates, parseJudgeVerdict, runArchitecture } from "./architecture.js";
 
@@ -13,15 +12,6 @@ const THREE_CANDIDATES = [
   "### 3. Circular dependency in utils",
   "Utils imports from core which imports from utils.",
 ].join("\n");
-
-function sequencedRunAgent(responses: Array<{ output: string; status?: StageResult["status"] }>) {
-  let callIndex = 0;
-  return vi.fn(async () => {
-    const response = responses[callIndex] ?? { output: "", status: "done" as const };
-    callIndex++;
-    return { ...emptyStage("mock"), output: response.output, status: response.status ?? ("done" as const) };
-  }) as unknown as RunAgentFn;
-}
 
 describe("runArchitecture", () => {
   it("filters out candidates rejected by the judge in non-interactive mode", async () => {
