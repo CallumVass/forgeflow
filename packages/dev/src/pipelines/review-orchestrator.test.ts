@@ -1,4 +1,4 @@
-import { emptyStage, type StageResult } from "@callumvass/forgeflow-shared/types";
+import { emptyStage, type StageResult } from "@callumvass/forgeflow-shared/stage";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { runReviewPipeline } from "./review-orchestrator.js";
 

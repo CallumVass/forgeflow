@@ -1,5 +1,5 @@
 import { runAgent } from "./run-agent.js";
-import type { RunAgentFn } from "./types.js";
+import type { RunAgentFn } from "./stage.js";
 
 /**
  * Resolve a RunAgentFn — use the injected one for tests, or return the real one.

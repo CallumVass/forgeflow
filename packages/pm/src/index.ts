@@ -1,5 +1,6 @@
+import { type ForgeflowContext, toPipelineContext } from "@callumvass/forgeflow-shared/context";
 import { createForgeflowExtension } from "@callumvass/forgeflow-shared/extension";
-import { type ForgeflowContext, type OnUpdate, toPipelineContext } from "@callumvass/forgeflow-shared/types";
+import type { OnUpdate } from "@callumvass/forgeflow-shared/stage";
 import { commands } from "./commands.js";
 import { runContinue } from "./pipelines/continue.js";
 import { runCreateIssue, runCreateIssues } from "./pipelines/create-issues.js";

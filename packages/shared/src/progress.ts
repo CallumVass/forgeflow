@@ -1,6 +1,6 @@
 import type { Message } from "@mariozechner/pi-ai";
 import { formatToolCall } from "./rendering.js";
-import { type OnUpdate, pipelineResult, type StageResult } from "./types.js";
+import { type OnUpdate, pipelineResult, type StageResult } from "./stage.js";
 
 /** Format the last tool call in messages as a short plain-text display string. */
 export function getLastToolCall(messages: Message[]): string {

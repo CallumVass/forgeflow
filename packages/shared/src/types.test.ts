@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { pipelineResult } from "./stage.js";
 import { makeStage } from "./test-utils.js";
-import { pipelineResult } from "./types.js";
 
 describe("pipelineResult", () => {
   it("returns correct shape for success case", () => {

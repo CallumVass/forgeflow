@@ -1,13 +1,8 @@
 import { TOOLS_READONLY } from "@callumvass/forgeflow-shared/constants";
+import { type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/context";
 import { resolveRunAgent } from "@callumvass/forgeflow-shared/di";
 import { exec as defaultExec, type ExecFn } from "@callumvass/forgeflow-shared/exec";
-import {
-  emptyStage,
-  type PipelineContext,
-  type RunAgentFn,
-  type StageResult,
-  toAgentOpts,
-} from "@callumvass/forgeflow-shared/types";
+import { emptyStage, type RunAgentFn, type StageResult } from "@callumvass/forgeflow-shared/stage";
 
 /**
  * Build the prompt for the comment-proposal agent call.

@@ -28,6 +28,8 @@ describe("package.json exports map", () => {
     expect(exports["./arg-parsing"]).toBe("./dist/arg-parsing.js");
     expect(exports["./progress"]).toBe("./dist/progress.js");
     expect(exports["./message-parser"]).toBe("./dist/message-parser.js");
+    expect(exports["./context"]).toBe("./dist/context.js");
+    expect(exports["./stage"]).toBe("./dist/stage.js");
   });
 });
 
@@ -45,19 +47,131 @@ describe("barrel does not re-export test-utils", () => {
   });
 });
 
-describe("pipelineResult and PipelineResult are exported from ./types", () => {
-  it("types.ts exports pipelineResult function and PipelineResult type", () => {
-    const typesSrc = readFileSync(resolve(__dirname, "types.ts"), "utf-8");
+describe("context.ts exports exactly the specified symbols", () => {
+  it("exports ForgeflowUI, ForgeflowContext, ForgeflowTheme, PipelineContext, toPipelineContext, toAgentOpts", () => {
+    const src = readFileSync(resolve(__dirname, "context.ts"), "utf-8");
 
-    expect(typesSrc).toContain("export function pipelineResult(");
-    expect(typesSrc).toContain("export type PipelineResult");
+    // Must export these
+    expect(src).toMatch(/export\s+(interface|type)\s+ForgeflowUI/);
+    expect(src).toMatch(/export\s+(interface|type)\s+ForgeflowContext/);
+    expect(src).toMatch(/export\s+(interface|type)\s+ForgeflowTheme/);
+    expect(src).toMatch(/export\s+(interface|type)\s+PipelineContext/);
+    expect(src).toMatch(/export\s+function\s+toPipelineContext/);
+    // toAgentOpts lives here to avoid circular dep (context → stage, not stage → context)
+    expect(src).toMatch(/export\s+function\s+toAgentOpts/);
+  });
+});
+
+describe("stage.ts exports exactly the specified symbols", () => {
+  it("exports StageResult, UsageStats, PipelineDetails, OnUpdate, RunAgentOpts, RunAgentFn, emptyStage, emptyUsage, sumUsage, PipelineResult, pipelineResult", () => {
+    const src = readFileSync(resolve(__dirname, "stage.ts"), "utf-8");
+
+    expect(src).toMatch(/export\s+interface\s+StageResult/);
+    expect(src).toMatch(/export\s+interface\s+UsageStats/);
+    expect(src).toMatch(/export\s+interface\s+PipelineDetails/);
+    expect(src).toMatch(/export\s+type\s+OnUpdate/);
+    expect(src).toMatch(/export\s+type\s+RunAgentOpts/);
+    expect(src).toMatch(/export\s+type\s+RunAgentFn/);
+    expect(src).toMatch(/export\s+function\s+emptyStage/);
+    expect(src).toMatch(/export\s+function\s+emptyUsage/);
+    expect(src).toMatch(/export\s+function\s+sumUsage/);
+    expect(src).toMatch(/export\s+type\s+PipelineResult/);
+    expect(src).toMatch(/export\s+function\s+pipelineResult/);
+  });
+});
+
+describe("getFinalOutput lives in message-parser.ts", () => {
+  it("message-parser.ts defines getFinalOutput", () => {
+    const src = readFileSync(resolve(__dirname, "message-parser.ts"), "utf-8");
+    expect(src).toMatch(/export\s+function\s+getFinalOutput/);
   });
 
-  it("barrel re-exports pipelineResult and PipelineResult", () => {
-    const indexSrc = readFileSync(resolve(__dirname, "index.ts"), "utf-8");
+  it("rendering.ts imports getFinalOutput from ./message-parser.js", () => {
+    const src = readFileSync(resolve(__dirname, "rendering.ts"), "utf-8");
+    expect(src).toContain('from "./message-parser.js"');
+    expect(src).not.toMatch(/getFinalOutput.*from\s+["']\.\/types\.js["']/);
+  });
+});
 
-    expect(indexSrc).toContain("pipelineResult");
-    expect(indexSrc).toContain("PipelineResult");
+describe("extension.ts and rendering.ts import from ./context.js", () => {
+  it("extension.ts imports ForgeflowContext/ForgeflowTheme from ./context.js", () => {
+    const src = readFileSync(resolve(__dirname, "extension.ts"), "utf-8");
+    expect(src).toContain('from "./context.js"');
+    expect(src).not.toMatch(/ForgeflowContext.*from\s+["']\.\/types\.js["']/);
+    expect(src).not.toMatch(/ForgeflowTheme.*from\s+["']\.\/types\.js["']/);
+  });
+
+  it("rendering.ts imports ForgeflowTheme from ./context.js", () => {
+    const src = readFileSync(resolve(__dirname, "rendering.ts"), "utf-8");
+    expect(src).toContain('from "./context.js"');
+  });
+});
+
+describe("package.json exports include ./context and ./stage sub-paths", () => {
+  it("has ./context and ./stage exports with matching typesVersions", () => {
+    const pkg = sharedPkgJson();
+    const exports = pkg.exports as Record<string, string>;
+    expect(exports["./context"]).toBe("./dist/context.js");
+    expect(exports["./stage"]).toBe("./dist/stage.js");
+
+    const tv = pkg.typesVersions["*"] as Record<string, string[]>;
+    expect(tv.context).toEqual(["dist/context.d.ts"]);
+    expect(tv.stage).toEqual(["dist/stage.d.ts"]);
+  });
+});
+
+describe("no production file in dev/ or pm/ imports from @callumvass/forgeflow-shared/types", () => {
+  const prodFiles = [
+    "../../dev/src/index.ts",
+    "../../dev/src/utils/ui.ts",
+    "../../dev/src/pipelines/architecture.ts",
+    "../../dev/src/pipelines/discover-skills.ts",
+    "../../dev/src/pipelines/implement.ts",
+    "../../dev/src/pipelines/implement-all.ts",
+    "../../dev/src/pipelines/implement-phases.ts",
+    "../../dev/src/pipelines/planning.ts",
+    "../../dev/src/pipelines/review.ts",
+    "../../dev/src/pipelines/review-comments.ts",
+    "../../dev/src/pipelines/review-orchestrator.ts",
+    "../../pm/src/index.ts",
+    "../../pm/src/pipelines/continue.ts",
+    "../../pm/src/pipelines/create-issues.ts",
+    "../../pm/src/pipelines/investigate.ts",
+    "../../pm/src/pipelines/jira-issues.ts",
+    "../../pm/src/pipelines/prd-qa.ts",
+    "../../pm/src/pipelines/qa-loop.ts",
+  ];
+
+  it.each(prodFiles)("%s does not import from @callumvass/forgeflow-shared/types", (relPath) => {
+    const src = readFileSync(resolve(__dirname, relPath), "utf-8");
+    expect(src).not.toContain("@callumvass/forgeflow-shared/types");
+  });
+});
+
+describe("no circular dependency between context.ts and stage.ts", () => {
+  it("stage.ts has no imports from context.ts", () => {
+    const src = readFileSync(resolve(__dirname, "stage.ts"), "utf-8");
+    expect(src).not.toMatch(/from\s+["']\.\/context(\.js)?["']/);
+  });
+});
+
+describe("types.ts contains only re-exports", () => {
+  it("has no function, interface, or type declarations — only re-exports", () => {
+    const src = readFileSync(resolve(__dirname, "types.ts"), "utf-8");
+    // No direct declarations — only re-exports
+    expect(src).not.toMatch(/^export\s+function\s/m);
+    expect(src).not.toMatch(/^export\s+interface\s/m);
+    expect(src).not.toMatch(/^export\s+type\s+\w+\s*=/m);
+  });
+});
+
+describe("barrel re-exports from new modules", () => {
+  it("index.ts re-exports from ./context.js and ./stage.js", () => {
+    const src = readFileSync(resolve(__dirname, "index.ts"), "utf-8");
+    expect(src).toContain("./context.js");
+    expect(src).toContain("./stage.js");
+    expect(src).toContain("pipelineResult");
+    expect(src).toContain("PipelineResult");
   });
 });
 

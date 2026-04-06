@@ -1,12 +1,7 @@
 import { TOOLS_READONLY } from "@callumvass/forgeflow-shared/constants";
+import { type ForgeflowContext, type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/context";
 import { resolveRunAgent } from "@callumvass/forgeflow-shared/di";
-import {
-  type ForgeflowContext,
-  type PipelineContext,
-  type RunAgentFn,
-  type StageResult,
-  toAgentOpts,
-} from "@callumvass/forgeflow-shared/types";
+import type { RunAgentFn, StageResult } from "@callumvass/forgeflow-shared/stage";
 
 interface PlanResult {
   plan: string;

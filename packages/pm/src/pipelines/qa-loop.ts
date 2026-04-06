@@ -1,14 +1,9 @@
 import * as fs from "node:fs";
 import { TOOLS_ALL, TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared/constants";
+import { type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/context";
 import { resolveRunAgent } from "@callumvass/forgeflow-shared/di";
 import { signalExists } from "@callumvass/forgeflow-shared/signals";
-import {
-  emptyStage,
-  type PipelineContext,
-  type RunAgentFn,
-  type StageResult,
-  toAgentOpts,
-} from "@callumvass/forgeflow-shared/types";
+import { emptyStage, type RunAgentFn, type StageResult } from "@callumvass/forgeflow-shared/stage";
 
 export type SignalExistsFn = (cwd: string, signal: string) => boolean;
 

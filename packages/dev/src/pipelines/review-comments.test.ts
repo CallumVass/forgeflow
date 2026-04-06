@@ -1,5 +1,5 @@
+import { emptyStage, type StageResult } from "@callumvass/forgeflow-shared/stage";
 import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
-import { emptyStage, type StageResult } from "@callumvass/forgeflow-shared/types";
 import { describe, expect, it, vi } from "vitest";
 import { buildCommentProposalPrompt, extractGhCommands, proposeAndPostComments } from "./review-comments.js";
 

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { type PipelineContext, toAgentOpts, toPipelineContext } from "./context.js";
 import { mockForgeflowContext, mockPipelineContext } from "./test-utils.js";
-import type { PipelineContext } from "./types.js";
-import { toAgentOpts, toPipelineContext } from "./types.js";
 
 describe("toPipelineContext", () => {
   it("includes agentsDir in the returned object", () => {

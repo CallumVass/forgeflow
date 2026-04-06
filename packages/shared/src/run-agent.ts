@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
 import { applyMessageToStage, extractFinalOutput, parseMessageLine } from "./message-parser.js";
 import { emitUpdate } from "./progress.js";
-import { emptyStage, type RunAgentOpts, type StageResult } from "./types.js";
+import { emptyStage, type RunAgentOpts, type StageResult } from "./stage.js";
 
 function getPiInvocation(args: string[]): { command: string; args: string[] } {
   const currentScript = process.argv[1];

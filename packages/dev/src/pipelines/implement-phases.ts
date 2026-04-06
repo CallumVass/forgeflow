@@ -2,7 +2,7 @@ import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { TOOLS_ALL } from "@callumvass/forgeflow-shared/constants";
 import { exec } from "@callumvass/forgeflow-shared/exec";
 import { cleanSignal, readSignal, signalExists } from "@callumvass/forgeflow-shared/signals";
-import { emptyStage, type RunAgentOpts, type StageResult } from "@callumvass/forgeflow-shared/types";
+import { emptyStage, type RunAgentOpts, type StageResult } from "@callumvass/forgeflow-shared/stage";
 import type { ResolvedIssue } from "../utils/git.js";
 import { runReviewPipeline } from "./review-orchestrator.js";
 
