@@ -23,6 +23,7 @@ vi.mock("./review-orchestrator.js", () => ({
 
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { exec } from "@callumvass/forgeflow-shared/exec";
+import { readSignal, signalExists } from "@callumvass/forgeflow-shared/signals";
 import type { RunAgentOpts } from "@callumvass/forgeflow-shared/types";
 import {
   buildImplementorPrompt,
@@ -159,7 +160,6 @@ describe("refactorAndReview", () => {
 
 describe("runImplementorPhase", () => {
   it("calls runAgent with the prompt and returns blocked reason when blocked signal exists", async () => {
-    const { signalExists, readSignal } = await import("@callumvass/forgeflow-shared/signals");
     vi.mocked(signalExists).mockReturnValueOnce(true);
     vi.mocked(readSignal).mockReturnValueOnce("blocked reason");
     vi.mocked(runAgent).mockClear();
@@ -176,7 +176,6 @@ describe("runImplementorPhase", () => {
   });
 
   it("returns null when no blocked signal exists", async () => {
-    const { signalExists } = await import("@callumvass/forgeflow-shared/signals");
     vi.mocked(signalExists).mockReturnValueOnce(false);
     vi.mocked(runAgent).mockClear();
 
