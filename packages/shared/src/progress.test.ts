@@ -3,20 +3,18 @@ import { emitUpdate, getLastToolCall } from "./progress.js";
 import { makeAssistantMessage, makeStage } from "./test-utils.js";
 
 describe("getLastToolCall", () => {
-  it.each([
-    ["bash with command", "bash", { command: "npm test" }, "$ npm test"],
-    ["bash truncated at 60", "bash", { command: "a".repeat(80) }, `$ ${"a".repeat(60)}`],
-    ["bash without command", "bash", {}, "bash"],
-    ["read with path", "read", { path: "src/index.ts" }, "read src/index.ts"],
-    ["read with file_path", "read", { file_path: "f.ts" }, "read f.ts"],
-    ["write with path", "write", { path: "out.ts" }, "write out.ts"],
-    ["edit with path", "edit", { path: "e.ts" }, "edit e.ts"],
-    ["grep", "grep", { pattern: "TODO" }, "grep /TODO/"],
-    ["find", "find", { pattern: "*.ts" }, "find *.ts"],
-    ["unknown tool", "custom-tool", {}, "custom-tool"],
-  ])("formats %s correctly", (_label, name, args, expected) => {
-    const messages = [makeAssistantMessage({ content: [{ type: "toolCall", id: "tc-1", name, arguments: args }] })];
-    expect(getLastToolCall(messages)).toBe(expected);
+  it("delegates to formatToolCall for plain output", () => {
+    const messages = [
+      makeAssistantMessage({ content: [{ type: "toolCall", id: "tc-1", name: "bash", arguments: { command: "ls" } }] }),
+    ];
+    expect(getLastToolCall(messages)).toBe("$ ls");
+  });
+
+  it("returns plain output for bash without command", () => {
+    const messages = [
+      makeAssistantMessage({ content: [{ type: "toolCall", id: "tc-1", name: "bash", arguments: {} }] }),
+    ];
+    expect(getLastToolCall(messages)).toBe("$ ...");
   });
 
   it("returns empty string for empty messages", () => {

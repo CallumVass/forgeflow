@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  formatToolCall,
   formatToolCallShort,
   formatUsage,
   getDisplayItems,
@@ -13,10 +14,11 @@ import { makeStage, mockTheme } from "./test-utils.js";
 import type { ForgeflowContext, ForgeflowTheme, ForgeflowUI, PipelineDetails } from "./types.js";
 
 describe("rendering exports", () => {
-  it("exports all seven symbols", () => {
+  it("exports all eight symbols", () => {
     // DisplayItem is a type-only export, verified by the import above compiling.
-    // The six functions must be real functions.
+    // The seven functions must be real functions.
     expect(typeof getDisplayItems).toBe("function");
+    expect(typeof formatToolCall).toBe("function");
     expect(typeof formatToolCallShort).toBe("function");
     expect(typeof formatUsage).toBe("function");
     expect(typeof stageIcon).toBe("function");
@@ -57,29 +59,48 @@ describe("getDisplayItems", () => {
   });
 });
 
-describe("formatToolCallShort", () => {
-  const fg = (c: string, t: string) => `[${c}]${t}`;
+describe("formatToolCall", () => {
+  describe("plain mode (no fg argument)", () => {
+    it.each([
+      ["bash with command", "bash", { command: "npm test" }, "$ npm test"],
+      ["bash truncated at 60", "bash", { command: "a".repeat(80) }, `$ ${"a".repeat(60)}...`],
+      ["bash without command", "bash", {}, "$ ..."],
+      ["read with path", "read", { path: "src/index.ts" }, "read src/index.ts"],
+      ["read with file_path", "read", { file_path: "f.ts" }, "read f.ts"],
+      ["write with path", "write", { path: "out.ts" }, "write out.ts"],
+      ["edit with path", "edit", { path: "e.ts" }, "edit e.ts"],
+      ["grep", "grep", { pattern: "TODO" }, "grep /TODO/"],
+      ["find", "find", { pattern: "*.ts" }, "find *.ts"],
+      ["unknown tool", "custom-tool", {}, "custom-tool"],
+    ])("%s", (_label, name, args, expected) => {
+      expect(formatToolCall(name, args)).toBe(expected);
+    });
+  });
 
-  it("formats each tool type correctly", () => {
-    // bash: normal, truncated at 60, missing command
-    expect(formatToolCallShort("bash", { command: "ls -la" }, fg)).toBe("[muted]$ [toolOutput]ls -la");
-    expect(formatToolCallShort("bash", { command: "a".repeat(80) }, fg)).toBe(
-      `[muted]$ [toolOutput]${"a".repeat(60)}...`,
-    );
-    expect(formatToolCallShort("bash", {}, fg)).toBe("[muted]$ [toolOutput]...");
+  describe("coloured mode (with fg callback)", () => {
+    const fg = (c: string, t: string) => `[${c}]${t}`;
 
-    // file tools: path and file_path fallback
-    expect(formatToolCallShort("read", { path: "src/index.ts" }, fg)).toBe("[muted]read [accent]src/index.ts");
-    expect(formatToolCallShort("read", { file_path: "f.ts" }, fg)).toBe("[muted]read [accent]f.ts");
-    expect(formatToolCallShort("write", { path: "out.ts" }, fg)).toBe("[muted]write [accent]out.ts");
-    expect(formatToolCallShort("edit", { path: "e.ts" }, fg)).toBe("[muted]edit [accent]e.ts");
+    it.each([
+      ["bash with command", "bash", { command: "ls -la" }, "[muted]$ [toolOutput]ls -la"],
+      ["bash truncated at 60", "bash", { command: "a".repeat(80) }, `[muted]$ [toolOutput]${"a".repeat(60)}...`],
+      ["bash without command", "bash", {}, "[muted]$ [toolOutput]..."],
+      ["read with path", "read", { path: "src/index.ts" }, "[muted]read [accent]src/index.ts"],
+      ["read with file_path", "read", { file_path: "f.ts" }, "[muted]read [accent]f.ts"],
+      ["write with path", "write", { path: "out.ts" }, "[muted]write [accent]out.ts"],
+      ["edit with path", "edit", { path: "e.ts" }, "[muted]edit [accent]e.ts"],
+      ["grep", "grep", { pattern: "TODO" }, "[muted]grep [accent]/TODO/"],
+      ["find", "find", { pattern: "*.ts" }, "[muted]find [accent]*.ts"],
+      ["unknown tool", "unknown-tool", {}, "[accent]unknown-tool"],
+    ])("%s", (_label, name, args, expected) => {
+      expect(formatToolCall(name, args, fg)).toBe(expected);
+    });
+  });
+});
 
-    // search tools
-    expect(formatToolCallShort("grep", { pattern: "TODO" }, fg)).toBe("[muted]grep [accent]/TODO/");
-    expect(formatToolCallShort("find", { pattern: "*.ts" }, fg)).toBe("[muted]find [accent]*.ts");
-
-    // unknown
-    expect(formatToolCallShort("unknown-tool", {}, fg)).toBe("[accent]unknown-tool");
+describe("formatToolCallShort (deprecated alias)", () => {
+  it("delegates to formatToolCall", () => {
+    const fg = (c: string, t: string) => `[${c}]${t}`;
+    expect(formatToolCallShort("bash", { command: "ls" }, fg)).toBe(formatToolCall("bash", { command: "ls" }, fg));
   });
 });
 
@@ -236,6 +257,27 @@ describe("extraction verification", () => {
     // renderResult is now called internally by the factory in extension.ts
     const extensionSrc = readFileSync(resolve(__dirname, "extension.ts"), "utf-8");
     expect(extensionSrc).toContain("renderResult");
+  });
+});
+
+describe("unification: no duplicate switch or cross-references", () => {
+  it("progress.ts has no switch statement over tool names", () => {
+    const progressSrc = readFileSync(resolve(__dirname, "progress.ts"), "utf-8");
+    expect(progressSrc).not.toContain("switch (name)");
+    expect(progressSrc).not.toContain("switch(name)");
+  });
+
+  it("no 'See also' cross-reference comments remain", () => {
+    const progressSrc = readFileSync(resolve(__dirname, "progress.ts"), "utf-8");
+    const renderingSrc = readFileSync(resolve(__dirname, "rendering.ts"), "utf-8");
+    expect(progressSrc).not.toContain("See also");
+    expect(renderingSrc).not.toContain("See also");
+  });
+
+  it("formatToolCall is exported from the barrel index.ts", async () => {
+    const barrel = await import("./index.js");
+    expect(typeof barrel.formatToolCall).toBe("function");
+    expect(typeof barrel.formatToolCallShort).toBe("function");
   });
 });
 

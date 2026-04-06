@@ -19,6 +19,7 @@ export { applyMessageToStage, extractFinalOutput, parseMessageLine } from "./mes
 export { emitUpdate, getLastToolCall } from "./progress.js";
 export {
   type DisplayItem,
+  formatToolCall,
   formatToolCallShort,
   formatUsage,
   getDisplayItems,

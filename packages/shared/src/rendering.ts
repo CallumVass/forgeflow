@@ -21,16 +21,16 @@ export function getDisplayItems(messages: Message[]): DisplayItem[] {
   return items;
 }
 
-// See also: progress.ts#formatToolCallPlain (plain-text variant for streaming status)
-export function formatToolCallShort(
-  name: string,
-  args: Record<string, unknown>,
-  fg: (c: string, t: string) => string,
-): string {
+type Colorise = (colour: string, text: string) => string;
+const plain: Colorise = (_colour, text) => text;
+
+export function formatToolCall(name: string, args: Record<string, unknown>, fg: Colorise = plain): string {
   switch (name) {
     case "bash": {
-      const cmd = (args.command as string) || "...";
-      return fg("muted", "$ ") + fg("toolOutput", cmd.length > 60 ? `${cmd.slice(0, 60)}...` : cmd);
+      const cmd = ((args.command as string) || "").slice(0, 60);
+      const ellipsis = ((args.command as string) || "").length > 60 ? "..." : "";
+      const display = cmd || "...";
+      return fg("muted", "$ ") + fg("toolOutput", display + ellipsis);
     }
     case "read":
     case "write":
@@ -43,6 +43,15 @@ export function formatToolCallShort(
     default:
       return fg("accent", name);
   }
+}
+
+/** @deprecated Use `formatToolCall` instead. */
+export function formatToolCallShort(
+  name: string,
+  args: Record<string, unknown>,
+  fg: (c: string, t: string) => string,
+): string {
+  return formatToolCall(name, args, fg);
 }
 
 export function formatUsage(
