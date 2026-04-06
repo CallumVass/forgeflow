@@ -45,6 +45,50 @@ describe("barrel does not re-export test-utils", () => {
   });
 });
 
+describe("pipelineResult and PipelineResult are exported from ./types", () => {
+  it("types.ts exports pipelineResult function and PipelineResult type", () => {
+    const typesSrc = readFileSync(resolve(__dirname, "types.ts"), "utf-8");
+
+    expect(typesSrc).toContain("export function pipelineResult(");
+    expect(typesSrc).toContain("export type PipelineResult");
+  });
+
+  it("barrel re-exports pipelineResult and PipelineResult", () => {
+    const indexSrc = readFileSync(resolve(__dirname, "index.ts"), "utf-8");
+
+    expect(indexSrc).toContain("pipelineResult");
+    expect(indexSrc).toContain("PipelineResult");
+  });
+});
+
+describe("no inline content constructions remain in pipeline files", () => {
+  const pipelineFiles = [
+    "../../dev/src/pipelines/implement.ts",
+    "../../dev/src/pipelines/implement-all.ts",
+    "../../dev/src/pipelines/architecture.ts",
+    "../../dev/src/pipelines/review.ts",
+    "../../dev/src/pipelines/discover-skills.ts",
+    "../../pm/src/pipelines/continue.ts",
+    "../../pm/src/pipelines/prd-qa.ts",
+    "../../pm/src/pipelines/create-issues.ts",
+    "../../pm/src/pipelines/investigate.ts",
+    "../../pm/src/pipelines/jira-issues.ts",
+  ];
+
+  it.each(pipelineFiles)('%s has no inline content: [{ type: "text" constructions', (relPath) => {
+    const src = readFileSync(resolve(__dirname, relPath), "utf-8");
+    expect(src).not.toMatch(/content:\s*\[\{\s*type:\s*["']text["']/);
+  });
+
+  it.each(pipelineFiles)("%s has no local result() / reviewResult / TextResult helpers", (relPath) => {
+    const src = readFileSync(resolve(__dirname, relPath), "utf-8");
+    // No local result function declarations
+    expect(src).not.toMatch(/^function result\(/m);
+    expect(src).not.toMatch(/^const reviewResult/m);
+    expect(src).not.toMatch(/^type TextResult/m);
+  });
+});
+
 describe("no production files import from the bare barrel", () => {
   const prodFiles = [
     // dev production files

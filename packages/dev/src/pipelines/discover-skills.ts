@@ -1,6 +1,6 @@
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { TOOLS_ALL, TOOLS_NO_EDIT } from "@callumvass/forgeflow-shared/constants";
-import { emptyStage, type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/types";
+import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/types";
 import { AGENTS_DIR } from "../resolve.js";
 
 export async function runDiscoverSkills(query: string, pctx: PipelineContext) {
@@ -22,8 +22,5 @@ export async function runDiscoverSkills(query: string, pctx: PipelineContext) {
 
   const result = await runAgent("skill-discoverer", task, { ...opts, tools });
 
-  return {
-    content: [{ type: "text" as const, text: result.output || "No skills found." }],
-    details: { pipeline: "discover-skills", stages },
-  };
+  return pipelineResult(result.output || "No skills found.", "discover-skills", stages);
 }

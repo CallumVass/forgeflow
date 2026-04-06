@@ -39,6 +39,8 @@ export {
   type OnUpdate,
   type PipelineContext,
   type PipelineDetails,
+  type PipelineResult,
+  pipelineResult,
   type RunAgentFn,
   type RunAgentOpts,
   type StageResult,

@@ -1,5 +1,5 @@
 import type { Message } from "@mariozechner/pi-ai";
-import type { OnUpdate, StageResult } from "./types.js";
+import { type OnUpdate, pipelineResult, type StageResult } from "./types.js";
 
 /** Format the last tool call in messages as a short plain-text display string. */
 // See also: rendering.ts#formatToolCallShort (coloured variant)
@@ -52,8 +52,5 @@ export function emitUpdate(options: { stages: StageResult[]; pipeline: string; o
   } else {
     text = options.stages.every((s) => s.status === "done") ? "Pipeline complete" : "Processing...";
   }
-  options.onUpdate({
-    content: [{ type: "text", text }],
-    details: { pipeline: options.pipeline, stages: options.stages },
-  });
+  options.onUpdate(pipelineResult(text, options.pipeline, options.stages));
 }

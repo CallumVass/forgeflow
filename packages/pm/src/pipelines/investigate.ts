@@ -1,7 +1,7 @@
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { type ConfluencePage, fetchConfluencePage } from "@callumvass/forgeflow-shared/confluence";
 import { TOOLS_ALL } from "@callumvass/forgeflow-shared/constants";
-import { emptyStage, type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/types";
+import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/types";
 import { AGENTS_DIR } from "../resolve.js";
 
 export async function runInvestigate(description: string, templateUrl: string, pctx: PipelineContext) {
@@ -14,10 +14,7 @@ export async function runInvestigate(description: string, templateUrl: string, p
     description = input?.trim() ?? "";
   }
   if (!description) {
-    return {
-      content: [{ type: "text" as const, text: "No description provided." }],
-      details: { pipeline: "investigate", stages: [] },
-    };
+    return pipelineResult("No description provided.", "investigate", []);
   }
 
   // Ask for optional template URL interactively if not provided
@@ -32,11 +29,7 @@ export async function runInvestigate(description: string, templateUrl: string, p
   if (templateUrl) {
     const result = await fetchConfluencePage(templateUrl);
     if (typeof result === "string") {
-      return {
-        content: [{ type: "text" as const, text: result }],
-        details: { pipeline: "investigate", stages: [] },
-        isError: true,
-      };
+      return pipelineResult(result, "investigate", [], true);
     }
     const page = result as ConfluencePage;
     templateSection = `\n\nTEMPLATE (from Confluence page "${page.title}"):\n\n${page.body}`;
@@ -55,8 +48,5 @@ Read the writing-style skill before writing.`;
 
   await runAgent("investigator", task, { ...opts, tools: TOOLS_ALL });
 
-  return {
-    content: [{ type: "text" as const, text: "Investigation complete." }],
-    details: { pipeline: "investigate", stages },
-  };
+  return pipelineResult("Investigation complete.", "investigate", stages);
 }
