@@ -93,7 +93,7 @@ export function renderExpanded(details: PipelineDetails, theme: ForgeflowTheme, 
       if (item.type === "toolCall") {
         container.addChild(
           new Text(
-            `  ${theme.fg("muted", "→ ")}${formatToolCallShort(item.name, item.args, theme.fg.bind(theme))}`,
+            `  ${theme.fg("muted", "→ ")}${formatToolCall(item.name, item.args, theme.fg.bind(theme))}`,
             0,
             0,
           ),
@@ -145,7 +145,7 @@ export function renderCollapsed(details: PipelineDetails, theme: ForgeflowTheme,
       const last = items.filter((i) => i.type === "toolCall").slice(-3);
       for (const item of last) {
         if (item.type === "toolCall") {
-          text += `\n    ${theme.fg("muted", "→ ")}${formatToolCallShort(item.name, item.args, theme.fg.bind(theme))}`;
+          text += `\n    ${theme.fg("muted", "→ ")}${formatToolCall(item.name, item.args, theme.fg.bind(theme))}`;
         }
       }
     } else if (stage.status === "done" || stage.status === "failed") {
