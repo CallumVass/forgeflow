@@ -33,4 +33,3 @@ describe("execSafe", () => {
     expect(result).toBe("ok");
   });
 });
-

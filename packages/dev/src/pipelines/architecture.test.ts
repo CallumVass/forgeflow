@@ -82,7 +82,8 @@ describe("runArchitecture", () => {
     await runArchitecture(pctx, { runAgentFn });
 
     // select should have been called with options NOT including candidate 2
-    const options = selectFn.mock.calls[0]?.[1] as string[];
+    // biome-ignore lint/style/noNonNullAssertion: test assertion — call is guaranteed
+    const options = (selectFn.mock.calls as unknown[][])[0]![1] as string[];
     expect(options).toContain("1. High coupling in auth module");
     expect(options).not.toContain("2. Missing error boundaries");
     expect(options).toContain("3. Circular dependency in utils");
@@ -115,6 +116,7 @@ describe("runArchitecture", () => {
 
     // Each judge call should reference "architecture-judge" and include the candidate body
     for (let i = 1; i <= 3; i++) {
+      // biome-ignore lint/style/noNonNullAssertion: test assertion — index is guaranteed
       const call = (runAgentFn as ReturnType<typeof vi.fn>).mock.calls[i]!;
       expect(call[0]).toBe("architecture-judge");
       expect(call[1]).toContain("CANDIDATE:");

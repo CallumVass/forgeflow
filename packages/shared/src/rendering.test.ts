@@ -218,4 +218,3 @@ describe("renderCollapsed", () => {
     expect(joined).toContain("judge");
   });
 });
-

@@ -94,7 +94,10 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
 
     // Update status + widget
     issueProgress.set(issueNum, { title: issueTitle, status: "running" });
-    setForgeflowStatus(ctx, `implement-all · ${countDone(issueProgress)}/${issueProgress.size} · #${issueNum} ${issueTitle}`);
+    setForgeflowStatus(
+      ctx,
+      `implement-all · ${countDone(issueProgress)}/${issueProgress.size} · #${issueNum} ${issueTitle}`,
+    );
     updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
 
     // Run implement for this issue
