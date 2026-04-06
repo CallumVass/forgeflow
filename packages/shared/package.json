@@ -4,11 +4,7 @@
   "type": "module",
   "private": true,
   "license": "MIT",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./types": "./dist/types.js",
     "./context": "./dist/context.js",
     "./stage": "./dist/stage.js",
     "./exec": "./dist/exec.js",
@@ -26,7 +22,6 @@
   },
   "typesVersions": {
     "*": {
-      "types": ["dist/types.d.ts"],
       "context": ["dist/context.d.ts"],
       "stage": ["dist/stage.d.ts"],
       "exec": ["dist/exec.d.ts"],
