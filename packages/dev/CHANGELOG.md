@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.9.0...forgeflow-dev-v0.9.1) (2026-04-06)
+
+
+### Bug Fixes
+
+* register architecture-reviewer and architecture-judge stages in implement pipeline ([e3c67f3](https://github.com/CallumVass/forgeflow/commit/e3c67f3c0a14714233ef3ba070a5d1154c06c74c))
+
 ## [0.9.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.8.0...forgeflow-dev-v0.9.0) (2026-04-06)
 
 
