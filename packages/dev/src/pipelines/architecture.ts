@@ -1,13 +1,13 @@
-import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { TOOLS_READONLY } from "@callumvass/forgeflow-shared/constants";
 import { type PipelineContext, toAgentOpts } from "@callumvass/forgeflow-shared/context";
-import { emptyStage, pipelineResult } from "@callumvass/forgeflow-shared/stage";
+import { resolveRunAgent } from "@callumvass/forgeflow-shared/di";
+import { emptyStage, pipelineResult, type RunAgentFn } from "@callumvass/forgeflow-shared/stage";
 
 /**
  * Parse numbered candidates from the architecture reviewer output.
  * Matches headings like "### 1. Short name" or "**1. Short name**".
  */
-function parseCandidates(text: string): { label: string; body: string }[] {
+export function parseCandidates(text: string): { label: string; body: string }[] {
   // Split on markdown headings like "### 1." or bold patterns like "**1."
   const pattern = /^(?:#{1,4}\s+)?(\d+)\.\s+(.+)$/gm;
   const matches = [...text.matchAll(pattern)];
@@ -27,41 +27,84 @@ function parseCandidates(text: string): { label: string; body: string }[] {
   return results;
 }
 
-export async function runArchitecture(pctx: PipelineContext) {
+/**
+ * Parse a judge agent's output for a KEEP/REJECT verdict.
+ * Defaults to "keep" if no verdict found (fail-open).
+ */
+export function parseJudgeVerdict(output: string): "keep" | "reject" {
+  if (/VERDICT:\s*REJECT/i.test(output)) return "reject";
+  return "keep";
+}
+
+export async function runArchitecture(pctx: PipelineContext, opts?: { runAgentFn?: RunAgentFn }) {
   const { ctx } = pctx;
   const stages = [emptyStage("architecture-reviewer")];
-  const opts = toAgentOpts(pctx, { stages, pipeline: "architecture" });
+  const agentOpts = toAgentOpts(pctx, { stages, pipeline: "architecture" });
+
+  const runAgentFn = await resolveRunAgent(opts?.runAgentFn);
 
   // Phase 1: Explore codebase for friction
-  const exploreResult = await runAgent(
+  const exploreResult = await runAgentFn(
     "architecture-reviewer",
     "Explore this codebase and identify architectural friction. Present numbered candidates ranked by severity.",
-    { ...opts, tools: TOOLS_READONLY },
+    { ...agentOpts, tools: TOOLS_READONLY },
   );
 
   if (exploreResult.status === "failed") {
     return pipelineResult(`Exploration failed: ${exploreResult.output}`, "architecture", stages, true);
   }
 
-  // Non-interactive: return candidates
+  // Phase 1.5: Parse and judge each candidate
+  const candidates = parseCandidates(exploreResult.output);
+  const validatedCandidates: typeof candidates = [];
+
+  for (const candidate of candidates) {
+    const judgeStageName = `architecture-judge-${candidates.indexOf(candidate) + 1}`;
+    stages.push(emptyStage(judgeStageName));
+    const judgeResult = await runAgentFn(
+      "architecture-judge",
+      `Validate this architecture finding against the actual codebase.\n\nCANDIDATE:\n${candidate.body}\n\nFULL ANALYSIS:\n${exploreResult.output}`,
+      { ...agentOpts, stageName: judgeStageName, tools: TOOLS_READONLY },
+    );
+    if (parseJudgeVerdict(judgeResult.output) !== "reject") {
+      validatedCandidates.push(candidate);
+    }
+  }
+
+  // If all candidates were rejected, return early
+  if (candidates.length > 0 && validatedCandidates.length === 0) {
+    return pipelineResult(
+      "Architecture review complete — no actionable findings survived validation.",
+      "architecture",
+      stages,
+    );
+  }
+
+  // Non-interactive: return validated output
   if (!ctx.hasUI) {
+    if (validatedCandidates.length > 0) {
+      const output = validatedCandidates.map((c) => c.body).join("\n\n");
+      return pipelineResult(output, "architecture", stages);
+    }
     return pipelineResult(exploreResult.output, "architecture", stages);
   }
 
-  // Interactive gate: user reviews candidates, can edit/annotate
-  const edited = await ctx.ui.editor(
-    "Review architecture candidates (edit to highlight your pick)",
-    exploreResult.output,
-  );
-  const candidateContext = edited ?? exploreResult.output;
+  // Interactive gate: user reviews validated candidates
+  const validatedOutput =
+    validatedCandidates.length > 0 ? validatedCandidates.map((c) => c.body).join("\n\n") : exploreResult.output;
 
-  // Parse numbered candidates from the output (e.g. "### 1. Short name")
-  const candidates = parseCandidates(candidateContext);
+  const edited = await ctx.ui.editor("Review architecture candidates (edit to highlight your pick)", validatedOutput);
+  const candidateContext = edited ?? validatedOutput;
+
+  // Re-parse after editing (user may have changed text)
+  const editedCandidates = parseCandidates(candidateContext);
+  const displayCandidates = editedCandidates.length > 0 ? editedCandidates : validatedCandidates;
+
   const selectOptions =
-    candidates.length > 1
-      ? [...candidates.map((c) => c.label), "All candidates", "Skip"]
-      : candidates.length === 1
-        ? [(candidates[0] as { label: string; body: string }).label, "Skip"]
+    displayCandidates.length > 1
+      ? [...displayCandidates.map((c) => c.label), "All candidates", "Skip"]
+      : displayCandidates.length === 1
+        ? [(displayCandidates[0] as { label: string; body: string }).label, "Skip"]
         : ["Yes — generate RFC", "Skip"];
 
   const action = await ctx.ui.select("Create RFC issues for which candidates?", selectOptions);
@@ -73,12 +116,11 @@ export async function runArchitecture(pctx: PipelineContext) {
   // Determine which candidates to create RFCs for
   let selectedCandidates: { label: string; body: string }[];
   if (action === "All candidates") {
-    selectedCandidates = candidates;
+    selectedCandidates = displayCandidates;
   } else if (action === "Yes — generate RFC") {
-    // Fallback when no candidates were parsed — send full context
     selectedCandidates = [{ label: "RFC", body: candidateContext }];
   } else {
-    const match = candidates.find((c) => c.label === action);
+    const match = displayCandidates.find((c) => c.label === action);
     selectedCandidates = match ? [match] : [{ label: "RFC", body: candidateContext }];
   }
 
@@ -89,10 +131,10 @@ export async function runArchitecture(pctx: PipelineContext) {
     const stageName = `architecture-rfc-${selectedCandidates.indexOf(candidate) + 1}`;
     stages.push(emptyStage(stageName));
 
-    const rfcResult = await runAgent(
+    const rfcResult = await runAgentFn(
       "architecture-reviewer",
       `Based on the following architectural analysis, generate a detailed RFC and create a GitHub issue (with label "architecture") for this specific candidate.\n\nCANDIDATE:\n${candidate.body}\n\nFULL ANALYSIS (for context):\n${candidateContext}`,
-      { ...opts, stageName, tools: TOOLS_READONLY },
+      { ...agentOpts, stageName, tools: TOOLS_READONLY },
     );
 
     const issueMatch = rfcResult.output?.match(/https:\/\/github\.com\/[^\s]+\/issues\/(\d+)/);
