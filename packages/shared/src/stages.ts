@@ -74,9 +74,6 @@ export function emptyStage(name: string): StageResult {
   };
 }
 
-// Re-export progress functions and types for backwards compatibility
-export { emitUpdate, getLastToolCall, type PipelineResult, pipelineResult } from "./progress.js";
-
 export function sumUsage(stages: StageResult[]): UsageStats {
   const total = emptyUsage();
   for (const s of stages) {
