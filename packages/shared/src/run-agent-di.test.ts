@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { emptyStage, type RunAgentOpts } from "./stage.js";
+import { emptyStage, type RunAgentOpts } from "./pipeline.js";
 
 const stubOpts: RunAgentOpts = {
   agentsDir: "/agents",
@@ -10,7 +10,7 @@ const stubOpts: RunAgentOpts = {
 
 describe("resolveRunAgent", () => {
   it("returns the injected function when one is provided", async () => {
-    const { resolveRunAgent } = await import("./di.js");
+    const { resolveRunAgent } = await import("./run-agent.js");
     const injected = vi.fn(async () => ({
       ...emptyStage("mock"),
       status: "done" as const,
@@ -24,8 +24,7 @@ describe("resolveRunAgent", () => {
   });
 
   it("returns the real runAgent when no injection is provided", async () => {
-    const { resolveRunAgent } = await import("./di.js");
-    const { runAgent } = await import("./run-agent.js");
+    const { resolveRunAgent, runAgent } = await import("./run-agent.js");
 
     const result = await resolveRunAgent();
 

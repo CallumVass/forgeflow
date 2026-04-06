@@ -4,8 +4,7 @@
  * then appends surviving ones to the plan as an "### Architectural Notes" section.
  */
 
-import { TOOLS_READONLY } from "@callumvass/forgeflow-shared/constants";
-import type { RunAgentFn, RunAgentOpts } from "@callumvass/forgeflow-shared/stage";
+import { type RunAgentFn, type RunAgentOpts, TOOLS_READONLY } from "@callumvass/forgeflow-shared/pipeline";
 import { parseCandidates, parseJudgeVerdict } from "./architecture.js";
 
 /**

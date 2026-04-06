@@ -1,17 +1,21 @@
-import { emptyStage, type StageResult } from "@callumvass/forgeflow-shared/stage";
+import { emptyStage, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { runReviewPipeline } from "./review-orchestrator.js";
 
 // Mock signals module
 let signals: Record<string, string> = {};
 
-vi.mock("@callumvass/forgeflow-shared/signals", () => ({
-  cleanSignal: vi.fn((_cwd: string, name: string) => {
-    delete signals[name];
-  }),
-  signalExists: vi.fn((_cwd: string, name: string) => name in signals),
-  readSignal: vi.fn((_cwd: string, name: string) => signals[name] ?? null),
-}));
+vi.mock("@callumvass/forgeflow-shared/pipeline", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    cleanSignal: vi.fn((_cwd: string, name: string) => {
+      delete signals[name];
+    }),
+    signalExists: vi.fn((_cwd: string, name: string) => name in signals),
+    readSignal: vi.fn((_cwd: string, name: string) => signals[name] ?? null),
+  };
+});
 
 function setSignal(name: string, value: string) {
   signals[name] = value;

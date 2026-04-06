@@ -9,11 +9,15 @@ vi.mock("@callumvass/forgeflow-shared/exec", () => ({
   exec: vi.fn(async () => "diff content"),
 }));
 
-vi.mock("@callumvass/forgeflow-shared/signals", () => ({
-  cleanSignal: vi.fn(),
-  signalExists: vi.fn(() => false),
-  readSignal: vi.fn(() => null),
-}));
+vi.mock("@callumvass/forgeflow-shared/pipeline", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    cleanSignal: vi.fn(),
+    signalExists: vi.fn(() => false),
+    readSignal: vi.fn(() => null),
+  };
+});
 
 vi.mock("./review-orchestrator.js", () => ({
   runReviewPipeline: vi.fn(async () => ({ passed: true })),
@@ -21,8 +25,7 @@ vi.mock("./review-orchestrator.js", () => ({
 
 import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { exec } from "@callumvass/forgeflow-shared/exec";
-import { readSignal, signalExists } from "@callumvass/forgeflow-shared/signals";
-import type { RunAgentOpts } from "@callumvass/forgeflow-shared/stage";
+import { type RunAgentOpts, readSignal, signalExists } from "@callumvass/forgeflow-shared/pipeline";
 import {
   buildImplementorPrompt,
   type PhaseContext,
