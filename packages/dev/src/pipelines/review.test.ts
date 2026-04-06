@@ -62,4 +62,60 @@ describe("runReview composition root", () => {
     expect(result.content[0]?.text).toContain("passed");
     expect(result.isError).toBeUndefined();
   });
+
+  it("calls ui.input in interactive mode and forwards answer to runReviewPipeline", async () => {
+    const inputFn = vi.fn(async () => "look for SQL injection");
+    vi.mocked(exec).mockResolvedValueOnce("some diff");
+    vi.mocked(runReviewPipeline).mockClear();
+    vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: true });
+
+    const pctx = mockPipelineContext({
+      cwd: "/tmp",
+      ctx: {
+        hasUI: true,
+        cwd: "/tmp",
+        ui: {
+          input: inputFn,
+          editor: vi.fn(async () => undefined),
+          select: vi.fn(async () => undefined),
+          setStatus: vi.fn(),
+          setWidget: vi.fn(),
+        },
+      },
+    });
+    await runReview("5", pctx);
+
+    expect(inputFn).toHaveBeenCalledWith("Additional instructions?", "Skip");
+    expect(runReviewPipeline).toHaveBeenCalledWith(
+      "some diff",
+      expect.objectContaining({ customPrompt: "look for SQL injection" }),
+    );
+  });
+
+  it("passes no customPrompt to runReviewPipeline when user skips the prompt", async () => {
+    const inputFn = vi.fn(async () => "");
+    vi.mocked(exec).mockResolvedValueOnce("some diff");
+    vi.mocked(runReviewPipeline).mockClear();
+    vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: true });
+
+    const pctx = mockPipelineContext({
+      cwd: "/tmp",
+      ctx: {
+        hasUI: true,
+        cwd: "/tmp",
+        ui: {
+          input: inputFn,
+          editor: vi.fn(async () => undefined),
+          select: vi.fn(async () => undefined),
+          setStatus: vi.fn(),
+          setWidget: vi.fn(),
+        },
+      },
+    });
+    await runReview("5", pctx);
+
+    expect(inputFn).toHaveBeenCalled();
+    const opts = vi.mocked(runReviewPipeline).mock.calls[0]![1];
+    expect(opts.customPrompt).toBeUndefined();
+  });
 });

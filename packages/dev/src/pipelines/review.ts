@@ -5,12 +5,13 @@ import { proposeAndPostComments } from "./review-comments.js";
 import { resolveDiffTarget } from "./review-diff.js";
 import { runReviewPipeline } from "./review-orchestrator.js";
 
-export async function runReview(target: string, pctx: PipelineContext, customPrompt?: string) {
+export async function runReview(target: string, pctx: PipelineContext) {
   const { cwd, signal, onUpdate, ctx, agentsDir } = pctx;
   const stages: StageResult[] = [];
   const { diffCmd, prNumber } = await resolveDiffTarget(cwd, target);
 
-  if (ctx.hasUI && !customPrompt) {
+  let customPrompt: string | undefined;
+  if (ctx.hasUI) {
     const extra = await ctx.ui.input("Additional instructions?", "Skip");
     if (extra?.trim()) customPrompt = extra.trim();
   }

@@ -1,4 +1,4 @@
-import { extractFlags, splitFirstToken, unquote } from "@callumvass/forgeflow-shared/arg-parsing";
+import { extractFlags, splitFirstToken } from "@callumvass/forgeflow-shared/arg-parsing";
 import type { CommandDefinition } from "@callumvass/forgeflow-shared/extension";
 
 export const commands: CommandDefinition[] = [
@@ -9,12 +9,10 @@ export const commands: CommandDefinition[] = [
     pipeline: "implement",
     parseArgs: (args) => {
       const { flags, rest } = extractFlags(args, { boolean: ["--skip-plan", "--skip-review"] });
-      const { first: issue, rest: prompt } = splitFirstToken(rest);
-      const customPrompt = unquote(prompt);
+      const { first: issue } = splitFirstToken(rest);
       return {
         params: {
           ...(issue ? { issue } : {}),
-          ...(customPrompt ? { customPrompt } : {}),
           ...(flags["--skip-plan"] ? { skipPlan: true } : {}),
           ...(flags["--skip-review"] ? { skipReview: true } : {}),
         },
@@ -48,16 +46,14 @@ export const commands: CommandDefinition[] = [
       const { flags, rest } = extractFlags(args, { value: ["--branch"] });
       const branch = flags["--branch"] as string | undefined;
       if (branch) {
-        const customPrompt = unquote(rest);
         return {
-          params: { target: `--branch ${branch}`, ...(customPrompt ? { customPrompt } : {}) },
+          params: { target: `--branch ${branch}` },
           suffix: "Do not interpret the target — pass it as-is.",
         };
       }
-      const { first: target, rest: prompt } = splitFirstToken(rest);
-      const customPrompt = unquote(prompt);
+      const { first: target } = splitFirstToken(rest);
       return {
-        params: { ...(target ? { target } : {}), ...(customPrompt ? { customPrompt } : {}) },
+        params: { ...(target ? { target } : {}) },
         suffix: "Do not interpret the target — pass it as-is.",
       };
     },

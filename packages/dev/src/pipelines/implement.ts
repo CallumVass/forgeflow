@@ -15,7 +15,7 @@ import { runPlanning } from "./planning.js";
 export async function runImplement(
   issueArg: string,
   pctx: PipelineContext,
-  flags: { skipPlan: boolean; skipReview: boolean; autonomous?: boolean; customPrompt?: string } = {
+  flags: { skipPlan: boolean; skipReview: boolean; autonomous?: boolean } = {
     skipPlan: false,
     skipReview: false,
   },
@@ -34,9 +34,10 @@ export async function runImplement(
   if (!flags.autonomous && (resolved.number || resolved.key))
     setForgeflowStatus(ctx, `${isGH ? `#${resolved.number}` : resolved.key} ${resolved.title} · ${resolved.branch}`);
 
-  if (interactive && !flags.customPrompt) {
+  let customPrompt: string | undefined;
+  if (interactive) {
     const extra = await ctx.ui.input("Additional instructions?", "Skip");
-    if (extra?.trim()) flags.customPrompt = extra.trim();
+    if (extra?.trim()) customPrompt = extra.trim();
   }
 
   const buildPhaseContext = (stages: StageResult[]): PhaseContext => ({
@@ -73,7 +74,7 @@ export async function runImplement(
 
   let plan = "";
   if (!flags.skipPlan) {
-    const planResult = await runPlanning(issueContext, flags.customPrompt, {
+    const planResult = await runPlanning(issueContext, customPrompt, {
       ...pctx,
       interactive,
       stages,
@@ -84,7 +85,7 @@ export async function runImplement(
   }
 
   // --- Implementor ---
-  const prompt = buildImplementorPrompt(issueContext, plan, flags.customPrompt, resolved, flags.autonomous);
+  const prompt = buildImplementorPrompt(issueContext, plan, customPrompt, resolved, flags.autonomous);
   const blocked = await runImplementorPhase(buildPhaseContext(stages), prompt);
   if (blocked != null) return pipelineResult(`Implementor blocked:\n${blocked}`, "implement", stages, true);
 
