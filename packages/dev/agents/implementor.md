@@ -54,6 +54,10 @@ Internal modules (stores, hooks, services, helpers) get covered transitively by 
 **DO write separate unit tests for:**
 - Pure algorithmic functions where the math matters (rounding, scoring, splitting, validation logic)
 
+**NEVER write source-scanning tests.** Do not read source files (`readFileSync`, `readFile`, `fs.read*`) in tests to assert on their contents — import paths, export patterns, string matches, line counts, or absence of tokens. These are not behavioural tests; they verify code organisation, duplicate what the compiler enforces, and break on innocent refactors.
+
+If an acceptance criterion describes code organisation (e.g. "Module X has no imports from Y", "no references to deleted type Z"), verify it **once** with `grep`/`find` in the shell before committing. Do not encode it as a permanent test case.
+
 ## Test Reuse — CRITICAL
 
 Before writing your first test, read the existing test files in the areas you'll be touching. Look for:
