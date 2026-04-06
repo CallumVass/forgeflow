@@ -1,3 +1,4 @@
+import { resolveAgentsDir } from "@callumvass/forgeflow-shared/constants";
 import { type ForgeflowContext, toPipelineContext } from "@callumvass/forgeflow-shared/context";
 import { createForgeflowExtension } from "@callumvass/forgeflow-shared/extension";
 import type { OnUpdate } from "@callumvass/forgeflow-shared/stage";
@@ -7,7 +8,8 @@ import { runCreateIssue, runCreateIssues } from "./pipelines/create-issues.js";
 import { runInvestigate } from "./pipelines/investigate.js";
 import { runJiraIssues } from "./pipelines/jira-issues.js";
 import { runPrdQa } from "./pipelines/prd-qa.js";
-import { AGENTS_DIR } from "./resolve.js";
+
+const AGENTS_DIR = resolveAgentsDir(import.meta.url);
 
 const pctx = (cwd: string, s: AbortSignal, u: OnUpdate, c: ForgeflowContext) =>
   toPipelineContext(cwd, s, u, c, AGENTS_DIR);
