@@ -67,7 +67,8 @@ export async function runImplement(
 
   // --- Planning ---
   const stages: StageResult[] = [];
-  if (!flags.skipPlan) stages.push(emptyStage("planner"));
+  if (!flags.skipPlan)
+    stages.push(emptyStage("planner"), emptyStage("architecture-reviewer"), emptyStage("architecture-judge"));
   stages.push(emptyStage("implementor"), emptyStage("refactorer"));
 
   let plan = "";
