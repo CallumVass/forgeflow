@@ -1,5 +1,10 @@
 import type { ForgeflowContext } from "@callumvass/forgeflow-shared/pipeline";
-import { mockPipelineContext, mockRunAgent, sequencedRunAgent } from "@callumvass/forgeflow-shared/testing";
+import {
+  mockForgeflowContext,
+  mockPipelineContext,
+  mockRunAgent,
+  sequencedRunAgent,
+} from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
 import { appendArchitecturalNotes } from "./plan-architecture.js";
 import { resolveQuestions, runPlanning } from "./planning.js";
@@ -16,18 +21,14 @@ function mockCtx(
   opts: { editorResult?: string; selectResult?: string; inputAnswers?: (string | undefined)[] } = {},
 ): ForgeflowContext {
   const inputAnswers = [...(opts.inputAnswers ?? [])];
-  return {
+  return mockForgeflowContext({
     hasUI: true,
-    cwd: "/tmp/test",
     ui: {
       editor: vi.fn(async () => opts.editorResult ?? undefined),
       select: vi.fn(async () => opts.selectResult ?? undefined),
       input: vi.fn(async () => inputAnswers.shift() ?? undefined),
-      setStatus: vi.fn(),
-      setWidget: vi.fn(),
-      theme: { fg: (_c, t) => t, bold: (t) => t },
     },
-  };
+  });
 }
 
 describe("runPlanning", () => {

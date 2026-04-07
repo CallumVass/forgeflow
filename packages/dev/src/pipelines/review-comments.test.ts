@@ -1,5 +1,5 @@
 import { emptyStage, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
-import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
+import { mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
 import { buildCommentProposalPrompt, extractGhCommands, proposeAndPostComments } from "./review-comments.js";
 
@@ -69,18 +69,14 @@ describe("proposeAndPostComments", () => {
     const execFn = vi.fn(async () => "");
     const pctx = mockPipelineContext({
       cwd: "/tmp",
-      ctx: {
+      ctx: mockForgeflowContext({
         hasUI: true,
         cwd: "/tmp",
         ui: {
           editor: vi.fn(async (_title: string, content: string) => content),
           select: vi.fn(async () => "Post comments"),
-          input: vi.fn(async () => undefined),
-          setStatus: vi.fn(),
-          setWidget: vi.fn(),
-          theme: { fg: (_c, t) => t, bold: (t) => t },
         },
-      },
+      }),
     });
 
     const runAgentFn = mockCommentAgent("```bash\ngh api repos/o/r/pulls/1/comments --method POST\n```");
@@ -98,18 +94,14 @@ describe("proposeAndPostComments", () => {
     const execFn = vi.fn(async () => "");
     const pctx = mockPipelineContext({
       cwd: "/tmp",
-      ctx: {
+      ctx: mockForgeflowContext({
         hasUI: true,
         cwd: "/tmp",
         ui: {
           editor: vi.fn(async () => undefined), // user closes editor
           select: vi.fn(async () => "Post comments"),
-          input: vi.fn(async () => undefined),
-          setStatus: vi.fn(),
-          setWidget: vi.fn(),
-          theme: { fg: (_c, t) => t, bold: (t) => t },
         },
-      },
+      }),
     });
 
     const runAgentFn = mockCommentAgent("```bash\ngh api repos/o/r/pulls/1/comments\n```");
@@ -127,18 +119,14 @@ describe("proposeAndPostComments", () => {
     const execFn = vi.fn(async () => "");
     const pctx = mockPipelineContext({
       cwd: "/tmp",
-      ctx: {
+      ctx: mockForgeflowContext({
         hasUI: true,
         cwd: "/tmp",
         ui: {
           editor: vi.fn(async (_title: string, content: string) => content),
           select: vi.fn(async () => "Skip"),
-          input: vi.fn(async () => undefined),
-          setStatus: vi.fn(),
-          setWidget: vi.fn(),
-          theme: { fg: (_c, t) => t, bold: (t) => t },
         },
-      },
+      }),
     });
 
     const runAgentFn = mockCommentAgent("```bash\ngh api repos/o/r/pulls/1/comments\n```");
