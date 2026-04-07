@@ -43,7 +43,7 @@ describe("runPlanning", () => {
 
     expect(result.cancelled).toBe(false);
     expect(result.plan).toContain("Do thing 1");
-    // planner + architecture-reviewer (no candidates found, so no judge calls)
+    // planner + architecture-reviewer
     expect(runAgentFn).toHaveBeenCalledTimes(2);
   });
 
@@ -92,13 +92,11 @@ describe("runPlanning", () => {
     expect(ctx.ui.select).not.toHaveBeenCalled();
   });
 
-  it("appends architectural notes when reviewer recommends and judge keeps all", async () => {
+  it("appends architectural notes when the reviewer returns candidates", async () => {
     const ctx = mockCtx({ selectResult: "Approve and implement" });
     const runAgentFn = sequencedRunAgent([
       { output: "## Plan\n- Step 1\n- Step 2" }, // planner
       { output: TWO_CANDIDATES }, // architecture-reviewer
-      { output: "VERDICT: KEEP" }, // judge candidate 1
-      { output: "VERDICT: KEEP" }, // judge candidate 2
     ]);
 
     const result = await runPlanning("Issue context", undefined, {
@@ -111,26 +109,8 @@ describe("runPlanning", () => {
     expect(result.plan).toContain("### Architectural Notes");
     expect(result.plan).toContain("Reuse shared logger");
     expect(result.plan).toContain("Avoid god module");
-  });
-
-  it("omits architectural notes when judge rejects all recommendations", async () => {
-    const ctx = mockCtx();
-    const runAgentFn = sequencedRunAgent([
-      { output: "## Plan\n- Step 1" }, // planner
-      { output: TWO_CANDIDATES }, // architecture-reviewer
-      { output: "VERDICT: REJECT\nNo evidence." }, // judge candidate 1
-      { output: "VERDICT: REJECT\nFile not found." }, // judge candidate 2
-    ]);
-
-    const result = await runPlanning("Issue context", undefined, {
-      ...mockPipelineContext({ ctx }),
-      interactive: false,
-      stages: [],
-      runAgentFn,
-    });
-
-    expect(result.plan).not.toContain("### Architectural Notes");
-    expect(result.plan).toBe("## Plan\n- Step 1");
+    // planner + architecture-reviewer
+    expect(runAgentFn).toHaveBeenCalledTimes(2);
   });
 
   it("proceeds unchanged when reviewer returns no parseable candidates", async () => {
@@ -149,42 +129,8 @@ describe("runPlanning", () => {
 
     expect(result.plan).toBe("## Plan\n- Step 1");
     expect(result.plan).not.toContain("### Architectural Notes");
-    // Only planner + reviewer called, no judge calls
+    // planner + architecture-reviewer
     expect(runAgentFn).toHaveBeenCalledTimes(2);
-  });
-
-  it("includes only surviving recommendations when judge keeps some and rejects others", async () => {
-    const threeRecs = [
-      "### 1. Reuse shared logger",
-      "Use existing logger.",
-      "",
-      "### 2. Avoid god module",
-      "Split the file.",
-      "",
-      "### 3. Use shared types",
-      "Import from @forgeflow/shared.",
-    ].join("\n");
-
-    const ctx = mockCtx();
-    const runAgentFn = sequencedRunAgent([
-      { output: "## Plan\n- Step 1" }, // planner
-      { output: threeRecs }, // architecture-reviewer
-      { output: "VERDICT: REJECT" }, // judge candidate 1
-      { output: "VERDICT: KEEP" }, // judge candidate 2
-      { output: "VERDICT: REJECT" }, // judge candidate 3
-    ]);
-
-    const result = await runPlanning("Issue context", undefined, {
-      ...mockPipelineContext({ ctx }),
-      interactive: false,
-      stages: [],
-      runAgentFn,
-    });
-
-    expect(result.plan).toContain("### Architectural Notes");
-    expect(result.plan).toContain("Avoid god module");
-    expect(result.plan).not.toContain("Reuse shared logger");
-    expect(result.plan).not.toContain("Use shared types");
   });
 
   it("shows augmented plan with architectural notes in the editor for interactive mode", async () => {
@@ -195,8 +141,6 @@ describe("runPlanning", () => {
     const runAgentFn = sequencedRunAgent([
       { output: "## Plan\n- Step 1" }, // planner
       { output: TWO_CANDIDATES }, // architecture-reviewer
-      { output: "VERDICT: KEEP" }, // judge candidate 1
-      { output: "VERDICT: KEEP" }, // judge candidate 2
     ]);
 
     await runPlanning("Issue context", undefined, {
@@ -210,6 +154,7 @@ describe("runPlanning", () => {
     const editorContent = editorFn.mock.calls[0]?.[1] as string;
     expect(editorContent).toContain("### Architectural Notes");
     expect(editorContent).toContain("Reuse shared logger");
+    expect(runAgentFn).toHaveBeenCalledTimes(2);
   });
 
   it("in non-interactive mode augmented plan passes through without editor", async () => {
@@ -217,8 +162,6 @@ describe("runPlanning", () => {
     const runAgentFn = sequencedRunAgent([
       { output: "## Plan\n- Step 1" }, // planner
       { output: TWO_CANDIDATES }, // architecture-reviewer
-      { output: "VERDICT: KEEP" }, // judge candidate 1
-      { output: "VERDICT: KEEP" }, // judge candidate 2
     ]);
 
     const result = await runPlanning("Issue context", undefined, {
@@ -231,6 +174,7 @@ describe("runPlanning", () => {
     expect(result.plan).toContain("### Architectural Notes");
     expect(ctx.ui.editor).not.toHaveBeenCalled();
     expect(ctx.ui.select).not.toHaveBeenCalled();
+    expect(runAgentFn).toHaveBeenCalledTimes(2);
   });
 
   it("returns plan with error flag when planner agent fails, skipping architecture critique", async () => {
@@ -246,7 +190,7 @@ describe("runPlanning", () => {
 
     expect(result.failed).toBe(true);
     expect(result.plan).toContain("error details");
-    // Only planner called — no reviewer or judge
+    // Only planner called — no reviewer
     expect(runAgentFn).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,14 +1,14 @@
 /**
  * Architecture critique for the planning pipeline.
- * Chains architecture-reviewer → architecture-judge to validate recommendations,
- * then appends surviving ones to the plan as an "### Architectural Notes" section.
+ * Runs architecture-reviewer on a plan and appends any parsed recommendations
+ * to the plan as an "### Architectural Notes" section.
  */
 
 import { type RunAgentFn, type RunAgentOpts, TOOLS_READONLY } from "@callumvass/forgeflow-shared/pipeline";
-import { parseCandidates, parseJudgeVerdict } from "./architecture.js";
+import { parseCandidates } from "./architecture.js";
 
 /**
- * Append validated architectural recommendations to the plan.
+ * Append architectural recommendations to the plan.
  * Returns the plan unchanged when recommendations is empty.
  */
 export function appendArchitecturalNotes(plan: string, recommendations: { label: string; body: string }[]): string {
@@ -20,8 +20,8 @@ export function appendArchitecturalNotes(plan: string, recommendations: { label:
 
 /**
  * Run architecture critique on a plan: reviewer produces recommendations,
- * judge validates each one, surviving recommendations are appended to the plan.
- * Fail-open: if reviewer produces nothing or judge rejects everything, plan is unchanged.
+ * which are appended to the plan.
+ * Fail-open: if the reviewer fails or produces nothing parseable, the plan is unchanged.
  */
 export async function runArchitectureCritique(
   plan: string,
@@ -58,21 +58,5 @@ Present numbered recommendations in candidate format. If the plan already follow
   if (reviewResult.status === "failed") return plan;
 
   const candidates = parseCandidates(reviewResult.output);
-  if (candidates.length === 0) return plan;
-
-  const validated: { label: string; body: string }[] = [];
-
-  for (const candidate of candidates) {
-    const judgeResult = await runAgentFn(
-      "architecture-judge",
-      `Validate this architecture finding against the actual codebase.\n\nCANDIDATE:\n${candidate.body}\n\nFULL ANALYSIS:\n${reviewResult.output}`,
-      { ...agentOpts, tools: TOOLS_READONLY },
-    );
-
-    if (parseJudgeVerdict(judgeResult.output) !== "reject") {
-      validated.push(candidate);
-    }
-  }
-
-  return appendArchitecturalNotes(plan, validated);
+  return appendArchitecturalNotes(plan, candidates);
 }

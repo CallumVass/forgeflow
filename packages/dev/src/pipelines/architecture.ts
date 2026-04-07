@@ -32,15 +32,6 @@ export function parseCandidates(text: string): { label: string; body: string }[]
   return results;
 }
 
-/**
- * Parse a judge agent's output for a KEEP/REJECT verdict.
- * Defaults to "keep" if no verdict found (fail-open).
- */
-export function parseJudgeVerdict(output: string): "keep" | "reject" {
-  if (/VERDICT:\s*REJECT/i.test(output)) return "reject";
-  return "keep";
-}
-
 export async function runArchitecture(pctx: PipelineContext, opts?: { runAgentFn?: RunAgentFn }) {
   const { ctx } = pctx;
   const stages = [emptyStage("architecture-reviewer")];
@@ -59,46 +50,22 @@ export async function runArchitecture(pctx: PipelineContext, opts?: { runAgentFn
     return pipelineResult(`Exploration failed: ${exploreResult.output}`, "architecture", stages, true);
   }
 
-  // Phase 1.5: Parse and judge each candidate
+  // Parse numbered candidates from the reviewer output
   const candidates = parseCandidates(exploreResult.output);
-  const validatedCandidates: typeof candidates = [];
 
-  for (const [i, candidate] of candidates.entries()) {
-    const judgeStageName = `architecture-judge-${i + 1}`;
-    stages.push(emptyStage(judgeStageName));
-    const judgeResult = await runAgentFn(
-      "architecture-judge",
-      `Validate this architecture finding against the actual codebase.\n\nCANDIDATE:\n${candidate.body}\n\nFULL ANALYSIS:\n${exploreResult.output}`,
-      { ...agentOpts, stageName: judgeStageName, tools: TOOLS_READONLY },
-    );
-    if (parseJudgeVerdict(judgeResult.output) !== "reject") {
-      validatedCandidates.push(candidate);
-    }
-  }
+  const reviewerOutput = candidates.length > 0 ? candidates.map((c) => c.body).join("\n\n") : exploreResult.output;
 
-  // If all candidates were rejected, return early
-  if (candidates.length > 0 && validatedCandidates.length === 0) {
-    return pipelineResult(
-      "Architecture review complete — no actionable findings survived validation.",
-      "architecture",
-      stages,
-    );
-  }
-
-  const validatedOutput =
-    validatedCandidates.length > 0 ? validatedCandidates.map((c) => c.body).join("\n\n") : exploreResult.output;
-
-  // Non-interactive: return validated output
+  // Non-interactive: return reviewer output
   if (!ctx.hasUI) {
-    return pipelineResult(validatedOutput, "architecture", stages);
+    return pipelineResult(reviewerOutput, "architecture", stages);
   }
 
-  const edited = await ctx.ui.editor("Review architecture candidates (edit to highlight your pick)", validatedOutput);
-  const candidateContext = edited ?? validatedOutput;
+  const edited = await ctx.ui.editor("Review architecture candidates (edit to highlight your pick)", reviewerOutput);
+  const candidateContext = edited ?? reviewerOutput;
 
   // Re-parse after editing (user may have changed text)
   const editedCandidates = parseCandidates(candidateContext);
-  const displayCandidates = editedCandidates.length > 0 ? editedCandidates : validatedCandidates;
+  const displayCandidates = editedCandidates.length > 0 ? editedCandidates : candidates;
 
   const selectOptions =
     displayCandidates.length > 1
