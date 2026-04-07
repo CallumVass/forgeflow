@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.10.1...forgeflow-dev-v0.11.0) (2026-04-07)
+
+
+### Miscellaneous Chores
+
+* release 0.11.0 ([#98](https://github.com/CallumVass/forgeflow/issues/98)) ([8e54419](https://github.com/CallumVass/forgeflow/commit/8e54419c776a10010092e390037f3285a3475ccd))
+
 ## [0.10.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.10.0...forgeflow-dev-v0.10.1) (2026-04-06)
 
 
