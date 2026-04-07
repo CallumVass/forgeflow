@@ -17,6 +17,10 @@ const AGENTS_DIR = resolveAgentsDir(import.meta.url);
 const pctx = (cwd: string, s: AbortSignal, u: OnUpdate, c: ForgeflowContext) =>
   toPipelineContext(cwd, s, u, c, AGENTS_DIR);
 
+// `createForgeflowExtension` dedupes the `/stages` command and the
+// Ctrl+Shift+S shortcut across forgeflow extensions via a process-wide
+// registry, so this extension can coexist with `@callumvass/forgeflow-dev`
+// in the same pi session without triggering a shortcut conflict.
 export default createForgeflowExtension({
   toolName: "forgeflow-pm",
   toolLabel: "Forgeflow PM",
