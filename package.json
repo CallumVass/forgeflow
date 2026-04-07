@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.10",
+    "@mariozechner/pi-coding-agent": "*",
     "knip": "^6.3.0",
     "tsup": "^8.5.0",
     "typescript": "^6.0.2",
