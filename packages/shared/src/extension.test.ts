@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionConfig } from "./extension.js";
-import { buildSendMessage, createForgeflowExtension } from "./extension.js";
+import { __resetStagesOverlayRegistryForTests, buildSendMessage, createForgeflowExtension } from "./extension.js";
 import type { OnUpdate, PipelineDetails } from "./pipeline.js";
 import { makeStage, mockForgeflowContext, mockPi, mockTheme } from "./test-utils.js";
 
@@ -58,6 +58,14 @@ function minimalConfig(overrides?: Partial<ExtensionConfig>): ExtensionConfig {
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────
+
+beforeEach(() => {
+  // Reset the shared stages-overlay registry so each test starts from a clean
+  // slate. Without this the first test to load a forgeflow extension would
+  // claim the `/stages` command + `Ctrl+Shift+S` shortcut and later tests
+  // would observe them as already registered.
+  __resetStagesOverlayRegistryForTests();
+});
 
 describe("createForgeflowExtension", () => {
   it("calls pi.registerTool with correct name, label, description, and TypeBox schema matching pipeline params", () => {
