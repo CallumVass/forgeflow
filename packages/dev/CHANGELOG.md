@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.12.0...forgeflow-dev-v0.12.1) (2026-04-07)
+
+
+### Bug Fixes
+
+* **extensions:** dedupe /stages command and Ctrl+Shift+S registration across forgeflow extensions ([#106](https://github.com/CallumVass/forgeflow/issues/106)) ([9763a9d](https://github.com/CallumVass/forgeflow/commit/9763a9d26739cb47802591f83b6e5919e488da16))
+
 ## [0.12.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.11.0...forgeflow-dev-v0.12.0) (2026-04-07)
 
 
