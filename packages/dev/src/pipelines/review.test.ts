@@ -27,7 +27,7 @@ describe("runReview composition root", () => {
   it("wires diff → orchestrator → comments and returns findings with isError on failure", async () => {
     const pctx = mockPipelineContext({
       cwd: "/tmp",
-      ctx: { hasUI: true, cwd: "/tmp", ui: { input: vi.fn(async () => undefined) } as never },
+      ctx: mockForgeflowContext({ hasUI: true, cwd: "/tmp", ui: { input: vi.fn(async () => undefined) } }),
     });
     const result = await runReview("5", pctx);
 

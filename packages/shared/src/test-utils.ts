@@ -73,6 +73,7 @@ export function mockForgeflowContext(overrides?: {
   hasUI?: boolean;
   cwd?: string;
   ui?: Partial<ForgeflowUI>;
+  sessionManager?: Partial<ForgeflowContext["sessionManager"]>;
 }): ForgeflowContext {
   return {
     hasUI: overrides?.hasUI ?? false,
@@ -83,8 +84,14 @@ export function mockForgeflowContext(overrides?: {
       select: async () => undefined,
       setStatus: () => {},
       setWidget: () => {},
+      notify: () => {},
+      custom: (async () => undefined as never) as ForgeflowUI["custom"],
       theme: mockTheme(),
       ...overrides?.ui,
+    },
+    sessionManager: {
+      getBranch: () => [],
+      ...overrides?.sessionManager,
     },
   };
 }

@@ -36,6 +36,50 @@ export function stageIcon(stage: StageResult, theme: ForgeflowTheme): string {
         : theme.fg("muted", "○");
 }
 
+/**
+ * Append the per-stage detail rows (icon + name, tool calls, markdown output,
+ * usage, failure info) to `container`. Shared between the Ctrl+O expanded
+ * pipeline view and the stages drill-down overlay.
+ */
+export function appendStageDetail(container: Container, stage: StageResult, theme: ForgeflowTheme) {
+  const icon = stageIcon(stage, theme);
+  container.addChild(new Text(`${icon} ${theme.fg("toolTitle", theme.bold(stage.name))}`, 0, 0));
+
+  const items = getDisplayItems(stage.messages);
+  for (const item of items) {
+    if (item.type === "toolCall") {
+      container.addChild(
+        new Text(`  ${theme.fg("muted", "→ ")}${formatToolCall(item.name, item.args, theme.fg.bind(theme))}`, 0, 0),
+      );
+    }
+  }
+
+  const output = getFinalOutput(stage.messages);
+  if (output) {
+    container.addChild(new Spacer(1));
+    container.addChild(new Markdown(output.trim(), 0, 0, getMarkdownTheme()));
+  }
+
+  if (stage.status === "failed") {
+    if (stage.stderr?.trim()) {
+      container.addChild(new Spacer(1));
+      container.addChild(new Text(theme.fg("muted", "─── stderr ───"), 0, 0));
+      container.addChild(new Text(theme.fg("error", stage.stderr.trim()), 0, 0));
+    }
+    const lastMsg = stage.messages[stage.messages.length - 1];
+    const stopReason =
+      lastMsg && "role" in lastMsg && lastMsg.role === "assistant" && "stopReason" in lastMsg
+        ? (lastMsg as { stopReason?: string }).stopReason
+        : undefined;
+    if (stopReason && stopReason !== "stop") {
+      container.addChild(new Text(theme.fg("error", `stopReason: ${stopReason}`), 0, 0));
+    }
+  }
+
+  const usageStr = formatUsage(stage.usage, stage.model);
+  if (usageStr) container.addChild(new Text(theme.fg("dim", usageStr), 0, 0));
+}
+
 export function renderExpanded(details: PipelineDetails, theme: ForgeflowTheme, toolLabel: string) {
   const container = new Container();
   container.addChild(
@@ -44,26 +88,7 @@ export function renderExpanded(details: PipelineDetails, theme: ForgeflowTheme, 
   container.addChild(new Spacer(1));
 
   for (const stage of details.stages) {
-    const icon = stageIcon(stage, theme);
-    container.addChild(new Text(`${icon} ${theme.fg("toolTitle", theme.bold(stage.name))}`, 0, 0));
-
-    const items = getDisplayItems(stage.messages);
-    for (const item of items) {
-      if (item.type === "toolCall") {
-        container.addChild(
-          new Text(`  ${theme.fg("muted", "→ ")}${formatToolCall(item.name, item.args, theme.fg.bind(theme))}`, 0, 0),
-        );
-      }
-    }
-
-    const output = getFinalOutput(stage.messages);
-    if (output) {
-      container.addChild(new Spacer(1));
-      container.addChild(new Markdown(output.trim(), 0, 0, getMarkdownTheme()));
-    }
-
-    const usageStr = formatUsage(stage.usage, stage.model);
-    if (usageStr) container.addChild(new Text(theme.fg("dim", usageStr), 0, 0));
+    appendStageDetail(container, stage, theme);
     container.addChild(new Spacer(1));
   }
 
