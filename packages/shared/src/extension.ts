@@ -5,6 +5,7 @@ import { Type } from "@sinclair/typebox";
 import type { ForgeflowContext, ForgeflowTheme } from "./pipeline.js";
 import { type OnUpdate, type PipelineDetails, pipelineResult } from "./pipeline.js";
 import { renderResult as sharedRenderResult } from "./stage-renderer.js";
+import { openStagesOverlay } from "./stages-overlay.js";
 import { buildWidgetLines } from "./widget.js";
 
 // ─── Types ────────────────────────────────────────────────────────────
@@ -176,5 +177,20 @@ export function createForgeflowExtension(config: ExtensionConfig): (pi: Extensio
         },
       });
     }
+
+    // Stage drill-down overlay: `/stages` command + Ctrl+Shift+S shortcut.
+    pi.registerCommand("stages", {
+      description: "Drill into the most recent forgeflow pipeline stages",
+      handler: async (_args, ctx) => {
+        await openStagesOverlay(ctx as unknown as ForgeflowContext, [config.toolName]);
+      },
+    });
+
+    pi.registerShortcut("ctrl+shift+s", {
+      description: "Open forgeflow stages overlay",
+      handler: async (ctx) => {
+        await openStagesOverlay(ctx as unknown as ForgeflowContext, [config.toolName]);
+      },
+    });
   };
 }

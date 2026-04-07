@@ -1,3 +1,4 @@
+import type { SessionEntry } from "@mariozechner/pi-coding-agent";
 import type { OnUpdate, RunAgentOpts, StageResult } from "./stages.js";
 
 // ─── Context types and builders ───────────────────────────────────────
@@ -8,6 +9,50 @@ export interface ForgeflowTheme {
   bold(text: string): string;
 }
 
+/** Notification severity levels accepted by `ForgeflowUI.notify`. */
+export type ForgeflowNotifyLevel = "info" | "warning" | "error";
+
+/** A minimal Component shape returned from `ForgeflowUI.custom` factories. */
+export interface ForgeflowCustomComponent {
+  render(width: number): string[];
+  invalidate?(): void;
+  handleInput?(data: string): void;
+  dispose?(): void;
+}
+
+/** Minimal TUI handle passed to `ForgeflowUI.custom` factories. */
+export interface ForgeflowTui {
+  requestRender(): void;
+}
+
+/** Overlay positioning/sizing options passed through to pi. */
+export interface ForgeflowOverlayOptions {
+  anchor?: string;
+  width?: string | number;
+  maxHeight?: string | number;
+  minWidth?: number;
+  visible?: (width: number, height: number) => boolean;
+}
+
+/** Options accepted by `ForgeflowUI.custom`. */
+export interface ForgeflowCustomOptions {
+  overlay?: boolean;
+  overlayOptions?: ForgeflowOverlayOptions;
+}
+
+/** Factory signature for `ForgeflowUI.custom`. */
+export type ForgeflowCustomFactory<T> = (
+  tui: ForgeflowTui,
+  theme: ForgeflowTheme,
+  keybindings: unknown,
+  done: (result: T) => void,
+) => ForgeflowCustomComponent | Promise<ForgeflowCustomComponent>;
+
+/** Read-only view of the session used by the stages overlay. */
+export interface ForgeflowSessionManager {
+  getBranch(): SessionEntry[];
+}
+
 /** Subset of ExtensionUIContext that forgeflow actually uses. */
 export interface ForgeflowUI {
   input(title: string, placeholder?: string): Promise<string | undefined>;
@@ -15,6 +60,10 @@ export interface ForgeflowUI {
   select(title: string, options: string[]): Promise<string | undefined>;
   setStatus(key: string, text: string | undefined): void;
   setWidget(key: string, content: string[] | undefined): void;
+  /** Show a transient notification. */
+  notify(message: string, level?: ForgeflowNotifyLevel): void;
+  /** Show a custom component (optionally as an overlay) and await its result. */
+  custom<T>(factory: ForgeflowCustomFactory<T>, options?: ForgeflowCustomOptions): Promise<T>;
   /** Active theme — used by the live widget builder so the in-widget tool calls match the in-conversation row. */
   readonly theme: ForgeflowTheme;
 }
@@ -24,6 +73,7 @@ export interface ForgeflowContext {
   hasUI: boolean;
   cwd: string;
   ui: ForgeflowUI;
+  sessionManager: ForgeflowSessionManager;
 }
 
 /** The arguments that appear in every pipeline function, bundled as one object. */

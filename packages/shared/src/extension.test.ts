@@ -2,17 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import type { ExtensionConfig } from "./extension.js";
 import { buildSendMessage, createForgeflowExtension } from "./extension.js";
 import type { OnUpdate, PipelineDetails } from "./pipeline.js";
-import { makeStage, mockForgeflowContext, mockTheme } from "./test-utils.js";
+import { makeStage, mockForgeflowContext, mockPi, mockTheme } from "./test-utils.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────
-
-function mockPi() {
-  return {
-    registerTool: vi.fn(),
-    registerCommand: vi.fn(),
-    sendUserMessage: vi.fn(),
-  };
-}
 
 function getToolDef(pi: ReturnType<typeof mockPi>) {
   // biome-ignore lint/style/noNonNullAssertion: test helper accessing mock calls by known index
@@ -333,7 +325,8 @@ describe("createForgeflowExtension", () => {
     const ext = createForgeflowExtension(config);
     ext(pi as never);
 
-    expect(pi.registerCommand).toHaveBeenCalledTimes(2);
+    // Two user-configured commands plus the built-in /stages overlay command.
+    expect(pi.registerCommand).toHaveBeenCalledTimes(3);
 
     // First command: "alpha-cmd" with parseArgs
     // biome-ignore lint/style/noNonNullAssertion: test accessing mock call by known index
