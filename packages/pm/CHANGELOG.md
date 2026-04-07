@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.11.0...forgeflow-pm-v0.12.0) (2026-04-07)
+
+
+### Features
+
+* live widget showing current sub-agent stage above editor ([#102](https://github.com/CallumVass/forgeflow/issues/102)) ([4b6fe84](https://github.com/CallumVass/forgeflow/commit/4b6fe84f0dab3de7bc877594a9eea8aca8adbe66))
+
 ## [0.11.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.7.0...forgeflow-pm-v0.11.0) (2026-04-07)
 
 
