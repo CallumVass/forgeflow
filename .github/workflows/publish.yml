@@ -19,7 +19,11 @@ jobs:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use a PAT (not GITHUB_TOKEN) so the release PR triggers required
+          # status checks. PRs opened by GITHUB_TOKEN do not fire workflow
+          # events, which would otherwise leave the release PR un-mergeable
+          # under branch protection.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
   publish:
     needs: release-please
