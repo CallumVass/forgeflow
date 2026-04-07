@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.11.0...forgeflow-dev-v0.12.0) (2026-04-07)
+
+
+### Features
+
+* live widget showing current sub-agent stage above editor ([#102](https://github.com/CallumVass/forgeflow/issues/102)) ([4b6fe84](https://github.com/CallumVass/forgeflow/commit/4b6fe84f0dab3de7bc877594a9eea8aca8adbe66))
+* stage drill-down overlay via /stages command and Ctrl+Shift+S ([#104](https://github.com/CallumVass/forgeflow/issues/104)) ([66d7d2d](https://github.com/CallumVass/forgeflow/commit/66d7d2d901722d4c06fb1806efa46276105518c3))
+
 ## [0.11.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.10.1...forgeflow-dev-v0.11.0) (2026-04-07)
 
 
