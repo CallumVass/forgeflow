@@ -1,10 +1,30 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
+import { getMarkdownTheme, keyHint } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import type { ForgeflowTheme } from "./context.js";
 import { formatToolCall, formatUsage, getDisplayItems } from "./display.js";
 import { getFinalOutput } from "./message-parser.js";
 import type { PipelineDetails, StageResult } from "./stages.js";
+
+/** Maximum preview lines shown per completed stage in the collapsed view. */
+const PREVIEW_LINE_CAP = 3;
+
+/**
+ * Return the first `max` non-blank lines of `output`, with leading whitespace
+ * stripped from each kept line. Used to build the per-stage preview block in
+ * the collapsed pipeline view.
+ */
+export function previewLines(output: string, max: number): string[] {
+  if (!output) return [];
+  const result: string[] = [];
+  for (const raw of output.split("\n")) {
+    const trimmed = raw.replace(/^\s+/, "");
+    if (!trimmed.trim()) continue;
+    result.push(trimmed);
+    if (result.length >= max) break;
+  }
+  return result;
+}
 
 export function stageIcon(stage: StageResult, theme: ForgeflowTheme): string {
   return stage.status === "done"
@@ -79,11 +99,21 @@ export function renderCollapsed(details: PipelineDetails, theme: ForgeflowTheme,
         }
       }
     } else if (stage.status === "done" || stage.status === "failed") {
-      const preview = stage.output.split("\n")[0]?.slice(0, 80) || "(no output)";
-      text += theme.fg("dim", ` ${preview}`);
+      // Keep usage stats on the same line as the stage header.
       const usageStr = formatUsage(stage.usage, stage.model);
       if (usageStr) text += ` ${theme.fg("dim", usageStr)}`;
+
+      const lines = previewLines(stage.output, PREVIEW_LINE_CAP);
+      if (lines.length === 0) {
+        text += `\n    ${theme.fg("muted", "(no output)")}`;
+      } else {
+        lines.forEach((line, idx) => {
+          const colour = stage.status === "failed" && idx === 0 ? "error" : "dim";
+          text += `\n    ${theme.fg(colour, line)}`;
+        });
+      }
     }
   }
+  text += `\n  ${keyHint("app.tools.expand", "to expand")}`;
   return new Text(text, 0, 0);
 }
