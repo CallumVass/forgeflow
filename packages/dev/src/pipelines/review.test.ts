@@ -95,7 +95,8 @@ describe("runReview composition root", () => {
     await runReview("5", pctx);
 
     expect(inputFn).toHaveBeenCalled();
-    const opts = vi.mocked(runReviewPipeline).mock.calls[0]![1];
-    expect(opts.customPrompt).toBeUndefined();
+    const firstCall = vi.mocked(runReviewPipeline).mock.calls[0];
+    if (!firstCall) throw new Error("expected runReviewPipeline to be called");
+    expect(firstCall[1].customPrompt).toBeUndefined();
   });
 });

@@ -1,33 +1,40 @@
+import type { CommandDefinition } from "@callumvass/forgeflow-shared/extension";
 import { describe, expect, it } from "vitest";
 import { commands } from "./commands.js";
 
-const implementCmd = commands.find((c) => c.name === "implement")!;
-const reviewCmd = commands.find((c) => c.name === "review")!;
+function getParseArgs(name: string): NonNullable<CommandDefinition["parseArgs"]> {
+  const cmd = commands.find((c) => c.name === name);
+  if (!cmd?.parseArgs) throw new Error(`Command "${name}" has no parseArgs`);
+  return cmd.parseArgs;
+}
+
+const implementParseArgs = getParseArgs("implement");
+const reviewParseArgs = getParseArgs("review");
 
 describe("implement parseArgs", () => {
   it("does not extract customPrompt from trailing quoted text", () => {
-    const result = implementCmd.parseArgs!('42 "check the openapi spec"');
-    expect(result.params!).not.toHaveProperty("customPrompt");
-    expect(result.params!.issue).toBe("42");
+    const { params } = implementParseArgs('42 "check the openapi spec"');
+    expect(params ?? {}).not.toHaveProperty("customPrompt");
+    expect(params?.issue).toBe("42");
   });
 
   it("does not extract customPrompt from trailing unquoted text", () => {
-    const result = implementCmd.parseArgs!("42 some extra text");
-    expect(result.params!).not.toHaveProperty("customPrompt");
-    expect(result.params!.issue).toBe("42");
+    const { params } = implementParseArgs("42 some extra text");
+    expect(params ?? {}).not.toHaveProperty("customPrompt");
+    expect(params?.issue).toBe("42");
   });
 });
 
 describe("review parseArgs", () => {
   it("does not extract customPrompt from trailing quoted text after target", () => {
-    const result = reviewCmd.parseArgs!('123 "look for SQL injection"');
-    expect(result.params!).not.toHaveProperty("customPrompt");
-    expect(result.params!.target).toBe("123");
+    const { params } = reviewParseArgs('123 "look for SQL injection"');
+    expect(params ?? {}).not.toHaveProperty("customPrompt");
+    expect(params?.target).toBe("123");
   });
 
   it("does not extract customPrompt from trailing text with --branch flag", () => {
-    const result = reviewCmd.parseArgs!('--branch feat/foo "extra instructions"');
-    expect(result.params!).not.toHaveProperty("customPrompt");
-    expect(result.params!.target).toBe("--branch feat/foo");
+    const { params } = reviewParseArgs('--branch feat/foo "extra instructions"');
+    expect(params ?? {}).not.toHaveProperty("customPrompt");
+    expect(params?.target).toBe("--branch feat/foo");
   });
 });
