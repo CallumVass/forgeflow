@@ -87,6 +87,7 @@ describe("runImplementAll status bar", () => {
           input: vi.fn(async () => undefined),
           editor: vi.fn(async () => undefined),
           select: vi.fn(async () => undefined),
+          theme: { fg: (_c, t) => t, bold: (t) => t },
         },
       },
     });

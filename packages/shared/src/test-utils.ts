@@ -83,6 +83,7 @@ export function mockForgeflowContext(overrides?: {
       select: async () => undefined,
       setStatus: () => {},
       setWidget: () => {},
+      theme: mockTheme(),
       ...overrides?.ui,
     },
   };

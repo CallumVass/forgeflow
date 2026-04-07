@@ -78,6 +78,7 @@ describe("proposeAndPostComments", () => {
           input: vi.fn(async () => undefined),
           setStatus: vi.fn(),
           setWidget: vi.fn(),
+          theme: { fg: (_c, t) => t, bold: (t) => t },
         },
       },
     });
@@ -106,6 +107,7 @@ describe("proposeAndPostComments", () => {
           input: vi.fn(async () => undefined),
           setStatus: vi.fn(),
           setWidget: vi.fn(),
+          theme: { fg: (_c, t) => t, bold: (t) => t },
         },
       },
     });
@@ -134,6 +136,7 @@ describe("proposeAndPostComments", () => {
           input: vi.fn(async () => undefined),
           setStatus: vi.fn(),
           setWidget: vi.fn(),
+          theme: { fg: (_c, t) => t, bold: (t) => t },
         },
       },
     });

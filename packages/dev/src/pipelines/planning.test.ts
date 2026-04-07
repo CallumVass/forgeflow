@@ -25,6 +25,7 @@ function mockCtx(
       input: vi.fn(async () => inputAnswers.shift() ?? undefined),
       setStatus: vi.fn(),
       setWidget: vi.fn(),
+      theme: { fg: (_c, t) => t, bold: (t) => t },
     },
   };
 }
