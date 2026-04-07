@@ -1,7 +1,7 @@
 import type { SessionEntry } from "@mariozechner/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionConfig } from "./extension.js";
-import { createForgeflowExtension } from "./extension.js";
+import { __resetStagesOverlayRegistryForTests, createForgeflowExtension } from "./extension.js";
 import type { PipelineDetails, StageResult } from "./pipeline.js";
 import { findLatestPipelineDetails, openStagesOverlay } from "./stages-overlay.js";
 import { makeStage, mockForgeflowContext, mockPi } from "./test-utils.js";
@@ -171,6 +171,7 @@ function mountStagesComponent(
 
 beforeEach(() => {
   entryCounter = 0;
+  __resetStagesOverlayRegistryForTests();
 });
 
 // ─── findLatestPipelineDetails ────────────────────────────────────────
@@ -449,6 +450,51 @@ describe("createForgeflowExtension (stages overlay wiring)", () => {
     });
 
     if (!handler) throw new Error("expected ctrl+shift+s shortcut to be registered");
+    const p = handler(ctx);
+    expect(custom).toHaveBeenCalledTimes(1);
+
+    firstCapture(captures).done();
+    await p;
+  });
+
+  it("only registers the /stages command and Ctrl+Shift+S shortcut once across multiple extensions", () => {
+    const piA = mockPi();
+    const piB = mockPi();
+
+    createForgeflowExtension(minimalConfig({ toolName: "forgeflow-pm" }))(piA as never);
+    createForgeflowExtension(minimalConfig({ toolName: "forgeflow-dev" }))(piB as never);
+
+    // Only the first extension to load registers the shortcut + command;
+    // subsequent extensions must not re-register them (otherwise pi reports a
+    // shortcut conflict and only one wins).
+    expect(piA.registerCommand.mock.calls.filter((c: unknown[]) => c[0] === "stages")).toHaveLength(1);
+    expect(piA.registerShortcut.mock.calls.filter((c: unknown[]) => c[0] === "ctrl+shift+s")).toHaveLength(1);
+    expect(piB.registerCommand.mock.calls.filter((c: unknown[]) => c[0] === "stages")).toHaveLength(0);
+    expect(piB.registerShortcut.mock.calls.filter((c: unknown[]) => c[0] === "ctrl+shift+s")).toHaveLength(0);
+  });
+
+  it("surfaces pipelines from every loaded forgeflow extension when the shortcut fires", async () => {
+    const piA = mockPi();
+    const piB = mockPi();
+
+    createForgeflowExtension(minimalConfig({ toolName: "forgeflow-pm" }))(piA as never);
+    createForgeflowExtension(minimalConfig({ toolName: "forgeflow-dev" }))(piB as never);
+
+    const handler = getShortcutHandler(piA, "ctrl+shift+s");
+    if (!handler) throw new Error("expected ctrl+shift+s shortcut to be registered on the first extension");
+
+    // The most recent forgeflow tool result in the session belongs to the
+    // *second* extension that loaded. The shortcut handler must still find
+    // it, proving the registry is shared across both extensions.
+    const details = samplePipelineDetails({ pipeline: "implement" });
+    const entries = [toolResultEntry("forgeflow-dev", details)];
+    const { custom, captures } = makeCustomMock();
+    const ctx = mockForgeflowContext({
+      hasUI: true,
+      ui: { custom },
+      sessionManager: { getBranch: () => entries },
+    });
+
     const p = handler(ctx);
     expect(custom).toHaveBeenCalledTimes(1);
 
