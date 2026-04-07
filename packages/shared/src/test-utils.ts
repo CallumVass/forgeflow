@@ -68,6 +68,16 @@ export function mockPipelineContext(overrides?: Partial<PipelineContext>): Pipel
   };
 }
 
+/** Create a minimal mock of pi's ExtensionAPI surface used by `createForgeflowExtension`. */
+export function mockPi() {
+  return {
+    registerTool: vi.fn(),
+    registerCommand: vi.fn(),
+    registerShortcut: vi.fn(),
+    sendUserMessage: vi.fn(),
+  };
+}
+
 /** Create a minimal ForgeflowContext for testing. All UI methods are no-op stubs. */
 export function mockForgeflowContext(overrides?: {
   hasUI?: boolean;

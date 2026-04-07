@@ -2,18 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import type { ExtensionConfig } from "./extension.js";
 import { buildSendMessage, createForgeflowExtension } from "./extension.js";
 import type { OnUpdate, PipelineDetails } from "./pipeline.js";
-import { makeStage, mockForgeflowContext, mockTheme } from "./test-utils.js";
+import { makeStage, mockForgeflowContext, mockPi, mockTheme } from "./test-utils.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────
-
-function mockPi() {
-  return {
-    registerTool: vi.fn(),
-    registerCommand: vi.fn(),
-    registerShortcut: vi.fn(),
-    sendUserMessage: vi.fn(),
-  };
-}
 
 function getToolDef(pi: ReturnType<typeof mockPi>) {
   // biome-ignore lint/style/noNonNullAssertion: test helper accessing mock calls by known index

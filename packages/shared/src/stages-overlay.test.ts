@@ -4,7 +4,7 @@ import type { ExtensionConfig } from "./extension.js";
 import { createForgeflowExtension } from "./extension.js";
 import type { PipelineDetails, StageResult } from "./pipeline.js";
 import { findLatestPipelineDetails, openStagesOverlay } from "./stages-overlay.js";
-import { makeStage, mockForgeflowContext } from "./test-utils.js";
+import { makeStage, mockForgeflowContext, mockPi } from "./test-utils.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -80,15 +80,6 @@ function samplePipelineDetails(overrides: Partial<PipelineDetails> = {}): Pipeli
     makeStage({ name: "reviewer", status: "pending" }),
   ];
   return { pipeline: "implement", stages, ...overrides };
-}
-
-function mockPi() {
-  return {
-    registerTool: vi.fn(),
-    registerCommand: vi.fn(),
-    registerShortcut: vi.fn(),
-    sendUserMessage: vi.fn(),
-  };
 }
 
 function getCommandHandler(pi: ReturnType<typeof mockPi>, name: string) {
