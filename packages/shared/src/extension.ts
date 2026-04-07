@@ -5,6 +5,7 @@ import { Type } from "@sinclair/typebox";
 import type { ForgeflowContext, ForgeflowTheme } from "./pipeline.js";
 import { type OnUpdate, type PipelineDetails, pipelineResult } from "./pipeline.js";
 import { renderResult as sharedRenderResult } from "./stage-renderer.js";
+import { buildWidgetLines } from "./widget.js";
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -115,17 +116,34 @@ export function createForgeflowExtension(config: ExtensionConfig): (pi: Extensio
         const pipeline = pipelineMap.get(params.pipeline as string);
         const cwd = ctx.cwd as string;
         const sig = signal ?? new AbortController().signal;
+        const fctx = ctx as unknown as ForgeflowContext;
+
+        // Wrap the user-supplied onUpdate so that every progress update from a
+        // sub-agent also repaints the live widget above the editor with the
+        // current stage and last few tool calls. Stays a no-op when there is
+        // no UI (e.g. `pi -p` print mode).
+        const wrappedOnUpdate: OnUpdate = (partial) => {
+          if (fctx.hasUI && partial.details) {
+            const lines = buildWidgetLines(
+              `${config.toolName} ${partial.details.pipeline}`,
+              partial.details.stages,
+              fctx.ui.theme,
+            );
+            fctx.ui.setWidget(config.toolName, lines);
+          }
+          (onUpdate as OnUpdate | undefined)?.(partial);
+        };
 
         try {
           if (!pipeline) {
             const names = config.pipelines.map((p) => p.name).join(", ");
             return pipelineResult(`Unknown pipeline: ${params.pipeline}. Use: ${names}`, params.pipeline as string, []);
           }
-          return await pipeline.execute(cwd, params, sig, onUpdate as OnUpdate, ctx as unknown as ForgeflowContext);
+          return await pipeline.execute(cwd, params, sig, wrappedOnUpdate, fctx);
         } finally {
-          if (ctx.hasUI) {
-            ctx.ui.setStatus(config.toolName, undefined);
-            ctx.ui.setWidget(config.toolName, undefined);
+          if (fctx.hasUI) {
+            fctx.ui.setStatus(config.toolName, undefined);
+            fctx.ui.setWidget(config.toolName, undefined);
           }
         }
       },

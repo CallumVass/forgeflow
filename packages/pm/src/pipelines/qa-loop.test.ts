@@ -8,22 +8,19 @@ vi.mock("node:fs", async (importOriginal) => {
 });
 
 import { emptyStage, type ForgeflowContext } from "@callumvass/forgeflow-shared/pipeline";
-import { mockRunAgent } from "@callumvass/forgeflow-shared/testing";
+import { mockForgeflowContext, mockRunAgent } from "@callumvass/forgeflow-shared/testing";
 
 function mockCtx(
   opts: { hasUI?: boolean; editorResult?: string | undefined; selectResult?: string | undefined } = {},
 ): ForgeflowContext {
-  return {
+  return mockForgeflowContext({
     hasUI: opts.hasUI ?? true,
-    cwd: "/tmp/test",
     ui: {
       editor: vi.fn(async () => opts.editorResult ?? undefined),
       select: vi.fn(async () => opts.selectResult ?? undefined),
       input: vi.fn(async () => undefined),
-      setStatus: vi.fn(),
-      setWidget: vi.fn(),
     },
-  };
+  });
 }
 
 function baseOpts(overrides: Partial<QaLoopOptions> = {}): QaLoopOptions {

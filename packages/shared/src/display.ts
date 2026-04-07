@@ -17,6 +17,19 @@ export function getDisplayItems(messages: Message[]): DisplayItem[] {
   return items;
 }
 
+/** Return the last `n` tool calls from a message history, in chronological order. */
+export function getLastToolCalls(
+  messages: Message[],
+  n: number,
+): Array<{ name: string; args: Record<string, unknown> }> {
+  if (n <= 0) return [];
+  const tools: Array<{ name: string; args: Record<string, unknown> }> = [];
+  for (const item of getDisplayItems(messages)) {
+    if (item.type === "toolCall") tools.push({ name: item.name, args: item.args });
+  }
+  return tools.slice(-n);
+}
+
 type Colorise = (colour: string, text: string) => string;
 const plain: Colorise = (_colour, text) => text;
 

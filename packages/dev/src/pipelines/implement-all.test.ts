@@ -24,7 +24,7 @@ vi.mock("./implement.js", () => ({
 }));
 
 import { exec } from "@callumvass/forgeflow-shared/exec";
-import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
+import { mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { setForgeflowStatus } from "../utils/ui.js";
 import { getReadyIssues, runImplementAll } from "./implement-all.js";
 
@@ -78,17 +78,7 @@ describe("runImplementAll status bar", () => {
   function makePctx() {
     return mockPipelineContext({
       cwd: "/tmp",
-      ctx: {
-        hasUI: true,
-        cwd: "/tmp",
-        ui: {
-          setStatus: vi.fn(),
-          setWidget: vi.fn(),
-          input: vi.fn(async () => undefined),
-          editor: vi.fn(async () => undefined),
-          select: vi.fn(async () => undefined),
-        },
-      },
+      ctx: mockForgeflowContext({ hasUI: true, cwd: "/tmp" }),
     });
   }
 

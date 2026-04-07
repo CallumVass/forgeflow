@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ExtensionConfig } from "./extension.js";
 import { buildSendMessage, createForgeflowExtension } from "./extension.js";
-import type { PipelineDetails } from "./pipeline.js";
-import { mockForgeflowContext, mockTheme } from "./test-utils.js";
+import type { OnUpdate, PipelineDetails } from "./pipeline.js";
+import { makeStage, mockForgeflowContext, mockTheme } from "./test-utils.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -107,12 +107,14 @@ describe("createForgeflowExtension", () => {
 
     const result = await toolDef.execute("call-1", { pipeline: "alpha", issue: "42" }, signal, onUpdate, ctx);
 
+    // The pipeline receives the same params/signal/ctx, but a *wrapped* onUpdate
+    // (which forwards to the user-supplied callback after repainting the widget).
     // biome-ignore lint/style/noNonNullAssertion: test accessing known array index
     expect(config.pipelines[0]!.execute).toHaveBeenCalledWith(
       "/test",
       { pipeline: "alpha", issue: "42" },
       signal,
-      onUpdate,
+      expect.any(Function),
       ctx,
     );
     expect(result.content[0]).toEqual({ type: "text", text: "alpha done" });
@@ -172,6 +174,157 @@ describe("createForgeflowExtension", () => {
     await expect(toolDef.execute("c2", { pipeline: "alpha" }, undefined, undefined, ctx)).rejects.toThrow("boom");
     expect(setStatus).toHaveBeenCalledWith("forgeflow-test", undefined);
     expect(setWidget).toHaveBeenCalledWith("forgeflow-test", undefined);
+  });
+
+  it("sets the live widget on every onUpdate call during execution and clears it in finally", async () => {
+    const setWidget = vi.fn();
+    const ctx = mockForgeflowContext({ hasUI: true, ui: { setWidget } });
+
+    const pi = mockPi();
+    const config = minimalConfig({
+      pipelines: [
+        {
+          name: "alpha",
+          execute: vi.fn(async (_cwd, _params, _signal, onUpdate: OnUpdate) => {
+            // Simulate a sub-agent driving progress: stage 1 running with one tool call.
+            onUpdate({
+              content: [{ type: "text" as const, text: "running..." }],
+              details: {
+                pipeline: "alpha",
+                stages: [
+                  makeStage({
+                    name: "planner",
+                    status: "running",
+                    messages: [
+                      {
+                        role: "assistant",
+                        content: [{ type: "toolCall", id: "t1", name: "bash", arguments: { command: "ls" } }],
+                      },
+                    ] as never,
+                  }),
+                  makeStage({ name: "implementor", status: "pending" }),
+                ],
+              },
+            });
+            return {
+              content: [{ type: "text" as const, text: "alpha done" }],
+              details: { pipeline: "alpha", stages: [] } as PipelineDetails,
+            };
+          }),
+        },
+      ],
+    });
+    const ext = createForgeflowExtension(config);
+    ext(pi as never);
+
+    const toolDef = getToolDef(pi);
+    await toolDef.execute("c1", { pipeline: "alpha" }, undefined, vi.fn(), ctx);
+
+    // Widget was set with the tool name as key and a non-undefined string[] payload
+    // at least once *during* execution.
+    const liveCalls = setWidget.mock.calls.filter((c: unknown[]) => c[0] === "forgeflow-test" && Array.isArray(c[1]));
+    expect(liveCalls.length).toBeGreaterThanOrEqual(1);
+    const lines = liveCalls[0]?.[1] as string[];
+    expect(lines.join("\n")).toContain("planner");
+
+    // Final clear from the finally block.
+    const lastCall = setWidget.mock.calls[setWidget.mock.calls.length - 1];
+    expect(lastCall).toEqual(["forgeflow-test", undefined]);
+  });
+
+  it("does not call setWidget when ctx.hasUI is false", async () => {
+    const setWidget = vi.fn();
+    const ctx = mockForgeflowContext({ hasUI: false, ui: { setWidget } });
+
+    const pi = mockPi();
+    const config = minimalConfig({
+      pipelines: [
+        {
+          name: "alpha",
+          execute: vi.fn(async (_cwd, _params, _signal, onUpdate: OnUpdate) => {
+            onUpdate({
+              content: [{ type: "text" as const, text: "running..." }],
+              details: {
+                pipeline: "alpha",
+                stages: [makeStage({ name: "planner", status: "running" })],
+              },
+            });
+            return {
+              content: [{ type: "text" as const, text: "ok" }],
+              details: { pipeline: "alpha", stages: [] } as PipelineDetails,
+            };
+          }),
+        },
+      ],
+    });
+    const ext = createForgeflowExtension(config);
+    ext(pi as never);
+
+    const toolDef = getToolDef(pi);
+    await expect(toolDef.execute("c1", { pipeline: "alpha" }, undefined, vi.fn(), ctx)).resolves.toBeDefined();
+    expect(setWidget).not.toHaveBeenCalled();
+  });
+
+  it("updates the widget content as stages transition from one running to the next", async () => {
+    const setWidget = vi.fn();
+    const ctx = mockForgeflowContext({ hasUI: true, ui: { setWidget } });
+
+    const pi = mockPi();
+    const config = minimalConfig({
+      pipelines: [
+        {
+          name: "alpha",
+          execute: vi.fn(async (_cwd, _params, _signal, onUpdate: OnUpdate) => {
+            // First frame: planner running, two more pending → 0/3
+            onUpdate({
+              content: [{ type: "text" as const, text: "..." }],
+              details: {
+                pipeline: "alpha",
+                stages: [
+                  makeStage({ name: "planner", status: "running" }),
+                  makeStage({ name: "implementor", status: "pending" }),
+                  makeStage({ name: "reviewer", status: "pending" }),
+                ],
+              },
+            });
+            // Second frame: planner done, implementor running → 1/3
+            onUpdate({
+              content: [{ type: "text" as const, text: "..." }],
+              details: {
+                pipeline: "alpha",
+                stages: [
+                  makeStage({ name: "planner", status: "done" }),
+                  makeStage({ name: "implementor", status: "running" }),
+                  makeStage({ name: "reviewer", status: "pending" }),
+                ],
+              },
+            });
+            return {
+              content: [{ type: "text" as const, text: "ok" }],
+              details: { pipeline: "alpha", stages: [] } as PipelineDetails,
+            };
+          }),
+        },
+      ],
+    });
+    const ext = createForgeflowExtension(config);
+    ext(pi as never);
+
+    const toolDef = getToolDef(pi);
+    await toolDef.execute("c1", { pipeline: "alpha" }, undefined, vi.fn(), ctx);
+
+    // Capture only the live updates (string[] payloads under our key).
+    const liveCalls = setWidget.mock.calls.filter((c: unknown[]) => c[0] === "forgeflow-test" && Array.isArray(c[1]));
+    expect(liveCalls.length).toBeGreaterThanOrEqual(2);
+
+    const firstFrame = (liveCalls[0]?.[1] as string[]).join("\n");
+    expect(firstFrame).toContain("planner");
+    expect(firstFrame).toContain("0/3");
+
+    const secondFrame = (liveCalls[1]?.[1] as string[]).join("\n");
+    expect(secondFrame).toContain("implementor");
+    expect(secondFrame).not.toContain("⟳ planner");
+    expect(secondFrame).toContain("1/3");
   });
 
   it("registers commands that call sendUserMessage with the correct template", () => {
