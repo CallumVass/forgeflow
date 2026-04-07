@@ -9,16 +9,22 @@ import {
 } from "@callumvass/forgeflow-shared/pipeline";
 
 /**
+ * A single architectural finding parsed from reviewer output: a short label
+ * (e.g. "1. High coupling in auth module") and the full markdown body.
+ */
+export type ArchitectureCandidate = { label: string; body: string };
+
+/**
  * Parse numbered candidates from the architecture reviewer output.
  * Matches headings like "### 1. Short name" or "**1. Short name**".
  */
-export function parseCandidates(text: string): { label: string; body: string }[] {
+export function parseCandidates(text: string): ArchitectureCandidate[] {
   // Split on markdown headings like "### 1." or bold patterns like "**1."
   const pattern = /^(?:#{1,4}\s+)?(\d+)\.\s+(.+)$/gm;
   const matches = [...text.matchAll(pattern)];
   if (matches.length === 0) return [];
 
-  const results: { label: string; body: string }[] = [];
+  const results: ArchitectureCandidate[] = [];
   for (let i = 0; i < matches.length; i++) {
     const match = matches[i] as RegExpMatchArray;
     const num = match[1] as string;
@@ -71,7 +77,7 @@ export async function runArchitecture(pctx: PipelineContext, opts?: { runAgentFn
     displayCandidates.length > 1
       ? [...displayCandidates.map((c) => c.label), "All candidates", "Skip"]
       : displayCandidates.length === 1
-        ? [(displayCandidates[0] as { label: string; body: string }).label, "Skip"]
+        ? [(displayCandidates[0] as ArchitectureCandidate).label, "Skip"]
         : ["Yes — generate RFC", "Skip"];
 
   const action = await ctx.ui.select("Create RFC issues for which candidates?", selectOptions);
@@ -81,7 +87,7 @@ export async function runArchitecture(pctx: PipelineContext, opts?: { runAgentFn
   }
 
   // Determine which candidates to create RFCs for
-  let selectedCandidates: { label: string; body: string }[];
+  let selectedCandidates: ArchitectureCandidate[];
   if (action === "All candidates") {
     selectedCandidates = displayCandidates;
   } else if (action === "Yes — generate RFC") {

@@ -5,13 +5,13 @@
  */
 
 import { type RunAgentFn, type RunAgentOpts, TOOLS_READONLY } from "@callumvass/forgeflow-shared/pipeline";
-import { parseCandidates } from "./architecture.js";
+import { type ArchitectureCandidate, parseCandidates } from "./architecture.js";
 
 /**
  * Append architectural recommendations to the plan.
  * Returns the plan unchanged when recommendations is empty.
  */
-export function appendArchitecturalNotes(plan: string, recommendations: { label: string; body: string }[]): string {
+export function appendArchitecturalNotes(plan: string, recommendations: ArchitectureCandidate[]): string {
   if (recommendations.length === 0) return plan;
 
   const notes = recommendations.map((r) => r.body).join("\n\n");
