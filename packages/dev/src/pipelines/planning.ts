@@ -77,7 +77,7 @@ export async function runPlanning(
 
   let plan = planResult.output;
 
-  // Architecture critique: reviewer → judge → append notes
+  // Architecture critique: reviewer → append notes
   plan = await runArchitectureCritique(plan, issueContext, {
     runAgentFn,
     agentOpts,
