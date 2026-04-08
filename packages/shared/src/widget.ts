@@ -23,7 +23,10 @@ const MAX_TOOL_CALLS = 3;
 export function buildWidgetLines(pipelineName: string, stages: StageResult[], theme: ForgeflowTheme): string[] {
   const total = stages.length;
   const completed = stages.filter((s) => s.status === "done").length;
-  const header = theme.bold(theme.fg("toolTitle", pipelineName)) + theme.fg("muted", ` · ${completed}/${total} stages`);
+  // Suppress the `· X/Y stages` suffix for single-stage pipelines (e.g.
+  // `architecture`, `investigate`) where the counter adds no information.
+  const stagesSuffix = total <= 1 ? "" : theme.fg("muted", ` · ${completed}/${total} stages`);
+  const header = theme.bold(theme.fg("toolTitle", pipelineName)) + stagesSuffix;
   const lines: string[] = [header];
 
   const running = stages.find((s) => s.status === "running");

@@ -17,6 +17,15 @@ describe("buildWidgetLines", () => {
     expect(lines[0]).toContain("2/4");
   });
 
+  it("single-stage pipelines omit the X/Y stages suffix in the header line", () => {
+    const stage = makeStage({ name: "architecture-reviewer", status: "running" });
+    const lines = buildWidgetLines("forgeflow-dev architecture", [stage], mockTheme());
+    expect(lines[0]).toContain("forgeflow-dev architecture");
+    expect(lines[0]).not.toContain("stages");
+    expect(lines[0]).not.toContain("0/1");
+    expect(lines[0]).not.toContain("1/1");
+  });
+
   it("running stage with ≥4 tool calls returns the last 3 formatted via formatToolCall", () => {
     const stage = makeStage({
       name: "implementor",

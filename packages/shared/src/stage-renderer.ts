@@ -110,20 +110,26 @@ export function renderResult(
 }
 
 export function renderCollapsed(details: PipelineDetails, theme: ForgeflowTheme, toolLabel: string) {
+  const anyActive = details.stages.some((s) => s.status === "pending" || s.status === "running");
+
+  // Live state: emit only one minimal line per stage (status icon + name).
+  // The pipeline header is already shown by `renderCall`, and the live
+  // tool-call detail lives in the widget above the editor, so repeating
+  // either here would duplicate information the user already sees.
+  if (anyActive) {
+    const liveLines = details.stages.map((stage) => `${stageIcon(stage, theme)} ${theme.fg("toolTitle", stage.name)}`);
+    return new Text(liveLines.join("\n"), 0, 0);
+  }
+
+  // Completed state: show the full header, per-stage usage + preview,
+  // failure colouring, and the `to expand` hint. This is what users see when
+  // scrolling back through history.
   let text = theme.fg("toolTitle", theme.bold(`${toolLabel} `)) + theme.fg("accent", details.pipeline);
   for (const stage of details.stages) {
     const icon = stageIcon(stage, theme);
     text += `\n  ${icon} ${theme.fg("toolTitle", stage.name)}`;
 
-    if (stage.status === "running") {
-      const items = getDisplayItems(stage.messages);
-      const last = items.filter((i) => i.type === "toolCall").slice(-3);
-      for (const item of last) {
-        if (item.type === "toolCall") {
-          text += `\n    ${theme.fg("muted", "→ ")}${formatToolCall(item.name, item.args, theme.fg.bind(theme))}`;
-        }
-      }
-    } else if (stage.status === "done" || stage.status === "failed") {
+    if (stage.status === "done" || stage.status === "failed") {
       // Keep usage stats on the same line as the stage header.
       const usageStr = formatUsage(stage.usage, stage.model);
       if (usageStr) text += ` ${theme.fg("dim", usageStr)}`;
