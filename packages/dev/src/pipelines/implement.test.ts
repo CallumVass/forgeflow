@@ -1,147 +1,153 @@
+import {
+  mockExecFn,
+  mockForgeflowContext,
+  mockPipelineContext,
+  sequencedRunAgent,
+} from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
+import { runImplement } from "./implement.js";
 
-vi.mock("../utils/git.js", () => ({
-  buildPrBody: vi.fn(() => "PR body"),
-  resolveIssue: vi.fn(async () => ({
-    source: "github",
-    key: "42",
-    number: 42,
-    title: "Test issue",
-    body: "Issue body",
-    branch: "feat/issue-42",
-  })),
-}));
-
-vi.mock("../utils/ui.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../utils/ui.js")>();
-  return { ...actual, setForgeflowStatus: vi.fn() };
+// `implement-phases` / `implementation-run` both peek at filesystem-backed
+// signals (blocked, findings). Stub the signal helpers to keep this a pure
+// boundary test driven through `runAgentFn` + `execFn`.
+vi.mock("@callumvass/forgeflow-shared/pipeline", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    cleanSignal: vi.fn(),
+    signalExists: vi.fn(() => false),
+    readSignal: vi.fn(() => null),
+  };
 });
 
-vi.mock("../utils/git-workflow.js", () => ({
-  setupBranch: vi.fn(async () => ({ status: "fresh" })),
-  ensurePr: vi.fn(async () => ({ number: 10, created: true })),
-  mergePr: vi.fn(async () => {}),
-  returnToMain: vi.fn(async () => {}),
-}));
+const ghIssueJson = JSON.stringify({ number: 42, title: "Test issue", body: "Issue body" });
 
-vi.mock("./planning.js", () => ({
-  runPlanning: vi.fn(async () => ({ plan: "test plan", cancelled: false, stages: [] })),
-}));
+/**
+ * Build a scripted `execFn` covering every command `runImplement` drives in
+ * an autonomous fresh run:
+ *  - `gh issue view` (via execSafeFn)
+ *  - `gh pr list --head ... ` for findPrNumber (existingPR + post-ensurePr lookups)
+ *  - `git rev-list main..<branch>` for setupBranch (0 → fresh path)
+ *  - `git branch -D / git checkout -b / git branch --show-current` for fresh checkout
+ *  - `git diff main...HEAD` for reviewAndFix (empty → skip)
+ *  - `git push -u origin` + `gh pr create` for ensurePr
+ *  - `gh pr merge` + `git checkout main` + `git pull` for merge/returnToMain
+ *
+ * Overrides let individual tests change specific responses (e.g. resume-with-commits
+ * returns a non-zero `rev-list`, existing-PR returns a PR number).
+ */
+function scriptedExec(overrides: Record<string, string> = {}): ReturnType<typeof mockExecFn> {
+  return mockExecFn({
+    "gh pr list": "",
+    "git rev-list": "0",
+    "git branch -D": "",
+    "git checkout -b": "",
+    "git branch --show-current": "feat/issue-42",
+    "git diff": "",
+    "git push": "",
+    "gh pr create": "https://github.com/owner/repo/pull/7",
+    "gh pr merge": "Merged!",
+    "git checkout main": "",
+    "git pull": "",
+    ...overrides,
+  });
+}
 
-vi.mock("./implement-phases.js", () => ({
-  buildImplementorPrompt: vi.fn(() => "mocked prompt"),
-  reviewAndFix: vi.fn(async () => {}),
-  refactorAndReview: vi.fn(async () => {}),
-  runImplementorPhase: vi.fn(async () => null),
-}));
+describe("runImplement orchestrator (integration)", () => {
+  it("fresh path runs planner → architecture-reviewer → implementor → refactorer, finalises PR, and stages ends with merge", async () => {
+    // planner → architecture-reviewer → implementor → refactorer
+    const runAgentFn = sequencedRunAgent([
+      { output: "## Plan\n- Step 1" },
+      { output: "No architectural recommendations" },
+      { output: "implemented" },
+      { output: "refactored" },
+    ]);
+    const execFn = scriptedExec();
+    const execSafeFn = mockExecFn({ "gh issue view": ghIssueJson });
+    const pctx = mockPipelineContext({ cwd: "/tmp", execFn, execSafeFn, runAgentFn });
 
-import { mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
-import { resolveIssue } from "../utils/git.js";
-import { ensurePr, mergePr, setupBranch } from "../utils/git-workflow.js";
-import { runImplement } from "./implement.js";
-import { buildImplementorPrompt, refactorAndReview, reviewAndFix, runImplementorPhase } from "./implement-phases.js";
-import { runPlanning } from "./planning.js";
+    const result = await runImplement("42", pctx, { skipPlan: false, skipReview: true });
 
-const resolvedWithExistingPR = {
-  source: "github" as const,
-  key: "42",
-  number: 42,
-  title: "Test issue",
-  body: "Issue body",
-  branch: "feat/issue-42",
-  existingPR: 99,
-};
-
-describe("runImplement orchestrator", () => {
-  it("calls setupBranch, runPlanning, buildImplementorPrompt, runImplementorPhase, refactorAndReview, and ensurePr/mergePr in sequence", async () => {
-    const pctx = mockPipelineContext({ cwd: "/tmp" });
-    const result = await runImplement("42", pctx, {
-      skipPlan: false,
-      skipReview: false,
-    });
-
-    expect(setupBranch).toHaveBeenCalledWith("/tmp", "feat/issue-42", expect.any(Function));
-    expect(runPlanning).toHaveBeenCalled();
-    expect(buildImplementorPrompt).toHaveBeenCalled();
-    expect(runImplementorPhase).toHaveBeenCalledWith(expect.objectContaining({ cwd: "/tmp" }), "mocked prompt");
-    expect(refactorAndReview).toHaveBeenCalled();
-    expect(ensurePr).toHaveBeenCalled();
-    expect(mergePr).toHaveBeenCalled();
     expect(result.content[0]?.text).toContain("complete");
+    const stages = result.details?.stages ?? [];
+    const names = stages.map((s) => s.name);
+    expect(names).toEqual(["planner", "architecture-reviewer", "implementor", "refactorer", "merge"]);
+    // finalisePr ran the merge sequence
+    const calls = execFn.mock.calls.map((c) => c[0] as string);
+    expect(calls.some((c) => c.includes("gh pr create"))).toBe(true);
+    expect(calls.some((c) => c.includes("gh pr merge 7"))).toBe(true);
   });
 
-  it("resume path (existingPR) delegates to reviewAndFix from phases module", async () => {
-    vi.mocked(resolveIssue).mockResolvedValueOnce(resolvedWithExistingPR);
-    vi.mocked(reviewAndFix).mockClear();
-
-    const pctx = mockPipelineContext({ cwd: "/tmp" });
-    const result = await runImplement("42", pctx, { skipPlan: false, skipReview: false });
-
-    expect(reviewAndFix).toHaveBeenCalledWith(expect.objectContaining({ cwd: "/tmp" }));
-    expect(result.content[0]?.text).toContain("Resumed");
-    expect(result.content[0]?.text).toContain("PR #99");
-  });
-
-  it("resume-with-commits path calls refactorAndReview from phases module", async () => {
-    vi.mocked(setupBranch).mockResolvedValueOnce({ status: "resumed" });
-    vi.mocked(refactorAndReview).mockClear();
-
-    const pctx = mockPipelineContext({ cwd: "/tmp" });
-    const result = await runImplement("42", pctx, { skipPlan: false, skipReview: false });
-
-    expect(refactorAndReview).toHaveBeenCalled();
-    expect(result.content[0]?.text).toContain("Resumed");
-  });
-
-  it("calls ui.input in interactive mode and forwards answer to runPlanning and buildImplementorPrompt", async () => {
-    const inputFn = vi.fn(async () => "check the openapi spec");
-    vi.mocked(runPlanning).mockClear();
-    vi.mocked(buildImplementorPrompt).mockClear();
-
+  it("resume-with-existing-PR: message contains 'PR #N already exists' and stages have no planner/implementor entries", async () => {
+    const runAgentFn = sequencedRunAgent([]);
+    const execFn = scriptedExec({
+      "gh pr list": "99", // findPrNumber → 99 → existingPR
+      // If the implementation wrongly mutates the branch, these assertions catch it
+      "git rev-list": "5",
+    });
+    const execSafeFn = mockExecFn({ "gh issue view": ghIssueJson });
     const pctx = mockPipelineContext({
       cwd: "/tmp",
-      ctx: mockForgeflowContext({ hasUI: true, cwd: "/tmp", ui: { input: inputFn } }),
+      execFn,
+      execSafeFn,
+      runAgentFn,
+      ctx: mockForgeflowContext({ hasUI: true, cwd: "/tmp" }),
     });
-    await runImplement("42", pctx, { skipPlan: false, skipReview: false });
 
-    expect(inputFn).toHaveBeenCalledWith("Additional instructions?", "Skip");
-    expect(runPlanning).toHaveBeenCalledWith(
-      expect.any(String),
-      "check the openapi spec",
-      expect.objectContaining({ interactive: true }),
-    );
-    expect(buildImplementorPrompt).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(String),
-      "check the openapi spec",
-      expect.any(Object),
-      undefined,
-    );
+    const result = await runImplement("42", pctx, { skipPlan: false, skipReview: true });
+
+    expect(result.content[0]?.text).toContain("Resumed");
+    expect(result.content[0]?.text).toContain("PR #99 already exists");
+    const names = (result.details?.stages ?? []).map((s) => s.name);
+    expect(names).not.toContain("planner");
+    expect(names).not.toContain("implementor");
+    expect(names).not.toContain("refactorer");
+    // No mutating git commands were run for the resume-existing-PR path
+    const calls = execFn.mock.calls.map((c) => c[0] as string);
+    expect(calls.some((c) => c.includes("rev-list main..feat/issue-42"))).toBe(false);
+    expect(calls.some((c) => c.includes("git checkout feat/issue-42"))).toBe(false);
   });
 
-  it("passes undefined customPrompt when user skips the interactive prompt", async () => {
-    const inputFn = vi.fn(async () => "");
-    vi.mocked(runPlanning).mockClear();
-    vi.mocked(buildImplementorPrompt).mockClear();
-
-    const pctx = mockPipelineContext({
-      cwd: "/tmp",
-      ctx: mockForgeflowContext({ hasUI: true, cwd: "/tmp", ui: { input: inputFn } }),
+  it("resume-with-commits: pushes existing commits and returns text 'pushed existing commits and created PR'", async () => {
+    // refactorer only → 1 agent call
+    const runAgentFn = sequencedRunAgent([{ output: "refactored" }]);
+    const execFn = scriptedExec({
+      "gh pr list": "",
+      "git rev-list": "3", // setupBranch → resumed
+      "git checkout feat/issue-42": "",
+      "git branch --show-current": "feat/issue-42",
     });
-    await runImplement("42", pctx, { skipPlan: false, skipReview: false });
+    const execSafeFn = mockExecFn({ "gh issue view": ghIssueJson });
+    const pctx = mockPipelineContext({ cwd: "/tmp", execFn, execSafeFn, runAgentFn });
 
-    expect(inputFn).toHaveBeenCalled();
-    expect(runPlanning).toHaveBeenCalledWith(
-      expect.any(String),
-      undefined,
-      expect.objectContaining({ interactive: true }),
-    );
-    expect(buildImplementorPrompt).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(String),
-      undefined,
-      expect.any(Object),
-      undefined,
-    );
+    const result = await runImplement("42", pctx, { skipPlan: false, skipReview: true });
+
+    expect(result.content[0]?.text).toContain("pushed existing commits and created PR");
+    // ensurePr ran (gh pr create or pr list with push)
+    const calls = execFn.mock.calls.map((c) => c[0] as string);
+    expect(calls.some((c) => c.includes("git push"))).toBe(true);
+    // But merge was NOT invoked — resume-branch never merges
+    expect(calls.some((c) => c.includes("gh pr merge"))).toBe(false);
+  });
+
+  it("error paths: resolveIssue string → non-error result; setupBranch failed → error result", async () => {
+    // --- (a) resolveIssue returns a string (empty `gh issue view` output) ---
+    const stringExec = scriptedExec();
+    const stringSafe = mockExecFn({ "gh issue view": "" });
+    const pctxString = mockPipelineContext({ cwd: "/tmp", execFn: stringExec, execSafeFn: stringSafe });
+    const stringResult = await runImplement("42", pctxString, { skipPlan: false, skipReview: true });
+    expect(stringResult.isError).not.toBe(true);
+    expect(stringResult.content[0]?.text).toContain("Could not fetch issue #42");
+
+    // --- (b) setupBranch failed (final branch --show-current returns 'main') ---
+    const failExec = scriptedExec({
+      "git rev-list": "0",
+      "git branch --show-current": "main",
+    });
+    const failSafe = mockExecFn({ "gh issue view": ghIssueJson });
+    const pctxFail = mockPipelineContext({ cwd: "/tmp", execFn: failExec, execSafeFn: failSafe });
+    const failResult = await runImplement("42", pctxFail, { skipPlan: false, skipReview: true });
+    expect(failResult.isError).toBe(true);
+    expect(failResult.content[0]?.text).toContain("feat/issue-42");
   });
 });
