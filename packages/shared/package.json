@@ -6,7 +6,6 @@
   "license": "MIT",
   "exports": {
     "./pipeline": "./dist/pipeline.js",
-    "./tools": "./dist/tools.js",
     "./signals": "./dist/signals.js",
     "./stages": "./dist/stages.js",
     "./progress": "./dist/progress.js",
@@ -24,7 +23,6 @@
   "typesVersions": {
     "*": {
       "pipeline": ["dist/pipeline.d.ts"],
-      "tools": ["dist/tools.d.ts"],
       "signals": ["dist/signals.d.ts"],
       "stages": ["dist/stages.d.ts"],
       "progress": ["dist/progress.d.ts"],

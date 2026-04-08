@@ -5,7 +5,6 @@ import {
   readSignal,
   type StageResult,
   signalExists,
-  TOOLS_NO_EDIT,
 } from "@callumvass/forgeflow-shared/pipeline";
 
 interface ReviewResult {
@@ -35,10 +34,7 @@ export async function runReviewPipeline(diff: string, opts: ReviewPipelineOption
 
   // Code reviewer
   stages.push(emptyStage("code-reviewer"));
-  await runAgentFn("code-reviewer", `Review the following diff:\n\n${diff}${extraInstructions}`, {
-    ...agentOpts,
-    tools: TOOLS_NO_EDIT,
-  });
+  await runAgentFn("code-reviewer", `Review the following diff:\n\n${diff}${extraInstructions}`, agentOpts);
 
   if (!signalExists(cwd, "findings")) {
     return { passed: true };
@@ -50,7 +46,7 @@ export async function runReviewPipeline(diff: string, opts: ReviewPipelineOption
   await runAgentFn(
     "review-judge",
     `Validate the following code review findings against the actual code:\n\n${findings}`,
-    { ...agentOpts, tools: TOOLS_NO_EDIT },
+    agentOpts,
   );
 
   if (!signalExists(cwd, "findings")) {

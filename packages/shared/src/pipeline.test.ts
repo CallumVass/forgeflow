@@ -2,11 +2,8 @@ import { describe, expect, it } from "vitest";
 import * as barrel from "./pipeline.js";
 
 describe("pipeline barrel re-exports", () => {
-  it("exposes all 17 value exports", () => {
+  it("exposes all 14 value exports", () => {
     const valueExports = [
-      "TOOLS_ALL",
-      "TOOLS_READONLY",
-      "TOOLS_NO_EDIT",
       "SIGNALS",
       "signalPath",
       "signalExists",

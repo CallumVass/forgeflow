@@ -52,7 +52,6 @@ export function emptyUsage(): UsageStats {
 export type RunAgentOpts = {
   agentsDir: string;
   cwd: string;
-  tools?: string[];
   signal?: AbortSignal;
   stages: StageResult[];
   pipeline: string;

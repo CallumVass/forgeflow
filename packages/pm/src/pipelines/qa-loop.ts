@@ -3,8 +3,6 @@ import {
   type PipelineContext,
   type StageResult,
   signalExists,
-  TOOLS_ALL,
-  TOOLS_NO_EDIT,
   toAgentOpts,
 } from "@callumvass/forgeflow-shared/pipeline";
 import { promptEditPrd } from "../prd-document.js";
@@ -33,7 +31,7 @@ export async function runQaLoop(opts: QaLoopOptions): Promise<QaLoopResult> {
 
   for (let i = 1; i <= maxIterations; i++) {
     stages.push(emptyStage("prd-critic"));
-    const criticResult = await runAgentFn("prd-critic", criticPrompt, { ...agentOpts, tools: TOOLS_NO_EDIT });
+    const criticResult = await runAgentFn("prd-critic", criticPrompt, agentOpts);
 
     if (!signalExistsFn(cwd, "questions")) {
       if (criticResult.status === "failed") {
@@ -46,7 +44,7 @@ export async function runQaLoop(opts: QaLoopOptions): Promise<QaLoopResult> {
     await runAgentFn(
       "prd-architect",
       "Read PRD.md and answer all questions in QUESTIONS.md. Write answers inline in QUESTIONS.md.",
-      { ...agentOpts, tools: TOOLS_ALL },
+      agentOpts,
     );
 
     stages.push(emptyStage("prd-integrator"));

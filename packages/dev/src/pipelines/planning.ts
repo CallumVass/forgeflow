@@ -2,7 +2,6 @@ import {
   type ForgeflowContext,
   type PipelineContext,
   type StageResult,
-  TOOLS_READONLY,
   toAgentOpts,
 } from "@callumvass/forgeflow-shared/pipeline";
 import { runArchitectureCritique } from "./plan-architecture.js";
@@ -64,7 +63,7 @@ export async function runPlanning(
   const planResult = await runAgentFn(
     "planner",
     `Plan the implementation for this issue by producing a sequenced list of test cases.\n\n${issueContext}${customPromptSection}`,
-    { ...agentOpts, tools: TOOLS_READONLY },
+    agentOpts,
   );
 
   if (planResult.status === "failed") {

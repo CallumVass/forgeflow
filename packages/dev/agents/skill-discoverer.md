@@ -1,7 +1,7 @@
 ---
 name: skill-discoverer
 description: Discovers domain-specific skills from skills.sh, recommends them, and installs approved ones as forgeflow plugins.
-tools: read, write, bash, grep, find
+tools: read, write, edit, bash, grep, find
 ---
 
 You are a skill discovery agent. You operate in one of two modes based on the task prompt.

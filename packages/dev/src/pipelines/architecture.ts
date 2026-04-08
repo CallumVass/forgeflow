@@ -1,10 +1,4 @@
-import {
-  emptyStage,
-  type PipelineContext,
-  pipelineResult,
-  TOOLS_READONLY,
-  toAgentOpts,
-} from "@callumvass/forgeflow-shared/pipeline";
+import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/pipeline";
 import { ARCHITECTURE_LABEL } from "./implement-all.js";
 
 /**
@@ -46,7 +40,7 @@ export async function runArchitecture(pctx: PipelineContext) {
   const exploreResult = await runAgentFn(
     "architecture-reviewer",
     "Explore this codebase and identify architectural friction. Present numbered candidates ranked by severity.",
-    { ...agentOpts, tools: TOOLS_READONLY },
+    agentOpts,
   );
 
   if (exploreResult.status === "failed") {
@@ -104,7 +98,7 @@ export async function runArchitecture(pctx: PipelineContext) {
     const rfcResult = await runAgentFn(
       "architecture-reviewer",
       `Based on the following architectural analysis, generate a detailed RFC and create a GitHub issue (with label "${ARCHITECTURE_LABEL}") for this specific candidate.\n\nCANDIDATE:\n${candidate.body}\n\nFULL ANALYSIS (for context):\n${candidateContext}`,
-      { ...agentOpts, stageName, tools: TOOLS_READONLY },
+      { ...agentOpts, stageName },
     );
 
     const issueMatch = rfcResult.output?.match(/https:\/\/github\.com\/[^\s]+\/issues\/(\d+)/);

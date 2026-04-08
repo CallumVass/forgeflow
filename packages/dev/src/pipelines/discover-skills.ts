@@ -1,11 +1,4 @@
-import {
-  emptyStage,
-  type PipelineContext,
-  pipelineResult,
-  TOOLS_ALL,
-  TOOLS_NO_EDIT,
-  toAgentOpts,
-} from "@callumvass/forgeflow-shared/pipeline";
+import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/pipeline";
 
 export async function runDiscoverSkills(query: string, pctx: PipelineContext) {
   // If query looks like specific skill names (contains commas or known skill identifiers),
@@ -21,10 +14,10 @@ export async function runDiscoverSkills(query: string, pctx: PipelineContext) {
       ? `Discover skills related to "${query}" — recommend only, do NOT install.`
       : "Analyze the project tech stack and discover relevant skills — recommend only, do NOT install.";
 
-  // Install mode needs write access, discover mode is read-only
-  const tools = isInstall ? TOOLS_ALL : TOOLS_NO_EDIT;
-
-  const result = await pctx.runAgentFn("skill-discoverer", task, { ...opts, tools });
+  // The agent's .md frontmatter is the single source of truth for its tool
+  // list — the agent's own prompt gates when `edit` is appropriate (install
+  // mode vs discover mode).
+  const result = await pctx.runAgentFn("skill-discoverer", task, opts);
 
   return pipelineResult(result.output || "No skills found.", "discover-skills", stages);
 }

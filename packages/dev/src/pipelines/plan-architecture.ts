@@ -4,7 +4,7 @@
  * to the plan as an "### Architectural Notes" section.
  */
 
-import { type RunAgentFn, type RunAgentOpts, TOOLS_READONLY } from "@callumvass/forgeflow-shared/pipeline";
+import type { RunAgentFn, RunAgentOpts } from "@callumvass/forgeflow-shared/pipeline";
 import { type ArchitectureCandidate, parseCandidates } from "./architecture.js";
 
 /**
@@ -28,7 +28,7 @@ export async function runArchitectureCritique(
   issueContext: string,
   opts: {
     runAgentFn: RunAgentFn;
-    agentOpts: Omit<RunAgentOpts, "tools">;
+    agentOpts: RunAgentOpts;
   },
 ): Promise<string> {
   const { runAgentFn, agentOpts } = opts;
@@ -50,10 +50,7 @@ Look for:
 
 Present numbered recommendations in candidate format. If the plan already follows good patterns, say "No architectural recommendations" and stop.`;
 
-  const reviewResult = await runAgentFn("architecture-reviewer", reviewerPrompt, {
-    ...agentOpts,
-    tools: TOOLS_READONLY,
-  });
+  const reviewResult = await runAgentFn("architecture-reviewer", reviewerPrompt, agentOpts);
 
   if (reviewResult.status === "failed") return plan;
 
