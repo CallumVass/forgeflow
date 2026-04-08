@@ -10,6 +10,12 @@ import { findPrNumber, mergePr, returnToMain } from "../utils/git-workflow.js";
 import { setForgeflowStatus, updateProgressWidget } from "../utils/ui.js";
 import { runImplement } from "./implement.js";
 
+/**
+ * Labels that `/implement-all` picks up. Must stay in sync with the label the
+ * architecture pipeline applies when creating RFC issues.
+ */
+export const IMPLEMENT_ALL_LABELS = ["auto-generated", "architecture"] as const;
+
 interface IssueInfo {
   number: number;
   title: string;
@@ -43,12 +49,18 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
   const allStages: StageResult[] = [];
   const issueProgress = new Map<number, { title: string; status: IssueStatus }>();
 
-  // Seed completed set with already-closed issues
-  const closedJson = await exec(
-    `gh issue list --state closed --label "auto-generated" --json number --jq '.[].number'`,
-    cwd,
-  );
-  const completed = new Set<number>(closedJson ? closedJson.split("\n").filter(Boolean).map(Number) : []);
+  // Seed completed set with already-closed issues across every tracked label.
+  const completed = new Set<number>();
+  for (const label of IMPLEMENT_ALL_LABELS) {
+    const closedJson = await exec(
+      `gh issue list --state closed --label "${label}" --json number --jq '.[].number'`,
+      cwd,
+    );
+    if (!closedJson) continue;
+    for (const n of closedJson.split("\n").filter(Boolean).map(Number)) {
+      completed.add(n);
+    }
+  }
 
   let iteration = 0;
   const maxIterations = 50;
@@ -59,17 +71,26 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
     // Return to main and pull
     await returnToMain(cwd, exec);
 
-    // Fetch open issues
-    const issuesJson = await exec(
-      `gh issue list --state open --label "auto-generated" --json number,title,body --jq 'sort_by(.number)'`,
-      cwd,
-    );
-    let issues: IssueInfo[];
-    try {
-      issues = JSON.parse(issuesJson || "[]");
-    } catch {
-      issues = [];
+    // Fetch open issues for every tracked label and merge+dedupe by number.
+    const issuesByNumber = new Map<number, IssueInfo>();
+    for (const label of IMPLEMENT_ALL_LABELS) {
+      const issuesJson = await exec(
+        `gh issue list --state open --label "${label}" --json number,title,body --jq 'sort_by(.number)'`,
+        cwd,
+      );
+      let parsed: IssueInfo[];
+      try {
+        parsed = JSON.parse(issuesJson || "[]");
+      } catch {
+        parsed = [];
+      }
+      for (const issue of parsed) {
+        if (!issuesByNumber.has(issue.number)) {
+          issuesByNumber.set(issue.number, issue);
+        }
+      }
     }
+    const issues: IssueInfo[] = [...issuesByNumber.values()].sort((a, b) => a.number - b.number);
 
     if (issues.length === 0) {
       return pipelineResult("All issues implemented.", "implement-all", allStages);

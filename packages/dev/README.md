@@ -13,7 +13,7 @@ npx pi install @callumvass/forgeflow-dev
 | Command | Description |
 |---------|-------------|
 | `/implement` | Implement a single issue using TDD (plan → implement → refactor → review) |
-| `/implement-all` | Loop through all open issues: implement, review, merge |
+| `/implement-all` | Loop through all open `auto-generated` and `architecture` issues: implement, review, merge |
 | `/review` | Code review: deterministic checks → reviewer → judge |
 | `/architecture` | Analyze codebase for architectural friction, create RFC issues |
 | `/discover-skills` | Find and install domain-specific plugins for your tech stack |
