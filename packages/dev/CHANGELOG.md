@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.12.1...forgeflow-dev-v0.13.0) (2026-04-08)
+
+
+### Features
+
+* **dev:** include architecture-labelled issues in /implement-all ([#118](https://github.com/CallumVass/forgeflow/issues/118)) ([7740a76](https://github.com/CallumVass/forgeflow/commit/7740a76b9a0bbb9c67c8c334efdb59f8ac4effdb))
+
 ## [0.12.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.12.0...forgeflow-dev-v0.12.1) (2026-04-07)
 
 
