@@ -49,13 +49,15 @@ export function mockRunAgent(output = "", status: StageResult["status"] = "done"
 }
 
 /** Create a mock RunAgentFn that returns responses in sequence, one per call. */
-export function sequencedRunAgent(responses: Array<{ output: string; status?: StageResult["status"] }>): RunAgentFn {
+export function sequencedRunAgent(
+  responses: Array<{ output: string; status?: StageResult["status"] }>,
+): Mock<RunAgentFn> {
   let callIndex = 0;
   return vi.fn(async () => {
     const response = responses[callIndex] ?? { output: "", status: "done" as const };
     callIndex++;
     return { ...emptyStage("mock"), output: response.output, status: response.status ?? ("done" as const) };
-  }) as unknown as RunAgentFn;
+  });
 }
 
 /**

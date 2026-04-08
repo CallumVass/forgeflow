@@ -1,113 +1,68 @@
-import {
-  emptyStage,
-  type PipelineContext,
-  pipelineResult,
-  type StageResult,
-  toAgentOpts,
-} from "@callumvass/forgeflow-shared/pipeline";
-import { buildPrBody, resolveIssue } from "../utils/git.js";
-import { ensurePr, mergePr, returnToMain, setupBranch } from "../utils/git-workflow.js";
+import { type PipelineContext, pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
 import { askCustomPrompt, setForgeflowStatus } from "../utils/ui.js";
 import {
-  buildImplementorPrompt,
-  type PhaseContext,
-  refactorAndReview,
-  reviewAndFix,
-  runImplementorPhase,
-} from "./implement-phases.js";
-import { runPlanning } from "./planning.js";
+  type RunInput,
+  type RunOutcome,
+  runImplementation,
+  runRefactorAndReview,
+  runReviewAndFixOnly,
+} from "./implementation-run.js";
+import { type IssuePlan, resolveIssuePlan } from "./issue-resolution.js";
+import { finalisePr } from "./pr-lifecycle.js";
 
-export async function runImplement(
-  issueArg: string,
-  pctx: PipelineContext,
-  flags: { skipPlan: boolean; skipReview: boolean; autonomous?: boolean } = {
-    skipPlan: false,
-    skipReview: false,
-  },
-) {
-  const { cwd, onUpdate, ctx, execFn } = pctx;
-  const interactive = ctx.hasUI && !flags.autonomous;
-  const resolved = await resolveIssue(cwd, issueArg || undefined, pctx);
-  if (typeof resolved === "string") return pipelineResult(resolved, "implement", []);
+interface ImplementFlags {
+  skipPlan: boolean;
+  skipReview: boolean;
+  autonomous?: boolean;
+}
 
-  const isGH = resolved.source === "github" && resolved.number > 0;
-  const issueLabel = isGH ? `#${resolved.number}: ${resolved.title}` : `${resolved.key}: ${resolved.title}`;
-  const issueContext = isGH
-    ? `Issue #${resolved.number}: ${resolved.title}\n\n${resolved.body}`
-    : `Jira ${resolved.key}: ${resolved.title}\n\n${resolved.body}`;
+const DEFAULT_FLAGS: ImplementFlags = { skipPlan: false, skipReview: false };
 
-  if (!flags.autonomous && (resolved.number || resolved.key))
-    setForgeflowStatus(ctx, `${isGH ? `#${resolved.number}` : resolved.key} ${resolved.title} · ${resolved.branch}`);
+export async function runImplement(issueArg: string, pctx: PipelineContext, flags: ImplementFlags = DEFAULT_FLAGS) {
+  const plan = await resolveIssuePlan(issueArg, pctx);
+  if ("error" in plan) return pipelineResult(plan.error, "implement", []);
 
-  const customPrompt = await askCustomPrompt(ctx, interactive);
+  const { resolved, issueLabel, issueContext, resume } = plan;
+  const autonomous = flags.autonomous ?? false;
+  const interactive = pctx.ctx.hasUI && !autonomous;
 
-  const buildPhaseContext = (stages: StageResult[]): PhaseContext => ({
-    ...pctx,
-    agentOpts: toAgentOpts(pctx, { stages, pipeline: "implement" }),
-    stages,
-  });
-
-  // --- Resumability ---
-  if (resolved.existingPR) {
-    const stages: StageResult[] = [];
-    if (!flags.skipReview) await reviewAndFix(buildPhaseContext(stages));
-    return pipelineResult(`Resumed ${issueLabel} — PR #${resolved.existingPR} already exists.`, "implement", stages);
+  if (!autonomous && (resolved.number || resolved.key)) {
+    const isGH = resolved.source === "github" && resolved.number > 0;
+    setForgeflowStatus(
+      pctx.ctx,
+      `${isGH ? `#${resolved.number}` : resolved.key} ${resolved.title} · ${resolved.branch}`,
+    );
   }
 
-  // --- Branch setup ---
-  if (resolved.branch) {
-    const branchResult = await setupBranch(cwd, resolved.branch, execFn);
-    if (branchResult.status === "resumed") {
-      await ensurePr(cwd, resolved.title, buildPrBody(cwd, resolved), resolved.branch, execFn);
-      const stages: StageResult[] = [];
-      await refactorAndReview(buildPhaseContext(stages), flags.skipReview);
-      return pipelineResult(`Resumed ${issueLabel} — pushed existing commits and created PR.`, "implement", stages);
-    }
-    if (branchResult.status === "failed")
-      return pipelineResult(branchResult.error || `Failed to switch to ${resolved.branch}.`, "implement", [], true);
-  }
+  const customPrompt = await askCustomPrompt(pctx.ctx, interactive);
 
-  // --- Planning ---
+  if (resume.kind === "existing-pr") return resumeExistingPr(issueLabel, resume.prNumber, pctx, flags);
+  if (resume.kind === "resume-branch") return resumeBranch(plan, pctx, flags);
+  if (resume.kind === "failed") return pipelineResult(resume.error, "implement", [], true);
+
+  const input: RunInput = { issueContext, resolved, customPrompt, flags: { ...flags, autonomous } };
+  const outcome: RunOutcome = await runImplementation(input, pctx);
+  if (outcome.kind === "failed") return pipelineResult(outcome.error, "implement", outcome.stages, true);
+  if (outcome.kind === "blocked")
+    return pipelineResult(`Implementor blocked:\n${outcome.reason}`, "implement", outcome.stages, true);
+  if (outcome.kind === "cancelled") return pipelineResult(outcome.reason, "implement", outcome.stages);
+
+  await finalisePr(resolved, pctx, { autonomous, stages: outcome.stages });
+
+  return pipelineResult(`Implementation of ${issueLabel} complete.`, "implement", outcome.stages);
+}
+
+async function resumeExistingPr(issueLabel: string, prNumber: number, pctx: PipelineContext, flags: ImplementFlags) {
   const stages: StageResult[] = [];
-  if (!flags.skipPlan) stages.push(emptyStage("planner"), emptyStage("architecture-reviewer"));
-  stages.push(emptyStage("implementor"), emptyStage("refactorer"));
+  if (!flags.skipReview) await runReviewAndFixOnly(pctx, stages);
+  return pipelineResult(`Resumed ${issueLabel} — PR #${prNumber} already exists.`, "implement", stages);
+}
 
-  let plan = "";
-  if (!flags.skipPlan) {
-    const planResult = await runPlanning(issueContext, customPrompt, {
-      ...pctx,
-      interactive,
-      stages,
-    });
-    if (planResult.failed) return pipelineResult(`Planner failed: ${planResult.plan}`, "implement", stages, true);
-    if (planResult.cancelled) return pipelineResult("Implementation cancelled.", "implement", stages);
-    plan = planResult.plan;
-  }
-
-  // --- Implementor ---
-  const prompt = buildImplementorPrompt(issueContext, plan, customPrompt, resolved, flags.autonomous);
-  const blocked = await runImplementorPhase(buildPhaseContext(stages), prompt);
-  if (blocked != null) return pipelineResult(`Implementor blocked:\n${blocked}`, "implement", stages, true);
-
-  // --- Refactor + Review ---
-  await refactorAndReview(buildPhaseContext(stages), flags.skipReview);
-
-  // --- PR + Merge ---
-  let prNumber = 0;
-  if (resolved.branch) {
-    const prResult = await ensurePr(cwd, resolved.title, buildPrBody(cwd, resolved), resolved.branch, execFn);
-    prNumber = prResult.number;
-  }
-
-  if (!flags.autonomous && prNumber > 0) {
-    const mergeStage = emptyStage("merge");
-    stages.push(mergeStage);
-    await mergePr(cwd, prNumber, execFn);
-    await returnToMain(cwd, execFn);
-    mergeStage.status = "done";
-    mergeStage.output = `Merged PR #${prNumber}`;
-    onUpdate?.(pipelineResult("Pipeline complete", "implement", stages));
-  }
-
-  return pipelineResult(`Implementation of ${issueLabel} complete.`, "implement", stages);
+async function resumeBranch(plan: IssuePlan, pctx: PipelineContext, flags: ImplementFlags) {
+  const stages: StageResult[] = [];
+  // Push existing commits and create a PR, but do NOT merge — the user will
+  // manually merge after reviewing the resumed work.
+  await finalisePr(plan.resolved, pctx, { autonomous: true, stages });
+  await runRefactorAndReview(pctx, stages, flags.skipReview);
+  return pipelineResult(`Resumed ${plan.issueLabel} — pushed existing commits and created PR.`, "implement", stages);
 }
