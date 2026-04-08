@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.15.0...forgeflow-dev-v0.15.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* **dev:** preserve forked /implement sessions and fail fast on stage errors ([#138](https://github.com/CallumVass/forgeflow/issues/138)) ([5d645ec](https://github.com/CallumVass/forgeflow/commit/5d645ec72cfd9c035e455a998742ace43277feb8))
+
 ## [0.15.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.14.1...forgeflow-dev-v0.15.0) (2026-04-08)
 
 
