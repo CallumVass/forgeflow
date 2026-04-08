@@ -130,6 +130,69 @@ describe("runImplementation", () => {
     expect(blockedAgents).not.toContain("code-reviewer");
   });
 
+  it("returns failed when architecture-reviewer fails and does not start implementor", async () => {
+    const runAgentFn = sequencedRunAgent([
+      { output: "## Plan\n- Do stuff" },
+      { output: "arch failed", status: "failed" },
+    ]);
+    const pctx = mockPipelineContext({ cwd: "/tmp", runAgentFn, execFn: emptyDiffExec() });
+
+    const outcome = await runImplementation(
+      {
+        issueContext: "Issue #42: Test issue\n\nIssue body",
+        resolved,
+        flags: { skipPlan: false, skipReview: true, autonomous: false },
+      },
+      pctx,
+    );
+
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind !== "failed") throw new Error("unreachable");
+    expect(outcome.error).toContain("Architecture reviewer failed");
+    const agents = runAgentFn.mock.calls.map((c) => c[0]);
+    expect(agents).toEqual(["planner", "architecture-reviewer"]);
+  });
+
+  it("returns failed when implementor fails and does not continue to refactorer", async () => {
+    const runAgentFn = sequencedRunAgent([{ output: "impl failed", status: "failed" }]);
+    const pctx = mockPipelineContext({ cwd: "/tmp", runAgentFn, execFn: emptyDiffExec() });
+
+    const outcome = await runImplementation(
+      {
+        issueContext: "ctx",
+        resolved,
+        flags: { skipPlan: true, skipReview: true, autonomous: false },
+      },
+      pctx,
+    );
+
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind !== "failed") throw new Error("unreachable");
+    expect(outcome.error).toContain("Implementor failed");
+    const agents = runAgentFn.mock.calls.map((c) => c[0]);
+    expect(agents).toEqual(["implementor"]);
+  });
+
+  it("returns failed when refactorer fails", async () => {
+    const runAgentFn = sequencedRunAgent([{ output: "implemented" }, { output: "refactor failed", status: "failed" }]);
+    const pctx = mockPipelineContext({ cwd: "/tmp", runAgentFn, execFn: emptyDiffExec() });
+
+    const outcome = await runImplementation(
+      {
+        issueContext: "ctx",
+        resolved,
+        flags: { skipPlan: true, skipReview: true, autonomous: false },
+      },
+      pctx,
+    );
+
+    expect(outcome.kind).toBe("failed");
+    if (outcome.kind !== "failed") throw new Error("unreachable");
+    expect(outcome.error).toContain("Refactorer failed");
+    const agents = runAgentFn.mock.calls.map((c) => c[0]);
+    expect(agents).toEqual(["implementor", "refactorer"]);
+  });
+
   it("propagates flags.autonomous into the implementor prompt", async () => {
     // autonomous=true → clause present
     const autoAgent = mockRunAgent("done");

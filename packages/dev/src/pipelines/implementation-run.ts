@@ -116,7 +116,8 @@ export async function runImplementation(input: RunInput, pctx: PipelineContext):
       stages,
     });
     if (planResult.failed) {
-      return { kind: "failed", stages, error: `Planner failed: ${planResult.plan}` };
+      const stageLabel = planResult.errorStage === "architecture-reviewer" ? "Architecture reviewer" : "Planner";
+      return { kind: "failed", stages, error: `${stageLabel} failed: ${planResult.plan}` };
     }
     if (planResult.cancelled) {
       return { kind: "cancelled", stages, reason: "Implementation cancelled." };
@@ -156,6 +157,12 @@ export async function runImplementation(input: RunInput, pctx: PipelineContext):
     initialForkFrom: planSessionPath,
   });
 
+  const implementorStage = stages.find((s) => s.name === "implementor");
+  if (implementorStage?.status === "failed") {
+    const detail = implementorStage.output || implementorStage.stderr || "Implementor exited with no output.";
+    return { kind: "failed", stages, error: `Implementor failed: ${detail}` };
+  }
+
   if (signalExists(pctx.cwd, "blocked")) {
     const reason = readSignal(pctx.cwd, "blocked") ?? "";
     return { kind: "blocked", stages, reason };
@@ -175,6 +182,12 @@ export async function runImplementation(input: RunInput, pctx: PipelineContext):
     plan,
     initialForkFrom: implementorResult.lastSessionPath,
   });
+
+  const refactorerStage = stages.find((s) => s.name === "refactorer");
+  if (refactorerStage?.status === "failed") {
+    const detail = refactorerStage.output || refactorerStage.stderr || "Refactorer exited with no output.";
+    return { kind: "failed", stages, error: `Refactorer failed: ${detail}` };
+  }
 
   // --- Review chain: reviewer → judge ---
   // resetFork on the reviewer preserves adversarial independence: the

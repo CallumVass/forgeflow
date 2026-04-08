@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
+import { SessionManager, withFileMutationQueue } from "@mariozechner/pi-coding-agent";
 import { loadAgent } from "./agent-loader.js";
 import { applyMessageToStage, extractFinalOutput, parseMessageLine } from "./message-parser.js";
 import { emptyStage, type RunAgentOpts, type StageResult } from "./pipeline.js";
@@ -29,6 +29,33 @@ async function writePromptToTempFile(name: string, prompt: string): Promise<{ di
   return { dir: tmpDir, filePath };
 }
 
+/**
+ * Materialise a forked session at a caller-chosen path.
+ *
+ * Pi's CLI rejects `--fork` together with `--session`, but forgeflow needs
+ * both semantics: inherit an earlier phase's history *and* keep deterministic
+ * per-stage session files under `.forgeflow/run/<runId>/`. To bridge that, we
+ * fork via the SDK into the target directory, then rename the generated file to
+ * the requested `sessionPath` and invoke pi with `--session <sessionPath>`.
+ */
+function materialiseForkedSession(sessionPath: string, forkFrom: string, cwd: string): void {
+  const dir = path.dirname(sessionPath);
+  fs.mkdirSync(dir, { recursive: true });
+
+  const forked = SessionManager.forkFrom(forkFrom, cwd, dir);
+  const forkedPath = forked.getSessionFile();
+  if (!forkedPath) {
+    throw new Error(`Failed to materialise forked session from ${forkFrom}`);
+  }
+
+  // Replace the pre-created empty target file from the run-dir allocator.
+  try {
+    fs.rmSync(sessionPath, { force: true });
+  } catch {}
+  fs.renameSync(forkedPath, sessionPath);
+  fs.chmodSync(sessionPath, 0o600);
+}
+
 /** Run a forgeflow agent as a sub-process with streaming updates. */
 export async function runAgent(agentName: string, task: string, options: RunAgentOpts): Promise<StageResult> {
   // Single source of truth: the agent's own .md frontmatter. Pipelines never
@@ -51,18 +78,22 @@ export async function runAgent(agentName: string, task: string, options: RunAgen
 
   const args: string[] = ["--mode", "json", "-p", "--tools", agent.tools.join(",")];
 
-  // Session wiring. Three cases in order of precedence:
-  //   1. sessionPath + forkFrom   → --fork <source> --session <target>
-  //      (the chain-builder threading real context across phases)
+  // Session wiring. Four cases in order of precedence:
+  //   1. sessionPath + forkFrom   → materialise fork into <target>, then
+  //      invoke pi with --session <target>
   //   2. sessionPath only         → --session <target>
   //      (auto-allocated by `withRunLifecycle` for cold-start phases)
-  //   3. neither                   → --no-session
+  //   3. forkFrom only            → --fork <source>
+  //      (caller wants inherited context but not a deterministic file path)
+  //   4. neither                  → --no-session
   //      (persistence disabled, or caller explicitly opted out)
-  if (options.sessionPath) {
-    if (options.forkFrom) {
-      args.push("--fork", options.forkFrom);
-    }
+  if (options.sessionPath && options.forkFrom) {
+    materialiseForkedSession(options.sessionPath, options.forkFrom, options.cwd);
     args.push("--session", options.sessionPath);
+  } else if (options.sessionPath) {
+    args.push("--session", options.sessionPath);
+  } else if (options.forkFrom) {
+    args.push("--fork", options.forkFrom);
   } else {
     args.push("--no-session");
   }
