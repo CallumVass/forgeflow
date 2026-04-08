@@ -1,4 +1,4 @@
-import { execSafe as defaultExecSafe, type ExecFn } from "@callumvass/forgeflow-shared/exec";
+import type { ExecFn } from "@callumvass/forgeflow-shared/pipeline";
 
 interface DiffTarget {
   diffCmd: string;
@@ -11,11 +11,7 @@ interface DiffTarget {
  * - `--branch <name>` → `git diff main...<name>`
  * - Empty → `git diff main...HEAD`, auto-detect PR from current branch
  */
-export async function resolveDiffTarget(
-  cwd: string,
-  target: string,
-  execFn: ExecFn = defaultExecSafe,
-): Promise<DiffTarget> {
+export async function resolveDiffTarget(cwd: string, target: string, execFn: ExecFn): Promise<DiffTarget> {
   if (target.match(/^\d+$/)) {
     return { diffCmd: `gh pr diff ${target}`, prNumber: target };
   }

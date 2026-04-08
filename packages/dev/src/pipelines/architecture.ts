@@ -1,9 +1,7 @@
-import { resolveRunAgent } from "@callumvass/forgeflow-shared/agent";
 import {
   emptyStage,
   type PipelineContext,
   pipelineResult,
-  type RunAgentFn,
   TOOLS_READONLY,
   toAgentOpts,
 } from "@callumvass/forgeflow-shared/pipeline";
@@ -39,12 +37,10 @@ export function parseCandidates(text: string): ArchitectureCandidate[] {
   return results;
 }
 
-export async function runArchitecture(pctx: PipelineContext, opts?: { runAgentFn?: RunAgentFn }) {
-  const { ctx } = pctx;
+export async function runArchitecture(pctx: PipelineContext) {
+  const { ctx, runAgentFn } = pctx;
   const stages = [emptyStage("architecture-reviewer")];
   const agentOpts = toAgentOpts(pctx, { stages, pipeline: "architecture" });
-
-  const runAgentFn = await resolveRunAgent(opts?.runAgentFn);
 
   // Phase 1: Explore codebase for friction
   const exploreResult = await runAgentFn(

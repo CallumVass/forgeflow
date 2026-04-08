@@ -1,8 +1,6 @@
-import { resolveRunAgent } from "@callumvass/forgeflow-shared/agent";
 import {
   type ForgeflowContext,
   type PipelineContext,
-  type RunAgentFn,
   type StageResult,
   TOOLS_READONLY,
   toAgentOpts,
@@ -55,12 +53,10 @@ export async function runPlanning(
   opts: PipelineContext & {
     interactive: boolean;
     stages: StageResult[];
-    runAgentFn?: RunAgentFn;
   },
 ): Promise<PlanResult> {
-  const { ctx, interactive, stages } = opts;
+  const { ctx, interactive, stages, runAgentFn } = opts;
 
-  const runAgentFn = await resolveRunAgent(opts.runAgentFn);
   const agentOpts = toAgentOpts(opts, { stages, pipeline: "implement" });
 
   const customPromptSection = customPrompt ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${customPrompt}` : "";

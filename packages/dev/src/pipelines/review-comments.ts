@@ -1,9 +1,6 @@
-import { resolveRunAgent } from "@callumvass/forgeflow-shared/agent";
-import { exec as defaultExec, type ExecFn } from "@callumvass/forgeflow-shared/exec";
 import {
   emptyStage,
   type PipelineContext,
-  type RunAgentFn,
   type StageResult,
   TOOLS_READONLY,
   toAgentOpts,
@@ -81,15 +78,11 @@ export async function proposeAndPostComments(
   opts: PipelineContext & {
     stages: StageResult[];
     pipeline?: string;
-    runAgentFn?: RunAgentFn;
-    execFn?: ExecFn;
   },
 ): Promise<void> {
-  const { cwd, ctx, stages } = opts;
+  const { cwd, ctx, stages, runAgentFn, execFn } = opts;
   const pipeline = opts.pipeline ?? "review";
-  const execFn = opts.execFn ?? defaultExec;
 
-  const runAgentFn = await resolveRunAgent(opts.runAgentFn);
   const agentOpts = toAgentOpts(opts, { stages, pipeline });
 
   const proposalPrompt = buildCommentProposalPrompt(findings, pr.number, pr.repo);

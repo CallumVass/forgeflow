@@ -1,4 +1,3 @@
-import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { type ConfluencePage, fetchConfluencePage } from "@callumvass/forgeflow-shared/confluence";
 import {
   emptyStage,
@@ -34,7 +33,7 @@ export async function runJiraIssues(docUrls: string[], exampleUrl: string, pctx:
   // Fetch all Confluence pages
   const docs: ConfluencePage[] = [];
   for (const url of docUrls) {
-    const result = await fetchConfluencePage(url);
+    const result = await fetchConfluencePage(url, pctx.execSafeFn);
     if (typeof result === "string") {
       return pipelineResult(`Failed to fetch doc: ${result}`, "create-jira-issues", [], true);
     }
@@ -43,7 +42,7 @@ export async function runJiraIssues(docUrls: string[], exampleUrl: string, pctx:
 
   let exampleSection = "";
   if (exampleUrl) {
-    const result = await fetchConfluencePage(exampleUrl);
+    const result = await fetchConfluencePage(exampleUrl, pctx.execSafeFn);
     if (typeof result === "string") {
       return pipelineResult(`Failed to fetch example: ${result}`, "create-jira-issues", [], true);
     }
@@ -64,7 +63,7 @@ ${!exampleUrl ? "No example ticket was provided. Use standard format: Summary, D
 
 Read the writing-style skill before writing any issue content.`;
 
-  await runAgent("jira-issue-creator", task, { ...opts, tools: TOOLS_ALL });
+  await pctx.runAgentFn("jira-issue-creator", task, { ...opts, tools: TOOLS_ALL });
 
   return pipelineResult("Jira issue creation complete.", "create-jira-issues", stages);
 }

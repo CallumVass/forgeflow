@@ -25,9 +25,9 @@ export async function runImplement(
     skipReview: false,
   },
 ) {
-  const { cwd, onUpdate, ctx } = pctx;
+  const { cwd, onUpdate, ctx, execFn } = pctx;
   const interactive = ctx.hasUI && !flags.autonomous;
-  const resolved = await resolveIssue(cwd, issueArg || undefined);
+  const resolved = await resolveIssue(cwd, issueArg || undefined, pctx);
   if (typeof resolved === "string") return pipelineResult(resolved, "implement", []);
 
   const isGH = resolved.source === "github" && resolved.number > 0;
@@ -42,7 +42,7 @@ export async function runImplement(
   const customPrompt = await askCustomPrompt(ctx, interactive);
 
   const buildPhaseContext = (stages: StageResult[]): PhaseContext => ({
-    cwd,
+    ...pctx,
     agentOpts: toAgentOpts(pctx, { stages, pipeline: "implement" }),
     stages,
   });
@@ -56,9 +56,9 @@ export async function runImplement(
 
   // --- Branch setup ---
   if (resolved.branch) {
-    const branchResult = await setupBranch(cwd, resolved.branch);
+    const branchResult = await setupBranch(cwd, resolved.branch, execFn);
     if (branchResult.status === "resumed") {
-      await ensurePr(cwd, resolved.title, buildPrBody(cwd, resolved), resolved.branch);
+      await ensurePr(cwd, resolved.title, buildPrBody(cwd, resolved), resolved.branch, execFn);
       const stages: StageResult[] = [];
       await refactorAndReview(buildPhaseContext(stages), flags.skipReview);
       return pipelineResult(`Resumed ${issueLabel} — pushed existing commits and created PR.`, "implement", stages);
@@ -95,15 +95,15 @@ export async function runImplement(
   // --- PR + Merge ---
   let prNumber = 0;
   if (resolved.branch) {
-    const prResult = await ensurePr(cwd, resolved.title, buildPrBody(cwd, resolved), resolved.branch);
+    const prResult = await ensurePr(cwd, resolved.title, buildPrBody(cwd, resolved), resolved.branch, execFn);
     prNumber = prResult.number;
   }
 
   if (!flags.autonomous && prNumber > 0) {
     const mergeStage = emptyStage("merge");
     stages.push(mergeStage);
-    await mergePr(cwd, prNumber);
-    await returnToMain(cwd);
+    await mergePr(cwd, prNumber, execFn);
+    await returnToMain(cwd, execFn);
     mergeStage.status = "done";
     mergeStage.output = `Merged PR #${prNumber}`;
     onUpdate?.(pipelineResult("Pipeline complete", "implement", stages));

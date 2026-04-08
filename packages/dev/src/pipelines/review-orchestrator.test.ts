@@ -1,4 +1,5 @@
-import { emptyStage, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
+import { emptyStage } from "@callumvass/forgeflow-shared/pipeline";
+import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { runReviewPipeline } from "./review-orchestrator.js";
 
@@ -36,12 +37,10 @@ function mockRunAgent(sideEffects: Array<() => void> = []) {
 }
 
 describe("runReviewPipeline", () => {
-  const baseOpts = () => ({
-    cwd: "/tmp",
-    signal: AbortSignal.timeout(5000),
-    stages: [] as StageResult[],
+  const baseOpts = (runAgentFn: ReturnType<typeof mockRunAgent>) => ({
+    ...mockPipelineContext({ cwd: "/tmp", agentsDir: "/tmp/agents", runAgentFn }),
+    stages: [],
     pipeline: "review",
-    agentsDir: "/tmp/agents",
   });
 
   beforeEach(() => {
@@ -52,10 +51,7 @@ describe("runReviewPipeline", () => {
     // After reviewer runs, no findings signal exists
     const runAgentFn = mockRunAgent([]);
 
-    const result = await runReviewPipeline("diff content", {
-      ...baseOpts(),
-      runAgentFn,
-    });
+    const result = await runReviewPipeline("diff content", baseOpts(runAgentFn));
 
     expect(result).toEqual({ passed: true });
     expect(runAgentFn).toHaveBeenCalledOnce();
@@ -73,10 +69,7 @@ describe("runReviewPipeline", () => {
       () => clearSignals(), // judge removes findings
     ]);
 
-    const result = await runReviewPipeline("diff content", {
-      ...baseOpts(),
-      runAgentFn,
-    });
+    const result = await runReviewPipeline("diff content", baseOpts(runAgentFn));
 
     expect(result).toEqual({ passed: true });
     expect(runAgentFn).toHaveBeenCalledTimes(2);
@@ -95,10 +88,7 @@ describe("runReviewPipeline", () => {
       () => setSignal("findings", "validated findings"),
     ]);
 
-    const result = await runReviewPipeline("diff content", {
-      ...baseOpts(),
-      runAgentFn,
-    });
+    const result = await runReviewPipeline("diff content", baseOpts(runAgentFn));
 
     expect(result).toEqual({ passed: false, findings: "validated findings" });
     expect(runAgentFn).toHaveBeenCalledTimes(2);
@@ -107,11 +97,7 @@ describe("runReviewPipeline", () => {
   it("includes custom prompt as extra instructions when provided", async () => {
     const runAgentFn = mockRunAgent([]);
 
-    await runReviewPipeline("diff content", {
-      ...baseOpts(),
-      customPrompt: "Check for SQL injection",
-      runAgentFn,
-    });
+    await runReviewPipeline("diff content", { ...baseOpts(runAgentFn), customPrompt: "Check for SQL injection" });
 
     expect(runAgentFn).toHaveBeenCalledWith(
       "code-reviewer",

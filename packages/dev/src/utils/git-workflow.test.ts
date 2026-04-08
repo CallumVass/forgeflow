@@ -1,20 +1,10 @@
-import type { ExecFn } from "@callumvass/forgeflow-shared/exec";
+import { mockExecFn } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
 import { ensurePr, mergePr, returnToMain, setupBranch, verifyOnBranch } from "./git-workflow.js";
 
-/** Helper: create an exec mock that resolves with scripted responses */
-function mockExec(responses: Record<string, string> = {}): ExecFn {
-  return vi.fn(async (cmd: string, _cwd?: string) => {
-    for (const [pattern, response] of Object.entries(responses)) {
-      if (cmd.includes(pattern)) return response;
-    }
-    return "";
-  });
-}
-
 describe("setupBranch", () => {
   it("creates a fresh branch when no prior commits exist ahead of main", async () => {
-    const execFn = mockExec({
+    const execFn = mockExecFn({
       "rev-list": "0",
       "checkout -b": "",
       "branch --show-current": "feat/issue-42",
@@ -27,7 +17,7 @@ describe("setupBranch", () => {
   });
 
   it("resumes an existing branch with commits ahead and returns ahead count", async () => {
-    const execFn = mockExec({
+    const execFn = mockExecFn({
       "rev-list": "3",
       "checkout feat": "",
       "branch --show-current": "feat/issue-42",
@@ -39,7 +29,7 @@ describe("setupBranch", () => {
   });
 
   it("returns failed when branch checkout does not land on expected branch", async () => {
-    const execFn = mockExec({
+    const execFn = mockExecFn({
       "rev-list": "0",
       "checkout -b": "",
       "branch --show-current": "main",
@@ -56,7 +46,7 @@ describe("setupBranch", () => {
 
 describe("ensurePr", () => {
   it("creates a PR when none exists and returns created: true", async () => {
-    const execFn = mockExec({
+    const execFn = mockExecFn({
       "pr list": "",
       "pr create": "https://github.com/repo/pull/7",
     });
@@ -68,7 +58,7 @@ describe("ensurePr", () => {
   });
 
   it("returns the existing PR number when one already exists", async () => {
-    const execFn = mockExec({
+    const execFn = mockExecFn({
       "pr list": "5",
     });
 
@@ -80,7 +70,7 @@ describe("ensurePr", () => {
 
 describe("mergePr", () => {
   it("squash-merges and succeeds when gh reports merge", async () => {
-    const execFn = mockExec({
+    const execFn = mockExecFn({
       "pr merge": "Merged",
     });
 
@@ -111,7 +101,7 @@ describe("mergePr", () => {
 
 describe("returnToMain", () => {
   it("checks out main and pulls", async () => {
-    const execFn = mockExec({});
+    const execFn = mockExecFn({});
 
     await returnToMain("/tmp", execFn);
 
@@ -122,7 +112,7 @@ describe("returnToMain", () => {
 
 describe("verifyOnBranch", () => {
   it("does not throw when on the expected branch", async () => {
-    const execFn = mockExec({
+    const execFn = mockExecFn({
       "branch --show-current": "feat/issue-42",
     });
 
@@ -130,7 +120,7 @@ describe("verifyOnBranch", () => {
   });
 
   it("throws when on the wrong branch", async () => {
-    const execFn = mockExec({
+    const execFn = mockExecFn({
       "branch --show-current": "main",
     });
 

@@ -8,7 +8,7 @@ vi.mock("node:fs", async (importOriginal) => {
 });
 
 import { emptyStage, type ForgeflowContext } from "@callumvass/forgeflow-shared/pipeline";
-import { mockForgeflowContext, mockRunAgent } from "@callumvass/forgeflow-shared/testing";
+import { mockForgeflowContext, mockPipelineContext, mockRunAgent } from "@callumvass/forgeflow-shared/testing";
 
 function mockCtx(
   opts: { hasUI?: boolean; editorResult?: string | undefined; selectResult?: string | undefined } = {},
@@ -24,17 +24,18 @@ function mockCtx(
 }
 
 function baseOpts(overrides: Partial<QaLoopOptions> = {}): QaLoopOptions {
-  return {
+  const pctx = mockPipelineContext({
     cwd: "/tmp/test",
-    signal: AbortSignal.timeout(5000),
+    agentsDir: "/agents",
+    runAgentFn: overrides.runAgentFn ?? mockRunAgent(),
+    ctx: overrides.ctx ?? mockCtx(),
+  });
+  return {
+    ...pctx,
     stages: [],
     pipeline: "test",
-    agentsDir: "/agents",
-    onUpdate: undefined,
-    ctx: mockCtx(),
     maxIterations: 10,
     criticPrompt: "Review PRD.md",
-    runAgentFn: mockRunAgent(),
     signalExistsFn: vi.fn(() => false),
     ...overrides,
   };

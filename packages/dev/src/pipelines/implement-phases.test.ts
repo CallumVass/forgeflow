@@ -1,14 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 
-// We'll need these mocks for reviewAndFix and refactorAndReview tests later
-vi.mock("@callumvass/forgeflow-shared/agent", () => ({
-  runAgent: vi.fn(async () => ({ output: "", status: "done" })),
-}));
-
-vi.mock("@callumvass/forgeflow-shared/exec", () => ({
-  exec: vi.fn(async () => "diff content"),
-}));
-
 vi.mock("@callumvass/forgeflow-shared/pipeline", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return {
@@ -23,9 +14,8 @@ vi.mock("./review-orchestrator.js", () => ({
   runReviewPipeline: vi.fn(async () => ({ passed: true })),
 }));
 
-import { runAgent } from "@callumvass/forgeflow-shared/agent";
-import { exec } from "@callumvass/forgeflow-shared/exec";
-import { type RunAgentOpts, readSignal, signalExists } from "@callumvass/forgeflow-shared/pipeline";
+import { readSignal, signalExists } from "@callumvass/forgeflow-shared/pipeline";
+import { mockExecFn, mockPipelineContext, mockRunAgent } from "@callumvass/forgeflow-shared/testing";
 import {
   buildImplementorPrompt,
   type PhaseContext,
@@ -90,41 +80,49 @@ describe("buildImplementorPrompt", () => {
   });
 });
 
-function makePhaseContext(overrides?: Partial<PhaseContext>): PhaseContext {
-  return {
-    cwd: "/tmp",
+interface PhaseSpies {
+  pctx: PhaseContext;
+  runAgentFn: ReturnType<typeof mockRunAgent>;
+  execFn: ReturnType<typeof mockExecFn>;
+}
+
+function makePhaseContext(
+  runAgentFn: ReturnType<typeof mockRunAgent> = mockRunAgent(),
+  execFn: ReturnType<typeof mockExecFn> = mockExecFn(),
+): PhaseSpies {
+  const base = mockPipelineContext({ cwd: "/tmp", runAgentFn, execFn });
+  const pctx: PhaseContext = {
+    ...base,
     agentOpts: {
       agentsDir: "/agents",
       cwd: "/tmp",
       stages: [],
       pipeline: "implement",
-    } satisfies RunAgentOpts,
+    },
     stages: [],
-    ...overrides,
   };
+  return { pctx, runAgentFn, execFn };
 }
 
 describe("reviewAndFix", () => {
   it("skips review when git diff returns empty string", async () => {
-    vi.mocked(exec).mockResolvedValueOnce("");
+    const { pctx, execFn } = makePhaseContext(mockRunAgent(), mockExecFn({ "git diff": "" }));
     vi.mocked(runReviewPipeline).mockClear();
 
-    const pctx = makePhaseContext();
     await reviewAndFix(pctx);
 
+    expect(execFn).toHaveBeenCalledWith("git diff main...HEAD", "/tmp");
     expect(runReviewPipeline).not.toHaveBeenCalled();
   });
 
   it("calls runReviewPipeline with diff and runs fix-findings agent when review fails", async () => {
-    vi.mocked(exec).mockResolvedValueOnce("some diff");
+    const { pctx, runAgentFn } = makePhaseContext(mockRunAgent(), mockExecFn({ "git diff": "some diff" }));
     vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: false, findings: "Some findings" });
-    vi.mocked(runAgent).mockClear();
 
-    const pctx = makePhaseContext();
     await reviewAndFix(pctx);
 
     expect(runReviewPipeline).toHaveBeenCalledWith("some diff", expect.objectContaining({ cwd: "/tmp" }));
-    expect(runAgent).toHaveBeenCalledWith(
+    expect(runAgentFn).toHaveBeenCalledWith(
       "implementor",
       expect.stringContaining("Fix the following code review findings"),
       expect.objectContaining({ stageName: "fix-findings" }),
@@ -132,43 +130,38 @@ describe("reviewAndFix", () => {
   });
 
   it("does not invoke fix-findings agent when review passes", async () => {
-    vi.mocked(exec).mockResolvedValueOnce("some diff");
+    const { pctx, runAgentFn } = makePhaseContext(mockRunAgent(), mockExecFn({ "git diff": "some diff" }));
     vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: true });
-    vi.mocked(runAgent).mockClear();
 
-    const pctx = makePhaseContext();
     await reviewAndFix(pctx);
 
     expect(runReviewPipeline).toHaveBeenCalled();
-    expect(runAgent).not.toHaveBeenCalled();
+    expect(runAgentFn).not.toHaveBeenCalled();
   });
 });
 
 describe("refactorAndReview", () => {
   it("runs refactorer agent then delegates to reviewAndFix; skips review when skipReview is true", async () => {
-    vi.mocked(exec).mockResolvedValue("");
-    vi.mocked(runAgent).mockClear();
+    const { pctx, runAgentFn } = makePhaseContext(mockRunAgent(), mockExecFn({ "git diff": "" }));
     vi.mocked(runReviewPipeline).mockClear();
 
-    const pctx = makePhaseContext();
     await refactorAndReview(pctx, true);
 
-    expect(runAgent).toHaveBeenCalledWith("refactorer", expect.stringContaining("Refactor"), expect.any(Object));
+    expect(runAgentFn).toHaveBeenCalledWith("refactorer", expect.stringContaining("Refactor"), expect.any(Object));
     // skipReview=true means no review
     expect(runReviewPipeline).not.toHaveBeenCalled();
   });
 });
 
 describe("runImplementorPhase", () => {
-  it("calls runAgent with the prompt and returns blocked reason when blocked signal exists", async () => {
+  it("calls pctx.runAgentFn with the prompt and returns blocked reason when blocked signal exists", async () => {
+    const { pctx, runAgentFn } = makePhaseContext();
     vi.mocked(signalExists).mockReturnValueOnce(true);
     vi.mocked(readSignal).mockReturnValueOnce("blocked reason");
-    vi.mocked(runAgent).mockClear();
 
-    const pctx = makePhaseContext();
     const result = await runImplementorPhase(pctx, "test prompt");
 
-    expect(runAgent).toHaveBeenCalledWith(
+    expect(runAgentFn).toHaveBeenCalledWith(
       "implementor",
       "test prompt",
       expect.objectContaining({ tools: expect.any(Array) }),
@@ -177,13 +170,12 @@ describe("runImplementorPhase", () => {
   });
 
   it("returns null when no blocked signal exists", async () => {
+    const { pctx, runAgentFn } = makePhaseContext();
     vi.mocked(signalExists).mockReturnValueOnce(false);
-    vi.mocked(runAgent).mockClear();
 
-    const pctx = makePhaseContext();
     const result = await runImplementorPhase(pctx, "test prompt");
 
-    expect(runAgent).toHaveBeenCalledWith("implementor", "test prompt", expect.any(Object));
+    expect(runAgentFn).toHaveBeenCalledWith("implementor", "test prompt", expect.any(Object));
     expect(result).toBeNull();
   });
 });

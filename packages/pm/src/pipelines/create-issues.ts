@@ -1,5 +1,4 @@
 import * as fs from "node:fs";
-import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import {
   emptyStage,
   type PipelineContext,
@@ -22,7 +21,7 @@ export async function runCreateIssue(idea: string, pctx: PipelineContext) {
   const stages = [emptyStage("gh-single-issue-creator")];
   const opts = toAgentOpts(pctx, { stages, pipeline: "create-issue" });
 
-  await runAgent("gh-single-issue-creator", idea, { ...opts, tools: TOOLS_NO_EDIT });
+  await pctx.runAgentFn("gh-single-issue-creator", idea, { ...opts, tools: TOOLS_NO_EDIT });
 
   return pipelineResult("Issue created.", "create-issue", stages);
 }
@@ -35,7 +34,7 @@ export async function runCreateIssues(pctx: PipelineContext) {
   const stages = [emptyStage("gh-issue-creator")];
   const opts = toAgentOpts(pctx, { stages, pipeline: "create-issues" });
 
-  await runAgent(
+  await pctx.runAgentFn(
     "gh-issue-creator",
     "Decompose PRD.md into vertical-slice GitHub issues. Read the issue-template skill for the standard format.",
     { ...opts, tools: TOOLS_NO_EDIT },

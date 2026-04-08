@@ -1,4 +1,5 @@
 import { type Mock, vi } from "vitest";
+import type { ExecFn } from "./exec.js";
 import type { ForgeflowContext, ForgeflowTheme, ForgeflowUI, PipelineContext } from "./pipeline.js";
 import { emptyStage, type RunAgentFn, type StageResult } from "./pipeline.js";
 
@@ -56,7 +57,25 @@ export function sequencedRunAgent(responses: Array<{ output: string; status?: St
   }) as unknown as RunAgentFn;
 }
 
-/** Create a minimal PipelineContext for testing. */
+/**
+ * Create a mock ExecFn that returns scripted responses based on substring matches.
+ * Falls through to an empty string when no pattern matches. Use for both `execFn`
+ * (throwing variant) and `execSafeFn` (silent variant) at test boundaries.
+ */
+export function mockExecFn(responses: Record<string, string> = {}): Mock<ExecFn> {
+  return vi.fn(async (cmd: string, _cwd?: string) => {
+    for (const [pattern, response] of Object.entries(responses)) {
+      if (cmd.includes(pattern)) return response;
+    }
+    return "";
+  });
+}
+
+/**
+ * Create a minimal PipelineContext for testing. Defaults `runAgentFn`, `execFn`,
+ * and `execSafeFn` to fresh `vi.fn()` spies so tests never spawn real sub-processes
+ * or shell commands. Override any field by passing it in the overrides object.
+ */
 export function mockPipelineContext(overrides?: Partial<PipelineContext>): PipelineContext {
   return {
     cwd: "/tmp/test",
@@ -64,6 +83,9 @@ export function mockPipelineContext(overrides?: Partial<PipelineContext>): Pipel
     onUpdate: undefined,
     ctx: mockForgeflowContext(overrides?.ctx ? { hasUI: overrides.ctx.hasUI, cwd: overrides.ctx.cwd } : undefined),
     agentsDir: "/tmp/agents",
+    runAgentFn: mockRunAgent(),
+    execFn: vi.fn(async () => "") as Mock<ExecFn>,
+    execSafeFn: vi.fn(async () => "") as Mock<ExecFn>,
     ...overrides,
   };
 }

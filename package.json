@@ -14,7 +14,7 @@
     "lint": "biome check --error-on-warnings packages/*/src/",
     "lint:fix": "biome check --fix --error-on-warnings packages/*/src/",
     "knip": "knip",
-    "check": "npm run typecheck && npm run lint && npm run knip && npm run test",
+    "check": "npm run typecheck && npm run lint && npm run knip && bash scripts/check-pipeline-seams.sh && npm run test",
     "test": "vitest run"
   },
   "devDependencies": {

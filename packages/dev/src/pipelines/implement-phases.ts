@@ -1,8 +1,7 @@
-import { runAgent } from "@callumvass/forgeflow-shared/agent";
-import { exec } from "@callumvass/forgeflow-shared/exec";
 import {
   cleanSignal,
   emptyStage,
+  type PipelineContext,
   type RunAgentOpts,
   readSignal,
   type StageResult,
@@ -12,25 +11,28 @@ import {
 import type { ResolvedIssue } from "../utils/git.js";
 import { runReviewPipeline } from "./review-orchestrator.js";
 
-export interface PhaseContext {
-  cwd: string;
+/**
+ * Per-phase context: a `PipelineContext` (carrying the `runAgentFn` /
+ * `execFn` seams) plus the live `agentOpts` and `stages` for the current
+ * implementation phase.
+ */
+export interface PhaseContext extends PipelineContext {
   agentOpts: RunAgentOpts;
   stages: StageResult[];
 }
 
 /** Run code review on the branch diff and auto-fix findings if any. */
 export async function reviewAndFix(pctx: PhaseContext, pipeline = "implement"): Promise<void> {
-  const diff = await exec("git diff main...HEAD", pctx.cwd);
+  const diff = await pctx.execFn("git diff main...HEAD", pctx.cwd);
   if (!diff) return;
-  const opts = { ...pctx.agentOpts, pipeline };
-  const reviewResult = await runReviewPipeline(diff, opts);
+  const reviewResult = await runReviewPipeline(diff, { ...pctx, stages: pctx.stages, pipeline });
   if (!reviewResult.passed) {
     const findings = reviewResult.findings ?? "";
     pctx.stages.push(emptyStage("fix-findings"));
-    await runAgent(
+    await pctx.runAgentFn(
       "implementor",
       `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
-      { ...opts, tools: TOOLS_ALL, stageName: "fix-findings" },
+      { ...pctx.agentOpts, pipeline, tools: TOOLS_ALL, stageName: "fix-findings" },
     );
     cleanSignal(pctx.cwd, "findings");
   }
@@ -42,12 +44,11 @@ export async function refactorAndReview(
   skipReview: boolean,
   pipeline = "implement",
 ): Promise<void> {
-  const opts = { ...pctx.agentOpts, pipeline };
   if (!pctx.stages.some((s) => s.name === "refactorer")) pctx.stages.push(emptyStage("refactorer"));
-  await runAgent(
+  await pctx.runAgentFn(
     "refactorer",
     "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit and push if changed.",
-    { ...opts, tools: TOOLS_ALL },
+    { ...pctx.agentOpts, pipeline, tools: TOOLS_ALL },
   );
 
   if (!skipReview) {
@@ -58,7 +59,7 @@ export async function refactorAndReview(
 /** Run the implementor agent and check for blocked signal. Returns blocked reason or null. */
 export async function runImplementorPhase(pctx: PhaseContext, prompt: string): Promise<string | null> {
   cleanSignal(pctx.cwd, "blocked");
-  await runAgent("implementor", prompt, { ...pctx.agentOpts, tools: TOOLS_ALL });
+  await pctx.runAgentFn("implementor", prompt, { ...pctx.agentOpts, tools: TOOLS_ALL });
 
   if (signalExists(pctx.cwd, "blocked")) {
     return readSignal(pctx.cwd, "blocked") ?? "";

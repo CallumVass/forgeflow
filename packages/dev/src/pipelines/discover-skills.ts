@@ -1,4 +1,3 @@
-import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import {
   emptyStage,
   type PipelineContext,
@@ -25,7 +24,7 @@ export async function runDiscoverSkills(query: string, pctx: PipelineContext) {
   // Install mode needs write access, discover mode is read-only
   const tools = isInstall ? TOOLS_ALL : TOOLS_NO_EDIT;
 
-  const result = await runAgent("skill-discoverer", task, { ...opts, tools });
+  const result = await pctx.runAgentFn("skill-discoverer", task, { ...opts, tools });
 
   return pipelineResult(result.output || "No skills found.", "discover-skills", stages);
 }
