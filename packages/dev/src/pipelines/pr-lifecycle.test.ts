@@ -1,17 +1,10 @@
 import { emptyStage, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
 import { mockExecFn, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
-import type { ResolvedIssue } from "../utils/git.js";
+import { makeGitHubResolvedIssue } from "../utils/issue-tracker.fixtures.js";
 import { finalisePr } from "./pr-lifecycle.js";
 
-const githubResolved: ResolvedIssue = {
-  source: "github",
-  key: "42",
-  number: 42,
-  title: "Test issue",
-  body: "body",
-  branch: "feat/issue-42",
-};
+const githubResolved = makeGitHubResolvedIssue({ body: "body" });
 
 /** Scripted responses for the git/gh commands `finalisePr` drives. */
 function execResponses(overrides: Record<string, string> = {}): ReturnType<typeof mockExecFn> {

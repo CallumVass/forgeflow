@@ -6,7 +6,7 @@ import {
   type StageResult,
   sumUsage,
 } from "@callumvass/forgeflow-shared/pipeline";
-import { findPrNumber, mergePr, returnToMain } from "../utils/git-workflow.js";
+import { findPrNumber, mergePr, returnToMain } from "../utils/pr-lifecycle.js";
 import { setForgeflowStatus, updateProgressWidget } from "../utils/ui.js";
 import { runImplement } from "./implement.js";
 

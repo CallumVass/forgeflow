@@ -1,48 +1,6 @@
 import { mockExecFn } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
-import { ensurePr, mergePr, returnToMain, setupBranch, verifyOnBranch } from "./git-workflow.js";
-
-describe("setupBranch", () => {
-  it("creates a fresh branch when no prior commits exist ahead of main", async () => {
-    const execFn = mockExecFn({
-      "rev-list": "0",
-      "checkout -b": "",
-      "branch --show-current": "feat/issue-42",
-    });
-
-    const result = await setupBranch("/tmp", "feat/issue-42", execFn);
-
-    expect(result).toEqual({ status: "fresh" });
-    expect(execFn).toHaveBeenCalledWith(expect.stringContaining("checkout -b"), "/tmp");
-  });
-
-  it("resumes an existing branch with commits ahead and returns ahead count", async () => {
-    const execFn = mockExecFn({
-      "rev-list": "3",
-      "checkout feat": "",
-      "branch --show-current": "feat/issue-42",
-    });
-
-    const result = await setupBranch("/tmp", "feat/issue-42", execFn);
-
-    expect(result).toEqual({ status: "resumed", ahead: 3 });
-  });
-
-  it("returns failed when branch checkout does not land on expected branch", async () => {
-    const execFn = mockExecFn({
-      "rev-list": "0",
-      "checkout -b": "",
-      "branch --show-current": "main",
-    });
-
-    const result = await setupBranch("/tmp", "feat/issue-42", execFn);
-
-    expect(result).toEqual({
-      status: "failed",
-      error: expect.stringContaining("feat/issue-42"),
-    });
-  });
-});
+import { ensurePr, findPrNumber, mergePr, returnToMain } from "./pr-lifecycle.js";
 
 describe("ensurePr", () => {
   it("creates a PR when none exists and returns created: true", async () => {
@@ -65,6 +23,19 @@ describe("ensurePr", () => {
     const result = await ensurePr("/tmp", "My title", "Body", "feat/issue-42", execFn);
 
     expect(result).toEqual({ number: 5, created: false });
+  });
+});
+
+describe("findPrNumber", () => {
+  it("parses the gh pr list output as a PR number when present, and returns null on empty/'null' output", async () => {
+    const present = mockExecFn({ "pr list": "42" });
+    expect(await findPrNumber("/tmp", "feat/issue-42", present)).toBe(42);
+
+    const empty = mockExecFn({ "pr list": "" });
+    expect(await findPrNumber("/tmp", "feat/issue-42", empty)).toBeNull();
+
+    const literalNull = mockExecFn({ "pr list": "null" });
+    expect(await findPrNumber("/tmp", "feat/issue-42", literalNull)).toBeNull();
   });
 });
 
@@ -107,23 +78,5 @@ describe("returnToMain", () => {
 
     expect(execFn).toHaveBeenCalledWith(expect.stringContaining("checkout main"), "/tmp");
     expect(execFn).toHaveBeenCalledWith(expect.stringContaining("pull"), "/tmp");
-  });
-});
-
-describe("verifyOnBranch", () => {
-  it("does not throw when on the expected branch", async () => {
-    const execFn = mockExecFn({
-      "branch --show-current": "feat/issue-42",
-    });
-
-    await expect(verifyOnBranch("/tmp", "feat/issue-42", execFn)).resolves.toBeUndefined();
-  });
-
-  it("throws when on the wrong branch", async () => {
-    const execFn = mockExecFn({
-      "branch --show-current": "main",
-    });
-
-    await expect(verifyOnBranch("/tmp", "feat/issue-42", execFn)).rejects.toThrow(/expected.*feat\/issue-42.*main/i);
   });
 });

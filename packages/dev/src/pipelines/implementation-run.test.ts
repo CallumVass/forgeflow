@@ -1,6 +1,6 @@
 import { mockExecFn, mockPipelineContext, mockRunAgent, sequencedRunAgent } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
-import type { ResolvedIssue } from "../utils/git.js";
+import { makeGitHubResolvedIssue } from "../utils/issue-tracker.fixtures.js";
 import { runImplementation } from "./implementation-run.js";
 
 // `reviewAndFix` / `runImplementorPhase` poke at filesystem-backed signals.
@@ -15,14 +15,7 @@ vi.mock("@callumvass/forgeflow-shared/pipeline", async (importOriginal) => {
   };
 });
 
-const resolved: ResolvedIssue = {
-  source: "github",
-  key: "42",
-  number: 42,
-  title: "Test issue",
-  body: "Issue body",
-  branch: "feat/issue-42",
-};
+const resolved = makeGitHubResolvedIssue();
 
 function emptyDiffExec() {
   return mockExecFn({ "git diff": "" });
