@@ -31,17 +31,22 @@ npx pi install @callumvass/forgeflow-pm
 
 ## Skills
 
-- **issue-template** — Standard format for GitHub issues
+- **issue-template** — Standard format for GitHub issues, including the mandatory size budget (≤15 tests / ≤10 files / ≤1 integration site), the `## TDD Rehearsal` output section, and the post-draft skill-as-linter audit. Both `create-gh-issue` and `create-gh-issues` enforce these rules via pre-flight checks.
 - **prd-quality** — PRD completeness and quality criteria
 - **writing-style** — Consistent tone and formatting rules
 
+## Sub-agent sessions
+
+PM pipelines run through the same `.forgeflow/run/<runId>/` lifecycle as the dev pipelines: each invocation of `create-gh-issues`, `create-gh-issue`, `prd-qa`, `continue`, `investigate`, and `create-jira-issues` is bracketed by `withRunLifecycle`, sub-agents persist their sessions to disk, and the run directory is archived on success or retained on failure for `pi --resume` inspection. See the dev package README for full lifecycle details and the `sessions.persist` opt-out.
+
 ## Configuration
 
-Forgeflow reads optional per-agent model and thinking-level overrides from
-`.forgeflow.json` (nearest one walked up from the current directory) merged
-over `~/.pi/agent/forgeflow.json` (global). Project entries replace whole
-global entries at the agent level. Both files are optional — with neither,
-every sub-agent inherits the parent pi session's model and thinking level.
+Forgeflow reads optional per-agent model and thinking-level overrides plus
+sub-agent session persistence settings from `.forgeflow.json` (nearest one
+walked up from the current directory) merged over `~/.pi/agent/forgeflow.json`
+(global). Both files are optional — with neither, every sub-agent inherits
+the parent pi session's model and thinking level and sessions persist with
+the default retention.
 
 ```json
 {
@@ -50,6 +55,11 @@ every sub-agent inherits the parent pi session's model and thinking level.
     "prd-architect":        { "model": "claude-sonnet-4", "thinkingLevel": "medium" },
     "gh-issue-creator":     { "thinkingLevel": "high" },
     "investigator":         { "thinkingLevel": "high" }
+  },
+  "sessions": {
+    "persist":        true,
+    "archiveRuns":    20,
+    "archiveMaxAge":  30
   }
 }
 ```

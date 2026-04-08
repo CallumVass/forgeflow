@@ -36,13 +36,25 @@ npx pi install @callumvass/forgeflow-dev
 - **stitch** — UI design reference integration
 - **plugins** — Domain-specific review plugin router
 
+## Sub-agent sessions and the fork architecture
+
+`/implement` runs sub-agents in two chains joined by a hard boundary:
+
+- **Build chain** — `planner` → `architecture-reviewer` → `implementor` → `refactorer`. Every phase is forked from the previous one via `pi --fork`, so the implementor inherits the planner's file reads, the architecture-reviewer's critique, and everything else as real conversation history. No re-exploration, no prompt blobs.
+- **Review chain** — `code-reviewer` → `review-judge` → `fix-findings`. The reviewer cold-starts to preserve adversarial independence from the build chain; the judge and fix-findings then fork within the review chain so they inherit the reviewer's cold-eye reads plus findings without picking up the implementor's reasoning.
+
+Sub-agent sessions persist under `.forgeflow/run/<runId>/` (gitignored on first creation) so any phase is resumable via `pi --resume .forgeflow/run/<runId>/<nn>-<agent>.jsonl`. On success the directory is moved under `.forgeflow/run/archive/<timestamp>-<runId>-success/`; on failure or interruption it stays in place for inspection until the next run archives it. Archived runs are GC'd on pipeline entry: the newest 20 survive, anything older than 30 days is pruned.
+
+`/implement-all` also waits for CI to finish on each PR before merging. If any check fails, it fetches the failed-job logs via `gh run view --log-failed`, spawns the implementor to fix the failures, and re-waits. Capped at three fix attempts per PR; the cap means a genuinely broken PR cannot loop forever.
+
 ## Configuration
 
-Forgeflow reads optional per-agent model and thinking-level overrides from
-`.forgeflow.json` (nearest one walked up from the current directory) merged
-over `~/.pi/agent/forgeflow.json` (global). Project entries replace whole
-global entries at the agent level. Both files are optional — with neither,
-every sub-agent inherits the parent pi session's model and thinking level.
+Forgeflow reads optional per-agent model and thinking-level overrides plus
+sub-agent session persistence settings from `.forgeflow.json` (nearest one
+walked up from the current directory) merged over `~/.pi/agent/forgeflow.json`
+(global). Project entries replace whole global entries at the agent level;
+the `sessions` block merges field-by-field so a project file that tweaks one
+retention knob does not clobber a global opt-out. Both files are optional.
 
 ```json
 {
@@ -51,6 +63,11 @@ every sub-agent inherits the parent pi session's model and thinking level.
     "implementor":      { "model": "claude-sonnet-4", "thinkingLevel": "medium" },
     "code-reviewer":    { "thinkingLevel": "high" },
     "review-judge":     { "thinkingLevel": "high" }
+  },
+  "sessions": {
+    "persist":        true,
+    "archiveRuns":    20,
+    "archiveMaxAge":  30
   }
 }
 ```
@@ -59,6 +76,13 @@ Valid `thinkingLevel` values: `off`, `minimal`, `low`, `medium`, `high`,
 `xhigh`. Invalid values and malformed JSON are reported via the pi
 notification UI and dropped; the pipeline still runs with inherited
 defaults.
+
+**Opt-out for sensitive projects.** Setting `sessions.persist` to `false`
+reverts every sub-agent to the legacy `--no-session` behaviour project-wide:
+no run directory is created, nothing is written to disk, and fork-based
+context sharing is disabled. Use this for projects whose agents routinely
+read secrets or private source you do not want materialised in session
+files.
 
 ## Usage examples
 
