@@ -1,10 +1,11 @@
 import type { SessionEntry } from "@mariozechner/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ExtensionConfig } from "./extension.js";
-import { __resetStagesOverlayRegistryForTests, createForgeflowExtension } from "./extension.js";
+import { createForgeflowExtension } from "./extension.js";
+import { resetStagesOverlayRegistry } from "./extension-registry.js";
+import type { ExtensionConfig } from "./extension-types.js";
 import type { PipelineDetails, StageResult } from "./pipeline.js";
 import { findLatestPipelineDetails, openStagesOverlay } from "./stages-overlay.js";
-import { makeStage, mockForgeflowContext, mockPi } from "./test-utils.js";
+import { makeStage, mockExtensionConfig, mockForgeflowContext, mockPi } from "./test-utils.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -93,23 +94,7 @@ function getShortcutHandler(pi: ReturnType<typeof mockPi>, key: string) {
 }
 
 function minimalConfig(overrides?: Partial<ExtensionConfig>): ExtensionConfig {
-  return {
-    toolName: "forgeflow-test",
-    toolLabel: "Forgeflow Test",
-    description: "Test extension",
-    params: {},
-    pipelines: [
-      {
-        name: "alpha",
-        execute: vi.fn(async () => ({
-          content: [{ type: "text" as const, text: "done" }],
-          details: { pipeline: "alpha", stages: [] } as PipelineDetails,
-        })),
-      },
-    ],
-    commands: [],
-    ...overrides,
-  };
+  return mockExtensionConfig({ params: {}, commands: [], ...overrides });
 }
 
 interface CustomCapture {
@@ -171,7 +156,7 @@ function mountStagesComponent(
 
 beforeEach(() => {
   entryCounter = 0;
-  __resetStagesOverlayRegistryForTests();
+  resetStagesOverlayRegistry();
 });
 
 // ─── findLatestPipelineDetails ────────────────────────────────────────

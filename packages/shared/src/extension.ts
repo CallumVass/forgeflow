@@ -1,251 +1,32 @@
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { Text } from "@mariozechner/pi-tui";
-import { Type } from "@sinclair/typebox";
-import type { ForgeflowContext, ForgeflowTheme } from "./pipeline.js";
-import { type OnUpdate, type PipelineDetails, pipelineResult } from "./pipeline.js";
-import { renderResult as sharedRenderResult } from "./stage-renderer.js";
-import { openStagesOverlay } from "./stages-overlay.js";
-import { buildWidgetLines } from "./widget.js";
+import { registerForgeflowCommands } from "./extension-commands.js";
+import { buildSchema } from "./extension-schema.js";
+import { registerForgeflowTool } from "./extension-tool.js";
+import type { ExtensionConfig } from "./extension-types.js";
 
-// ─── Shared stages-overlay registration ──────────────────────────────
+// ─── Public re-exports ───────────────────────────────────────────────
 //
-// Multiple forgeflow extensions (e.g. forgeflow-pm and forgeflow-dev) can be
-// installed side by side. Each call to `createForgeflowExtension` used to
-// register its own `/stages` command and `Ctrl+Shift+S` shortcut, which made
-// pi log a shortcut conflict at startup and meant only one extension's tool
-// name was visible to the overlay.
-//
-// Instead we keep a single process-wide registry of forgeflow tool names on
-// `globalThis` and register the command + shortcut exactly once (on the first
-// extension to load). The handlers read the live set, so any extension that
-// loads later still has its tool name considered when the overlay opens.
+// Consumers (`forgeflow-pm`, `forgeflow-dev`, and any external extension)
+// import everything they need from `@callumvass/forgeflow-shared/extension`,
+// so this module is the single public entry point. The implementation lives
+// in sibling modules (`extension-types`, `extension-message`,
+// `extension-schema`, `extension-registry`, `extension-tool`,
+// `extension-commands`) but none of those are published.
 
-interface StagesOverlayRegistry {
-  toolNames: Set<string>;
-  registered: boolean;
-}
+export { buildSendMessage } from "./extension-message.js";
+export type { CommandDefinition, ExtensionConfig, ParamDef, PipelineDefinition } from "./extension-types.js";
 
-const STAGES_OVERLAY_REGISTRY_KEY = Symbol.for("forgeflow.stagesOverlay.registry");
-
-type GlobalWithRegistry = typeof globalThis & {
-  [STAGES_OVERLAY_REGISTRY_KEY]?: StagesOverlayRegistry;
-};
-
-function getStagesOverlayRegistry(): StagesOverlayRegistry {
-  const g = globalThis as GlobalWithRegistry;
-  let registry = g[STAGES_OVERLAY_REGISTRY_KEY];
-  if (!registry) {
-    registry = { toolNames: new Set<string>(), registered: false };
-    g[STAGES_OVERLAY_REGISTRY_KEY] = registry;
-  }
-  return registry;
-}
+// ─── Factory ─────────────────────────────────────────────────────────
 
 /**
- * Reset the shared stages-overlay registry. Exposed for tests so they can
- * exercise registration in isolation; not part of the public API.
+ * Create a forgeflow extension from a declarative config. The returned
+ * function is the `pi.ExtensionAPI` entry point that wires the tool and all
+ * commands (including the shared `/stages` overlay) onto a pi instance.
  */
-export function __resetStagesOverlayRegistryForTests(): void {
-  const g = globalThis as GlobalWithRegistry;
-  delete g[STAGES_OVERLAY_REGISTRY_KEY];
-}
-
-// ─── Types ────────────────────────────────────────────────────────────
-
-export interface ParamDef {
-  type: "string" | "number" | "boolean";
-  description: string;
-}
-
-export interface PipelineDefinition {
-  name: string;
-  execute: (
-    cwd: string,
-    params: Record<string, unknown>,
-    signal: AbortSignal,
-    onUpdate: OnUpdate,
-    ctx: ForgeflowContext,
-  ) => Promise<AgentToolResult<PipelineDetails>>;
-}
-
-export interface CommandDefinition {
-  name: string;
-  description: string;
-  /** Which pipeline this command invokes */
-  pipeline: string;
-  /** Parse raw args into params and optional suffix for the sendUserMessage template */
-  parseArgs?: (args: string) => { params?: Record<string, string | number | boolean | undefined>; suffix?: string };
-}
-
-export interface ExtensionConfig {
-  toolName: string;
-  toolLabel: string;
-  description: string;
-  /** All tool parameters (excluding `pipeline` which is auto-added) */
-  params: Record<string, ParamDef>;
-  pipelines: PipelineDefinition[];
-  commands: CommandDefinition[];
-  /** Optional hook to append custom content to renderCall output */
-  renderCallExtra?: (args: Record<string, unknown>, theme: ForgeflowTheme) => string;
-}
-
-// ─── Message builder ──────────────────────────────────────────────────
-
-/** Build the sendUserMessage template string for a command invocation. */
-export function buildSendMessage(
-  toolName: string,
-  pipeline: string,
-  params: Record<string, string | number | boolean | undefined>,
-  suffix?: string,
-): string {
-  let msg = `Call the ${toolName} tool now with these exact parameters: pipeline="${pipeline}"`;
-  for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null) continue;
-    if (typeof value === "string") {
-      msg += `, ${key}="${value}"`;
-    } else {
-      msg += `, ${key}=${value}`;
-    }
-  }
-  msg += ".";
-  if (suffix) msg += ` ${suffix}`;
-  return msg;
-}
-
-// ─── Schema builder ───────────────────────────────────────────────────
-
-function buildTypeBoxParam(def: ParamDef) {
-  switch (def.type) {
-    case "string":
-      return Type.String({ description: def.description });
-    case "number":
-      return Type.Number({ description: def.description });
-    case "boolean":
-      return Type.Boolean({ description: def.description });
-  }
-}
-
-function buildSchema(config: ExtensionConfig) {
-  const pipelineNames = config.pipelines.map((p) => p.name);
-  const pipelineDesc = `Which pipeline to run: ${pipelineNames.map((n) => `"${n}"`).join(", ")}`;
-
-  const props: Record<string, unknown> = {
-    pipeline: Type.String({ description: pipelineDesc }),
-  };
-
-  for (const [key, def] of Object.entries(config.params)) {
-    props[key] = Type.Optional(buildTypeBoxParam(def));
-  }
-
-  return Type.Object(props as Record<string, ReturnType<typeof Type.String>>);
-}
-
-// ─── Factory ──────────────────────────────────────────────────────────
-
-/** Create a forgeflow extension from a declarative config. */
 export function createForgeflowExtension(config: ExtensionConfig): (pi: ExtensionAPI) => void {
   const schema = buildSchema(config);
-  const pipelineMap = new Map(config.pipelines.map((p) => [p.name, p]));
-
   return (pi: ExtensionAPI) => {
-    pi.registerTool({
-      name: config.toolName,
-      label: config.toolLabel,
-      description: config.description,
-      parameters: schema,
-
-      async execute(_toolCallId, _params, signal, onUpdate, ctx) {
-        const params = _params as Record<string, unknown>;
-        const pipeline = pipelineMap.get(params.pipeline as string);
-        const cwd = ctx.cwd as string;
-        const sig = signal ?? new AbortController().signal;
-        const fctx = ctx as unknown as ForgeflowContext;
-
-        // Wrap the user-supplied onUpdate so that every progress update from a
-        // sub-agent also repaints the live widget above the editor with the
-        // current stage and last few tool calls. Stays a no-op when there is
-        // no UI (e.g. `pi -p` print mode).
-        const wrappedOnUpdate: OnUpdate = (partial) => {
-          if (fctx.hasUI && partial.details) {
-            const lines = buildWidgetLines(
-              `${config.toolName} ${partial.details.pipeline}`,
-              partial.details.stages,
-              fctx.ui.theme,
-            );
-            fctx.ui.setWidget(config.toolName, lines);
-          }
-          (onUpdate as OnUpdate | undefined)?.(partial);
-        };
-
-        try {
-          if (!pipeline) {
-            const names = config.pipelines.map((p) => p.name).join(", ");
-            return pipelineResult(`Unknown pipeline: ${params.pipeline}. Use: ${names}`, params.pipeline as string, []);
-          }
-          return await pipeline.execute(cwd, params, sig, wrappedOnUpdate, fctx);
-        } finally {
-          if (fctx.hasUI) {
-            fctx.ui.setStatus(config.toolName, undefined);
-            fctx.ui.setWidget(config.toolName, undefined);
-          }
-        }
-      },
-
-      renderCall(_args, theme) {
-        const args = _args as Record<string, unknown>;
-        const pipeline = (args.pipeline as string) || "?";
-        let text = theme.fg("toolTitle", theme.bold(`${config.toolName} `)) + theme.fg("accent", pipeline);
-        if (config.renderCallExtra) {
-          text += config.renderCallExtra(args, theme);
-        }
-        return new Text(text, 0, 0);
-      },
-
-      renderResult(result, { expanded }, theme) {
-        return sharedRenderResult(result as AgentToolResult<PipelineDetails>, expanded, theme, config.toolName);
-      },
-    });
-
-    for (const cmd of config.commands) {
-      pi.registerCommand(cmd.name, {
-        description: cmd.description,
-        handler: async (args) => {
-          if (cmd.parseArgs) {
-            const { params, suffix } = cmd.parseArgs(args);
-            pi.sendUserMessage(buildSendMessage(config.toolName, cmd.pipeline, params ?? {}, suffix));
-          } else {
-            pi.sendUserMessage(buildSendMessage(config.toolName, cmd.pipeline, {}));
-          }
-        },
-      });
-    }
-
-    // Stage drill-down overlay: `/stages` command + Ctrl+Shift+S shortcut.
-    //
-    // Both are registered exactly once per process across all forgeflow
-    // extensions. The handlers read the shared registry of tool names so the
-    // overlay covers every forgeflow tool that has loaded by the time the
-    // user invokes it.
-    const registry = getStagesOverlayRegistry();
-    registry.toolNames.add(config.toolName);
-    if (!registry.registered) {
-      registry.registered = true;
-      const openOverlay = async (ctx: ForgeflowContext) => {
-        await openStagesOverlay(ctx, Array.from(registry.toolNames));
-      };
-      pi.registerCommand("stages", {
-        description: "Drill into the most recent forgeflow pipeline stages",
-        handler: async (_args, ctx) => {
-          await openOverlay(ctx as unknown as ForgeflowContext);
-        },
-      });
-      pi.registerShortcut("ctrl+shift+s", {
-        description: "Open forgeflow stages overlay",
-        handler: async (ctx) => {
-          await openOverlay(ctx as unknown as ForgeflowContext);
-        },
-      });
-    }
+    registerForgeflowTool(pi, config, schema);
+    registerForgeflowCommands(pi, config);
   };
 }
