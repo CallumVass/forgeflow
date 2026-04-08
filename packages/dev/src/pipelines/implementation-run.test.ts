@@ -75,7 +75,7 @@ describe("runImplementation", () => {
     expect(names).not.toContain("code-reviewer");
     expect(names).not.toContain("fix-findings");
     // Only implementor + refactorer
-    const agents = (runAgentFn as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((c) => c[0]);
+    const agents = runAgentFn.mock.calls.map((c) => c[0]);
     expect(agents).toEqual(["implementor", "refactorer"]);
   });
 
@@ -111,7 +111,7 @@ describe("runImplementation", () => {
       cancelPctx,
     );
     expect(cancelled.kind).toBe("cancelled");
-    const cancelAgents = (cancelAgent as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((c) => c[0]);
+    const cancelAgents = cancelAgent.mock.calls.map((c) => c[0]);
     expect(cancelAgents).not.toContain("implementor");
     expect(cancelAgents).not.toContain("refactorer");
 
@@ -132,7 +132,7 @@ describe("runImplementation", () => {
     expect(blocked.kind).toBe("blocked");
     if (blocked.kind !== "blocked") throw new Error("unreachable");
     expect(blocked.reason).toBe("cannot proceed");
-    const blockedAgents = (blockAgent as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((c) => c[0]);
+    const blockedAgents = blockAgent.mock.calls.map((c) => c[0]);
     expect(blockedAgents).not.toContain("refactorer");
     expect(blockedAgents).not.toContain("code-reviewer");
   });

@@ -36,7 +36,7 @@ export async function runImplement(issueArg: string, pctx: PipelineContext, flag
 
   const customPrompt = await askCustomPrompt(pctx.ctx, interactive);
 
-  if (resume.kind === "existing-pr") return resumeExistingPr(plan, pctx, flags);
+  if (resume.kind === "existing-pr") return resumeExistingPr(issueLabel, resume.prNumber, pctx, flags);
   if (resume.kind === "resume-branch") return resumeBranch(plan, pctx, flags);
   if (resume.kind === "failed") return pipelineResult(resume.error, "implement", [], true);
 
@@ -52,11 +52,10 @@ export async function runImplement(issueArg: string, pctx: PipelineContext, flag
   return pipelineResult(`Implementation of ${issueLabel} complete.`, "implement", outcome.stages);
 }
 
-async function resumeExistingPr(plan: IssuePlan, pctx: PipelineContext, flags: ImplementFlags) {
+async function resumeExistingPr(issueLabel: string, prNumber: number, pctx: PipelineContext, flags: ImplementFlags) {
   const stages: StageResult[] = [];
   if (!flags.skipReview) await runReviewAndFixOnly(pctx, stages);
-  const prNumber = plan.resume.kind === "existing-pr" ? plan.resume.prNumber : 0;
-  return pipelineResult(`Resumed ${plan.issueLabel} — PR #${prNumber} already exists.`, "implement", stages);
+  return pipelineResult(`Resumed ${issueLabel} — PR #${prNumber} already exists.`, "implement", stages);
 }
 
 async function resumeBranch(plan: IssuePlan, pctx: PipelineContext, flags: ImplementFlags) {
