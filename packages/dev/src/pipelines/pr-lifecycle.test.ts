@@ -9,6 +9,10 @@ const githubResolved = makeGitHubResolvedIssue({ body: "body" });
 /** Scripted responses for the git/gh commands `finalisePr` drives. */
 function execResponses(overrides: Record<string, string> = {}): ReturnType<typeof mockExecFn> {
   return mockExecFn({
+    // ensurePr's `assertBranchHasCommits` guard: non-zero means the implementor
+    // committed and we can proceed.
+    "git rev-list": "3",
+    "git status --porcelain": "",
     "git push": "",
     "gh pr list": "", // no existing PR → create
     "gh pr create": "https://github.com/owner/repo/pull/77",

@@ -9,6 +9,41 @@ interface PrResult {
 }
 
 /**
+ * Guard against a common failure mode: the implementor (or refactorer) agent
+ * finishes without committing, leaving either a clean working tree or — more
+ * commonly — tracked/untracked changes that were never `git add`ed. Without
+ * this check `ensurePr` would push a zero-commit branch and then fail deep
+ * inside `gh pr create` with an opaque "No commits between main and …" that
+ * aborts the whole `implement-all` run.
+ *
+ * Throws a diagnostic Error listing any uncommitted/untracked paths so the
+ * operator can see exactly what the agent abandoned.
+ */
+export async function assertBranchHasCommits(cwd: string, branch: string, execFn: ExecFn): Promise<void> {
+  // `|| echo 0` mirrors setupBranch() — tolerates the rev-list failing when
+  // main/branch refs are missing, falls back to 0 which then trips the guard.
+  const aheadStr = await execFn(`git rev-list main..${branch} --count 2>/dev/null || echo 0`, cwd);
+  const ahead = parseInt(aheadStr, 10) || 0;
+  if (ahead > 0) return;
+
+  let dirtyReport = "";
+  try {
+    const porcelain = (await execFn("git status --porcelain", cwd)).trim();
+    if (porcelain) {
+      dirtyReport = `\n\nUncommitted changes in the working tree:\n${porcelain}\n\nThe implementor agent likely forgot to 'git add' and 'git commit'. Review and commit manually, or delete the branch and re-run.`;
+    } else {
+      dirtyReport =
+        "\n\nWorking tree is clean — the implementor agent produced no changes for this issue. Check the agent's output for why it bailed out.";
+    }
+  } catch {
+    // Intentionally swallow — we still want to throw the primary guard error
+    // even if `git status` itself failed.
+  }
+
+  throw new Error(`Branch ${branch} has 0 commits ahead of main — nothing to push.${dirtyReport}`);
+}
+
+/**
  * Ensure a PR exists for the given branch. Creates one if missing.
  */
 export async function ensurePr(
@@ -18,6 +53,10 @@ export async function ensurePr(
   branch: string,
   execFn: ExecFn,
 ): Promise<PrResult> {
+  // Fail fast if the agent never committed — pushing a zero-commit branch
+  // would only surface as an opaque `gh pr create` error later.
+  await assertBranchHasCommits(cwd, branch, execFn);
+
   // Push first
   await execFn(`git push -u origin ${branch}`, cwd);
 

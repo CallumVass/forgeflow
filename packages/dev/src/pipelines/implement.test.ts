@@ -27,29 +27,47 @@ const ghIssueJson = JSON.stringify({ number: 42, title: "Test issue", body: "Iss
  * an autonomous fresh run:
  *  - `gh issue view` (via execSafeFn)
  *  - `gh pr list --head ... ` for findPrNumber (resume-detection + post-ensurePr lookups)
- *  - `git rev-list main..<branch>` for setupBranch (0 → fresh path)
+ *  - `git rev-list main..<branch>` for setupBranch (0 → fresh path) AND
+ *    `assertBranchHasCommits` inside ensurePr (>0 after the implementor
+ *    committed). Both commands are literally identical, so we serve them
+ *    from a sequential queue via `revList` instead of a substring mock.
  *  - `git branch -D / git checkout -b / git branch --show-current` for fresh checkout
  *  - `git diff main...HEAD` for reviewAndFix (empty → skip)
+ *  - `git status --porcelain` for the assertBranchHasCommits diagnostic (empty)
  *  - `git push -u origin` + `gh pr create` for ensurePr
  *  - `gh pr merge` + `git checkout main` + `git pull` for merge/returnToMain
  *
- * Overrides let individual tests change specific responses (e.g. resume-with-commits
- * returns a non-zero `rev-list`, existing-PR returns a PR number).
+ * Overrides let individual tests change specific responses (existing-PR returns
+ * a PR number, etc.). `revList` overrides the default `["0", "3"]` sequence
+ * — use `["3", "3"]` for resume-with-commits, `["0", "0"]` to make ensurePr
+ * refuse to push, etc.
  */
-function scriptedExec(overrides: Record<string, string> = {}): ReturnType<typeof mockExecFn> {
-  return mockExecFn({
+function scriptedExec(
+  overrides: Record<string, string> = {},
+  revList: string[] = ["0", "3"],
+): ReturnType<typeof mockExecFn> {
+  const base = mockExecFn({
     "gh pr list": "",
-    "git rev-list": "0",
     "git branch -D": "",
     "git checkout -b": "",
     "git branch --show-current": "feat/issue-42",
     "git diff": "",
+    "git status --porcelain": "",
     "git push": "",
     "gh pr create": "https://github.com/owner/repo/pull/7",
     "gh pr merge": "Merged!",
     "git checkout main": "",
     "git pull": "",
     ...overrides,
+  });
+  let revIdx = 0;
+  return vi.fn(async (cmd: string, cwd?: string) => {
+    if (cmd.includes("git rev-list")) {
+      const response = revList[Math.min(revIdx, revList.length - 1)] ?? "0";
+      revIdx++;
+      return response;
+    }
+    return base(cmd, cwd);
   });
 }
 
@@ -80,11 +98,14 @@ describe("runImplement orchestrator (integration)", () => {
 
   it("resume-with-existing-PR: message contains 'PR #N already exists' and stages have no planner/implementor entries", async () => {
     const runAgentFn = sequencedRunAgent([]);
-    const execFn = scriptedExec({
-      "gh pr list": "99", // findPrNumber → 99 → resume-existing-PR path
-      // If the implementation wrongly mutates the branch, these assertions catch it
-      "git rev-list": "5",
-    });
+    const execFn = scriptedExec(
+      {
+        "gh pr list": "99", // findPrNumber → 99 → resume-existing-PR path
+      },
+      // If the implementation wrongly mutates the branch, asserting rev-list
+      // was never called is handled below; seed a non-zero just in case.
+      ["5", "5"],
+    );
     const execSafeFn = mockExecFn({ "gh issue view": ghIssueJson });
     const pctx = mockPipelineContext({
       cwd: "/tmp",
@@ -111,12 +132,14 @@ describe("runImplement orchestrator (integration)", () => {
   it("resume-with-commits: pushes existing commits and returns text 'pushed existing commits and created PR'", async () => {
     // refactorer only → 1 agent call
     const runAgentFn = sequencedRunAgent([{ output: "refactored" }]);
-    const execFn = scriptedExec({
-      "gh pr list": "",
-      "git rev-list": "3", // setupBranch → resumed
-      "git checkout feat/issue-42": "",
-      "git branch --show-current": "feat/issue-42",
-    });
+    const execFn = scriptedExec(
+      {
+        "gh pr list": "",
+        "git checkout feat/issue-42": "",
+        "git branch --show-current": "feat/issue-42",
+      },
+      ["3", "3"], // setupBranch → resumed (3), ensurePr guard → 3 commits ahead
+    );
     const execSafeFn = mockExecFn({ "gh issue view": ghIssueJson });
     const pctx = mockPipelineContext({ cwd: "/tmp", execFn, execSafeFn, runAgentFn });
 
@@ -140,10 +163,12 @@ describe("runImplement orchestrator (integration)", () => {
     expect(stringResult.content[0]?.text).toContain("Could not fetch issue #42");
 
     // --- (b) setupBranch failed (final branch --show-current returns 'main') ---
-    const failExec = scriptedExec({
-      "git rev-list": "0",
-      "git branch --show-current": "main",
-    });
+    const failExec = scriptedExec(
+      {
+        "git branch --show-current": "main",
+      },
+      ["0", "0"],
+    );
     const failSafe = mockExecFn({ "gh issue view": ghIssueJson });
     const pctxFail = mockPipelineContext({ cwd: "/tmp", execFn: failExec, execSafeFn: failSafe });
     const failResult = await runImplement("42", pctxFail, { skipPlan: false, skipReview: true });
