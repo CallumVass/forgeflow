@@ -1,20 +1,23 @@
-import type * as fs from "node:fs";
 import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("node:fs", async (importOriginal) => {
-  const actual = await importOriginal<typeof fs>();
-  return { ...actual, existsSync: vi.fn(() => true) };
-});
+vi.mock("../prd-document.js", () => ({
+  prdExists: vi.fn(() => true),
+}));
 
 vi.mock("./qa-loop.js", () => ({
   runQaLoop: vi.fn(async () => ({ accepted: true })),
 }));
 
+import { prdExists } from "../prd-document.js";
 import { runPrdQa } from "./prd-qa.js";
 import { runQaLoop } from "./qa-loop.js";
 
 describe("runPrdQa", () => {
+  beforeEach(() => {
+    vi.mocked(prdExists).mockReturnValue(true);
+  });
+
   it("delegates to runQaLoop and returns success when accepted", async () => {
     const mockedRunQaLoop = vi.mocked(runQaLoop);
     mockedRunQaLoop.mockResolvedValue({ accepted: true });
@@ -43,5 +46,17 @@ describe("runPrdQa", () => {
 
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toContain("Critic failed.");
+  });
+
+  it("returns a PRD.md not found result and does not invoke runQaLoop when PRD is missing", async () => {
+    vi.mocked(prdExists).mockReturnValue(false);
+    const mockedRunQaLoop = vi.mocked(runQaLoop);
+    mockedRunQaLoop.mockClear();
+
+    const pctx = mockPipelineContext();
+    const result = await runPrdQa(10, pctx);
+
+    expect(result.content[0]?.text).toContain("PRD.md not found.");
+    expect(mockedRunQaLoop).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,3 @@
-import * as fs from "node:fs";
 import {
   emptyStage,
   type PipelineContext,
@@ -8,6 +7,7 @@ import {
   TOOLS_NO_EDIT,
   toAgentOpts,
 } from "@callumvass/forgeflow-shared/pipeline";
+import { prdExists, promptEditPrd } from "../prd-document.js";
 import { runQaLoop } from "./qa-loop.js";
 
 function updatePrompt(description: string) {
@@ -37,8 +37,8 @@ CRITICAL RULES:
  * Continue pipeline: update PRD with Done/Next, run QA loop, create issues.
  */
 export async function runContinue(description: string, maxIterations: number, pctx: PipelineContext) {
-  const { cwd, ctx } = pctx;
-  if (!fs.existsSync(`${cwd}/PRD.md`)) return pipelineResult("PRD.md not found.", "continue", []);
+  const { ctx } = pctx;
+  if (!prdExists(pctx.cwd)) return pipelineResult("PRD.md not found.", "continue", []);
 
   const stages: StageResult[] = [];
   const agentOpts = toAgentOpts(pctx, { stages, pipeline: "continue" });
@@ -54,9 +54,7 @@ export async function runContinue(description: string, maxIterations: number, pc
   }
 
   if (ctx.hasUI) {
-    const prdContent = fs.readFileSync(`${cwd}/PRD.md`, "utf-8");
-    const edited = await ctx.ui.editor("Review updated PRD (Done/Next structure)", prdContent);
-    if (edited != null && edited !== prdContent) fs.writeFileSync(`${cwd}/PRD.md`, edited, "utf-8");
+    await promptEditPrd(pctx, "Review updated PRD (Done/Next structure)");
     const action = await ctx.ui.select("PRD updated with Done/Next. What next?", ["Continue to QA", "Stop here"]);
     if (action === "Stop here" || action == null)
       return pipelineResult("PRD updated. Stopped before QA.", "continue", stages);

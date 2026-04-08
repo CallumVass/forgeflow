@@ -1,9 +1,9 @@
-import * as fs from "node:fs";
 import { type PipelineContext, pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
+import { prdExists } from "../prd-document.js";
 import { runQaLoop } from "./qa-loop.js";
 
 export async function runPrdQa(maxIterations: number, pctx: PipelineContext) {
-  if (!fs.existsSync(`${pctx.cwd}/PRD.md`)) return pipelineResult("PRD.md not found.", "prd-qa", []);
+  if (!prdExists(pctx.cwd)) return pipelineResult("PRD.md not found.", "prd-qa", []);
 
   const stages: StageResult[] = [];
   const qaResult = await runQaLoop({
