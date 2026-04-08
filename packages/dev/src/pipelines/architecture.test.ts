@@ -1,48 +1,15 @@
-import { mockForgeflowContext, mockPipelineContext, sequencedRunAgent } from "@callumvass/forgeflow-shared/testing";
+import {
+  type CustomCapture,
+  firstCustomCapture,
+  makeCustomUiMock,
+  mockForgeflowContext,
+  mockPipelineContext,
+  sequencedRunAgent,
+} from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
 import { type ArchitectureCandidate, parseCandidates, runArchitecture } from "./architecture.js";
 
 type PickerResult = ArchitectureCandidate[] | undefined;
-
-interface CustomCapture<T> {
-  factory: (
-    tui: { requestRender: ReturnType<typeof vi.fn> },
-    theme: { fg: (c: string, s: string) => string; bold: (s: string) => string },
-    keybindings: unknown,
-    done: (result: T) => void,
-  ) => unknown;
-  options: unknown;
-  done: (result: T) => void;
-  tui: { requestRender: ReturnType<typeof vi.fn> };
-}
-
-function makeCustomMock<T>() {
-  const captures: CustomCapture<T>[] = [];
-  const custom = vi.fn(async (factory: unknown, options: unknown) => {
-    let resolvePromise: (result: T) => void = () => {};
-    const promise = new Promise<T>((resolve) => {
-      resolvePromise = resolve;
-    });
-    const tui = { requestRender: vi.fn() };
-    const done = vi.fn((result: T) => {
-      resolvePromise(result);
-    });
-    captures.push({
-      factory: factory as never,
-      options,
-      done,
-      tui,
-    });
-    return promise;
-  });
-  return { custom, captures };
-}
-
-function firstCapture<T>(captures: CustomCapture<T>[]): CustomCapture<T> {
-  const capture = captures[0];
-  if (!capture) throw new Error("expected at least one ctx.ui.custom call");
-  return capture;
-}
 
 type PickerComponent = {
   render: (width: number) => string[];
@@ -53,7 +20,7 @@ function mountPicker<T>(
   capture: CustomCapture<T>,
   theme: { fg: (c: string, s: string) => string; bold: (s: string) => string },
 ): PickerComponent {
-  return capture.factory(capture.tui, theme, null, capture.done) as PickerComponent;
+  return capture.factory(capture.tui as never, theme, null, capture.done) as PickerComponent;
 }
 
 const THREE_CANDIDATES = [
@@ -102,7 +69,7 @@ describe("runArchitecture", () => {
   });
 
   it("creates RFC issues only for the toggled multi-candidate subset", async () => {
-    const { custom, captures } = makeCustomMock<PickerResult>();
+    const { custom, captures } = makeCustomUiMock<PickerResult>();
     const runAgentFn = sequencedRunAgent([
       { output: THREE_CANDIDATES },
       { output: "Created https://github.com/acme/repo/issues/101" },
@@ -120,7 +87,7 @@ describe("runArchitecture", () => {
     const resultPromise = runArchitecture(pctx);
 
     await vi.waitFor(() => expect(custom).toHaveBeenCalledOnce());
-    const capture = firstCapture(captures);
+    const capture = firstCustomCapture(captures);
     const component = mountPicker(capture, ctx.ui.theme);
 
     const initialRender = component.render(120).join("\n");
@@ -153,7 +120,7 @@ describe("runArchitecture", () => {
       "### 2. Split review orchestration",
       "Review orchestration now owns too many concerns.",
     ].join("\n");
-    const { custom, captures } = makeCustomMock<PickerResult>();
+    const { custom, captures } = makeCustomUiMock<PickerResult>();
     const runAgentFn = sequencedRunAgent([
       { output: THREE_CANDIDATES },
       { output: "Created https://github.com/acme/repo/issues/201" },
@@ -170,7 +137,7 @@ describe("runArchitecture", () => {
     const resultPromise = runArchitecture(pctx);
 
     await vi.waitFor(() => expect(custom).toHaveBeenCalledOnce());
-    const capture = firstCapture(captures);
+    const capture = firstCustomCapture(captures);
     const component = mountPicker(capture, ctx.ui.theme);
     const render = component.render(120).join("\n");
     expect(render).toContain("1. Extract shared CLI formatter");
@@ -189,7 +156,7 @@ describe("runArchitecture", () => {
   });
 
   it("treats a confirmed empty toggle selection as no RFC created", async () => {
-    const { custom, captures } = makeCustomMock<PickerResult>();
+    const { custom, captures } = makeCustomUiMock<PickerResult>();
     const runAgentFn = sequencedRunAgent([{ output: THREE_CANDIDATES }]);
     const ctx = mockForgeflowContext({
       hasUI: true,
@@ -203,7 +170,7 @@ describe("runArchitecture", () => {
     const resultPromise = runArchitecture(pctx);
 
     await vi.waitFor(() => expect(custom).toHaveBeenCalledOnce());
-    const capture = firstCapture(captures);
+    const capture = firstCustomCapture(captures);
     const component = mountPicker(capture, ctx.ui.theme);
     component.handleInput?.("\r");
 
@@ -214,7 +181,7 @@ describe("runArchitecture", () => {
   });
 
   it("treats a cancelled toggle picker as no RFC created", async () => {
-    const { custom, captures } = makeCustomMock<PickerResult>();
+    const { custom, captures } = makeCustomUiMock<PickerResult>();
     const runAgentFn = sequencedRunAgent([{ output: THREE_CANDIDATES }]);
     const ctx = mockForgeflowContext({
       hasUI: true,
@@ -228,7 +195,7 @@ describe("runArchitecture", () => {
     const resultPromise = runArchitecture(pctx);
 
     await vi.waitFor(() => expect(custom).toHaveBeenCalledOnce());
-    const capture = firstCapture(captures);
+    const capture = firstCustomCapture(captures);
     const component = mountPicker(capture, ctx.ui.theme);
     component.handleInput?.("\u001b");
 
