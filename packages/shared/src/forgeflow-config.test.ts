@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type ForgeflowConfig, loadForgeflowConfig, mergeConfigs, VALID_THINKING_LEVELS } from "./forgeflow-config.js";
+import { setupIsolatedHomeFixture } from "./test-utils.js";
 
 describe("mergeConfigs", () => {
   it("replaces whole agent entries from global with project entries of the same name, preserves non-overlapping global entries, and tolerates empty inputs", () => {
@@ -35,33 +35,23 @@ describe("mergeConfigs", () => {
 });
 
 describe("loadForgeflowConfig", () => {
-  let homeDir: string;
-  let projectRoot: string;
+  const fixture = setupIsolatedHomeFixture("cfg");
   let nested: string;
   let warn: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "forgeflow-cfg-home-"));
-    projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), "forgeflow-cfg-proj-"));
-    nested = path.join(projectRoot, "packages", "dev", "src");
+    nested = path.join(fixture.cwdDir, "packages", "dev", "src");
     fs.mkdirSync(nested, { recursive: true });
     warn = vi.fn();
-    vi.stubEnv("HOME", homeDir);
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    fs.rmSync(homeDir, { recursive: true, force: true });
-    fs.rmSync(projectRoot, { recursive: true, force: true });
   });
 
   function writeGlobal(config: unknown): void {
-    const dir = path.join(homeDir, ".pi", "agent");
+    const dir = path.join(fixture.homeDir, ".pi", "agent");
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "forgeflow.json"), JSON.stringify(config), "utf-8");
   }
 
-  function writeProject(config: unknown, dir = projectRoot): void {
+  function writeProject(config: unknown, dir = fixture.cwdDir): void {
     fs.writeFileSync(path.join(dir, ".forgeflow.json"), JSON.stringify(config), "utf-8");
   }
 
@@ -126,7 +116,7 @@ describe("loadForgeflowConfig", () => {
   });
 
   it("returns an empty config and invokes warn once when the project JSON is malformed", () => {
-    fs.writeFileSync(path.join(projectRoot, ".forgeflow.json"), "{ not json", "utf-8");
+    fs.writeFileSync(path.join(fixture.cwdDir, ".forgeflow.json"), "{ not json", "utf-8");
 
     const result = loadForgeflowConfig(nested, warn);
 

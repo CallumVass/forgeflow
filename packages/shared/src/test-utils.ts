@@ -1,8 +1,38 @@
-import { type Mock, vi } from "vitest";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { afterEach, beforeEach, type Mock, vi } from "vitest";
 import type { ExecFn } from "./exec.js";
 import type { ExtensionConfig } from "./extension-types.js";
 import type { ForgeflowContext, ForgeflowTheme, ForgeflowUI, PipelineContext } from "./pipeline.js";
 import { emptyStage, type PipelineDetails, type RunAgentFn, type StageResult } from "./pipeline.js";
+
+/**
+ * Register `beforeEach` / `afterEach` hooks in the enclosing describe that
+ * stub `$HOME` to a fresh temp directory and allocate a second temp directory
+ * (typically used as `cwd` or a project root). Both dirs are removed and
+ * `HOME` is unstubbed after each test.
+ *
+ * Returns a live fixture handle — read `.homeDir` / `.cwdDir` inside test
+ * bodies (they are reassigned by `beforeEach` before every test). Use this
+ * anywhere a test exercises `loadForgeflowConfig`, `toPipelineContext`, or
+ * any other on-disk `$HOME`-reading helper so the user's real
+ * `~/.pi/agent/forgeflow.json` can't contaminate tests.
+ */
+export function setupIsolatedHomeFixture(label: string): { homeDir: string; cwdDir: string } {
+  const fixture = { homeDir: "", cwdDir: "" };
+  beforeEach(() => {
+    fixture.homeDir = fs.mkdtempSync(path.join(os.tmpdir(), `forgeflow-${label}-home-`));
+    fixture.cwdDir = fs.mkdtempSync(path.join(os.tmpdir(), `forgeflow-${label}-cwd-`));
+    vi.stubEnv("HOME", fixture.homeDir);
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    fs.rmSync(fixture.homeDir, { recursive: true, force: true });
+    fs.rmSync(fixture.cwdDir, { recursive: true, force: true });
+  });
+  return fixture;
+}
 
 /** Create a StageResult with defaults, overridable for tests. */
 export function makeStage(overrides: Partial<StageResult> = {}): StageResult {

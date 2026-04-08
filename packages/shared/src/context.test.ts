@@ -1,39 +1,25 @@
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { PipelineContext } from "./context.js";
 import { toAgentOpts, toPipelineContext } from "./context.js";
 import { exec, execSafe } from "./exec.js";
 import { runAgent } from "./run-agent.js";
-import { mockForgeflowContext } from "./test-utils.js";
+import { mockForgeflowContext, setupIsolatedHomeFixture } from "./test-utils.js";
 
 describe("toPipelineContext", () => {
-  let homeDir: string;
-  let cwdDir: string;
-
-  beforeEach(() => {
-    // Isolate the on-disk forgeflow.json loader so the user's real
-    // ~/.pi/agent/forgeflow.json can't contaminate these tests.
-    homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "forgeflow-ctx-home-"));
-    cwdDir = fs.mkdtempSync(path.join(os.tmpdir(), "forgeflow-ctx-cwd-"));
-    vi.stubEnv("HOME", homeDir);
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    fs.rmSync(homeDir, { recursive: true, force: true });
-    fs.rmSync(cwdDir, { recursive: true, force: true });
-  });
+  // Isolate the on-disk forgeflow.json loader so the user's real
+  // ~/.pi/agent/forgeflow.json can't contaminate these tests.
+  const fixture = setupIsolatedHomeFixture("ctx");
 
   it("bundles arguments into a PipelineContext with default seam fields", () => {
     const ctx = mockForgeflowContext();
     const signal = AbortSignal.timeout(5000);
     const onUpdate = vi.fn();
-    const pctx = toPipelineContext(cwdDir, signal, onUpdate, ctx, "/my/agents");
+    const pctx = toPipelineContext(fixture.cwdDir, signal, onUpdate, ctx, "/my/agents");
 
     expect(pctx).toEqual({
-      cwd: cwdDir,
+      cwd: fixture.cwdDir,
       signal,
       onUpdate,
       ctx,
@@ -54,7 +40,7 @@ describe("toPipelineContext", () => {
     const execSafeFn = vi.fn();
     const agentOverrides = { planner: { model: "claude-opus-4-5" } };
 
-    const pctx = toPipelineContext(cwdDir, signal, onUpdate, ctx, "/my/agents", {
+    const pctx = toPipelineContext(fixture.cwdDir, signal, onUpdate, ctx, "/my/agents", {
       runAgentFn,
       execFn,
       execSafeFn,
@@ -69,7 +55,7 @@ describe("toPipelineContext", () => {
 
   it("loads forgeflow.json from disk and routes loader warnings through ctx.ui.notify", () => {
     // Global config: provides an implementor override.
-    const globalDir = path.join(homeDir, ".pi", "agent");
+    const globalDir = path.join(fixture.homeDir, ".pi", "agent");
     fs.mkdirSync(globalDir, { recursive: true });
     fs.writeFileSync(
       path.join(globalDir, "forgeflow.json"),
@@ -81,7 +67,7 @@ describe("toPipelineContext", () => {
     // Project config: overrides planner + carries an invalid thinkingLevel
     // so we can assert the loader warning is routed to ctx.ui.notify.
     fs.writeFileSync(
-      path.join(cwdDir, ".forgeflow.json"),
+      path.join(fixture.cwdDir, ".forgeflow.json"),
       JSON.stringify({
         agents: {
           planner: { model: "claude-opus-4-5", thinkingLevel: "turbo" },
@@ -93,7 +79,7 @@ describe("toPipelineContext", () => {
     const notify = vi.fn();
     const ctx = mockForgeflowContext({ ui: { notify } });
 
-    const pctx = toPipelineContext(cwdDir, AbortSignal.timeout(5000), vi.fn(), ctx, "/my/agents");
+    const pctx = toPipelineContext(fixture.cwdDir, AbortSignal.timeout(5000), vi.fn(), ctx, "/my/agents");
 
     expect(pctx.agentOverrides).toEqual({
       implementor: { model: "claude-sonnet-4-5", thinkingLevel: "medium" },
