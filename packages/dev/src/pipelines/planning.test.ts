@@ -191,9 +191,27 @@ describe("runPlanning", () => {
     });
 
     expect(result.failed).toBe(true);
+    expect(result.errorStage).toBe("planner");
     expect(result.plan).toContain("error details");
     // Only planner called — no reviewer
     expect(runAgentFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns failed when architecture-reviewer fails", async () => {
+    const ctx = mockCtx();
+    const runAgentFn = sequencedRunAgent([{ output: "## Plan\n- Step 1" }, { output: "arch error", status: "failed" }]);
+
+    const result = await runPlanning("Issue context", undefined, {
+      ...mockPipelineContext({ ctx }),
+      interactive: false,
+      stages: [],
+      runAgentFn,
+    });
+
+    expect(result.failed).toBe(true);
+    expect(result.errorStage).toBe("architecture-reviewer");
+    expect(result.plan).toContain("arch error");
+    expect(runAgentFn).toHaveBeenCalledTimes(2);
   });
 });
 

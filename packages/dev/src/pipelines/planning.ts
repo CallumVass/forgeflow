@@ -11,6 +11,7 @@ interface PlanResult {
   plan: string;
   cancelled: boolean;
   failed?: boolean;
+  errorStage?: "planner" | "architecture-reviewer";
   stages: StageResult[];
   /**
    * Session path of the final planning phase (architecture-reviewer
@@ -119,7 +120,14 @@ export async function runPlanning(
   );
 
   if (planResult.status === "failed") {
-    return { plan: planResult.output, cancelled: false, failed: true, stages, lastSessionPath: plannerSessionPath };
+    return {
+      plan: planResult.output,
+      cancelled: false,
+      failed: true,
+      errorStage: "planner",
+      stages,
+      lastSessionPath: plannerSessionPath,
+    };
   }
 
   let plan = planResult.output;
@@ -147,10 +155,19 @@ export async function runPlanning(
     forkFrom: plannerSessionPath,
   });
 
-  if (reviewResult.status !== "failed") {
-    const candidates = parseCandidates(reviewResult.output);
-    plan = appendArchitecturalNotes(plan, candidates);
+  if (reviewResult.status === "failed") {
+    return {
+      plan: reviewResult.output,
+      cancelled: false,
+      failed: true,
+      errorStage: "architecture-reviewer",
+      stages,
+      lastSessionPath: archSessionPath ?? plannerSessionPath,
+    };
   }
+
+  const candidates = parseCandidates(reviewResult.output);
+  plan = appendArchitecturalNotes(plan, candidates);
 
   // The architecture-reviewer's session is the tail of the planning
   // sub-chain. It is what downstream build-chain phases should fork

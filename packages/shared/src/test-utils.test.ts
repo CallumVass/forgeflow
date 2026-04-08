@@ -48,7 +48,7 @@ describe("mockRunAgent", () => {
     const result = await mock("agent", "prompt", stubOpts);
 
     expect(result).toMatchObject({
-      name: "mock",
+      name: "agent",
       output: "test output",
       status: "failed",
       stderr: "",

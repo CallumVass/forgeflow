@@ -48,6 +48,18 @@ function makeOpts(agentsDir: string, cwd: string): RunAgentOpts {
   };
 }
 
+function writeSession(filePath: string, cwd: string, entries: object[] = []): void {
+  const header = {
+    type: "session",
+    version: 3,
+    id: "11111111-1111-1111-1111-111111111111",
+    timestamp: new Date().toISOString(),
+    cwd,
+  };
+  const lines = `${[header, ...entries].map((entry) => JSON.stringify(entry)).join("\n")}\n`;
+  fs.writeFileSync(filePath, lines, { mode: 0o600 });
+}
+
 describe("runAgent", () => {
   let tmpDir: string;
 
@@ -111,6 +123,60 @@ ${body}`,
 
     await expect(runAgent("ghost", "", opts)).rejects.toThrow(/missing/);
     expect(spawnMock).not.toHaveBeenCalled();
+  });
+
+  it("materialises a fork into sessionPath and invokes pi with only --session", async () => {
+    writeAgent("test-agent", "read, bash");
+    const source = path.join(tmpDir, "source.jsonl");
+    const target = path.join(tmpDir, "target.jsonl");
+    writeSession(source, tmpDir, [
+      {
+        type: "message",
+        id: "aaaaaaaa",
+        parentId: null,
+        timestamp: new Date().toISOString(),
+        message: { role: "user", content: "hello" },
+      },
+    ]);
+    fs.writeFileSync(target, "", { mode: 0o600 });
+
+    const opts = {
+      ...makeOpts(tmpDir, tmpDir),
+      stages: [emptyStage("test-agent")],
+      sessionPath: target,
+      forkFrom: source,
+    };
+    wireSpawnToClose(0);
+
+    await runAgent("test-agent", "do stuff", opts);
+
+    const callArgs = spawnMock.mock.calls[0]?.[1] as string[];
+    expect(callArgs).toContain("--session");
+    expect(callArgs[callArgs.indexOf("--session") + 1]).toBe(target);
+    expect(callArgs).not.toContain("--fork");
+
+    const targetContents = fs.readFileSync(target, "utf-8");
+    expect(targetContents).toContain(`"parentSession":"${source}"`);
+    expect(targetContents).toContain('"role":"user"');
+  });
+
+  it("passes --fork when forkFrom is set without sessionPath", async () => {
+    writeAgent("test-agent", "read, bash");
+    const source = path.join(tmpDir, "source.jsonl");
+    writeSession(source, tmpDir);
+    const opts = {
+      ...makeOpts(tmpDir, tmpDir),
+      stages: [emptyStage("test-agent")],
+      forkFrom: source,
+    };
+    wireSpawnToClose(0);
+
+    await runAgent("test-agent", "do stuff", opts);
+
+    const callArgs = spawnMock.mock.calls[0]?.[1] as string[];
+    expect(callArgs).toContain("--fork");
+    expect(callArgs[callArgs.indexOf("--fork") + 1]).toBe(source);
+    expect(callArgs).not.toContain("--no-session");
   });
 
   describe("agentOverrides", () => {

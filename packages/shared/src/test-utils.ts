@@ -71,11 +71,19 @@ export function mockTheme(): ForgeflowTheme {
 
 /** Create a mock RunAgentFn that returns a StageResult with configurable output and status. */
 export function mockRunAgent(output = "", status: StageResult["status"] = "done"): Mock<RunAgentFn> {
-  return vi.fn(async () => ({
-    ...emptyStage("mock"),
-    output,
-    status,
-  }));
+  return vi.fn(async (agent, _prompt, opts) => {
+    const name = opts.stageName ?? agent;
+    const stage = opts.stages.find((s) => s.name === name);
+    if (stage) {
+      stage.status = status;
+      stage.output = output;
+    }
+    return {
+      ...emptyStage(name),
+      output,
+      status,
+    };
+  });
 }
 
 /** Create a mock RunAgentFn that returns responses in sequence, one per call. */
@@ -83,10 +91,17 @@ export function sequencedRunAgent(
   responses: Array<{ output: string; status?: StageResult["status"] }>,
 ): Mock<RunAgentFn> {
   let callIndex = 0;
-  return vi.fn(async () => {
+  return vi.fn(async (agent, _prompt, opts) => {
     const response = responses[callIndex] ?? { output: "", status: "done" as const };
     callIndex++;
-    return { ...emptyStage("mock"), output: response.output, status: response.status ?? ("done" as const) };
+    const status = response.status ?? ("done" as const);
+    const name = opts.stageName ?? agent;
+    const stage = opts.stages.find((s) => s.name === name);
+    if (stage) {
+      stage.status = status;
+      stage.output = response.output;
+    }
+    return { ...emptyStage(name), output: response.output, status };
   });
 }
 
