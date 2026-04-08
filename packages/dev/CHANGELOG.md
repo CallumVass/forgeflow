@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.13.0...forgeflow-dev-v0.14.0) (2026-04-08)
+
+
+### Features
+
+* **dev,pm:** document per-stage model overrides via .forgeflow.json ([#129](https://github.com/CallumVass/forgeflow/issues/129)) ([3242ae7](https://github.com/CallumVass/forgeflow/commit/3242ae70ea9edf3ca8de3b36c1654ef90611f68b))
+
 ## [0.13.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.12.1...forgeflow-dev-v0.13.0) (2026-04-08)
 
 
