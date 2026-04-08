@@ -58,7 +58,7 @@ export async function refactorAndReview(
 /** Run the implementor agent and check for blocked signal. Returns blocked reason or null. */
 export async function runImplementorPhase(pctx: PhaseContext, prompt: string): Promise<string | null> {
   cleanSignal(pctx.cwd, "blocked");
-  await pctx.runAgentFn("implementor", prompt, { ...pctx.agentOpts });
+  await pctx.runAgentFn("implementor", prompt, pctx.agentOpts);
 
   if (signalExists(pctx.cwd, "blocked")) {
     return readSignal(pctx.cwd, "blocked") ?? "";
