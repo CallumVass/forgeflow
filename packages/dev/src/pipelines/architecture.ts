@@ -7,6 +7,7 @@ import {
   TOOLS_READONLY,
   toAgentOpts,
 } from "@callumvass/forgeflow-shared/pipeline";
+import { ARCHITECTURE_LABEL } from "./implement-all.js";
 
 /**
  * A single architectural finding parsed from reviewer output: a short label
@@ -106,7 +107,7 @@ export async function runArchitecture(pctx: PipelineContext, opts?: { runAgentFn
 
     const rfcResult = await runAgentFn(
       "architecture-reviewer",
-      `Based on the following architectural analysis, generate a detailed RFC and create a GitHub issue (with label "architecture") for this specific candidate.\n\nCANDIDATE:\n${candidate.body}\n\nFULL ANALYSIS (for context):\n${candidateContext}`,
+      `Based on the following architectural analysis, generate a detailed RFC and create a GitHub issue (with label "${ARCHITECTURE_LABEL}") for this specific candidate.\n\nCANDIDATE:\n${candidate.body}\n\nFULL ANALYSIS (for context):\n${candidateContext}`,
       { ...agentOpts, stageName, tools: TOOLS_READONLY },
     );
 

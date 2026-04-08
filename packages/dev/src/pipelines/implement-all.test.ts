@@ -25,8 +25,9 @@ vi.mock("./implement.js", () => ({
 
 import { exec } from "@callumvass/forgeflow-shared/exec";
 import { mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
-import { setForgeflowStatus } from "../utils/ui.js";
-import { getReadyIssues, runImplementAll } from "./implement-all.js";
+import { setForgeflowStatus, updateProgressWidget } from "../utils/ui.js";
+import { runImplement } from "./implement.js";
+import { getReadyIssues, IMPLEMENT_ALL_LABELS, runImplementAll } from "./implement-all.js";
 
 describe("getReadyIssues", () => {
   it("excludes issues already in the completed set", () => {
@@ -52,6 +53,28 @@ describe("getReadyIssues", () => {
 
     expect(ready).toEqual([2]);
   });
+
+  it("is label-agnostic: architecture depending on auto-generated and vice versa", () => {
+    // Issue 50 (architecture) depends on issue 40 (auto-generated).
+    // Issue 60 (auto-generated) depends on issue 55 (architecture).
+    // getReadyIssues has no label input so it must treat references uniformly.
+    const issues = [
+      { number: 50, title: "RFC", body: "## Dependencies\n#40" },
+      { number: 60, title: "Feature", body: "## Dependencies\n#55" },
+    ];
+
+    // Neither dependency satisfied yet → both held back.
+    expect(getReadyIssues(issues, new Set())).toEqual([]);
+
+    // #40 closed (auto-generated) unblocks the architecture RFC #50.
+    expect(getReadyIssues(issues, new Set([40]))).toEqual([50]);
+
+    // #55 closed (architecture) unblocks the auto-generated feature #60.
+    expect(getReadyIssues(issues, new Set([55]))).toEqual([60]);
+
+    // Both deps closed → both ready.
+    expect(getReadyIssues(issues, new Set([40, 55]))).toEqual([50, 60]);
+  });
 });
 
 describe("runImplementAll status bar", () => {
@@ -59,17 +82,36 @@ describe("runImplementAll status bar", () => {
     vi.clearAllMocks();
   });
 
-  function setupExecMock(closedNumbers: number[], openIssues: Array<{ number: number; title: string; body: string }>) {
+  type OpenIssue = { number: number; title: string; body: string };
+
+  function setupExecMock(
+    closedNumbers: number[],
+    openIssues: OpenIssue[],
+    opts: { openPerLabel?: Record<string, OpenIssue[]> } = {},
+  ) {
     const closedOutput = closedNumbers.join("\n");
-    const openJson = JSON.stringify(openIssues);
-    let callCount = 0;
+    // Track which issues the (mocked) implement call has completed so subsequent
+    // open fetches drop them, naturally terminating the loop.
+    const implementedNumbers = new Set<number>();
+    vi.mocked(runImplement).mockImplementation(async (issueNum: string) => {
+      implementedNumbers.add(Number(issueNum));
+      return {
+        content: [{ type: "text", text: "Implementation complete" }],
+        details: { pipeline: "implement", stages: [] },
+      };
+    });
     vi.mocked(exec).mockImplementation(async (cmd: string) => {
-      callCount++;
       if (cmd.includes("--state closed")) return closedOutput;
       if (cmd.includes("--state open")) {
-        // After the first open call, return empty (all done) to end the loop
-        if (callCount > 3) return "[]";
-        return openJson;
+        if (opts.openPerLabel) {
+          for (const [label, labelled] of Object.entries(opts.openPerLabel)) {
+            if (cmd.includes(`"${label}"`)) {
+              return JSON.stringify(labelled.filter((i) => !implementedNumbers.has(i.number)));
+            }
+          }
+          return "[]";
+        }
+        return JSON.stringify(openIssues.filter((i) => !implementedNumbers.has(i.number)));
       }
       return "";
     });
@@ -102,18 +144,8 @@ describe("runImplementAll status bar", () => {
       { number: 12, title: "Issue 12", body: "" },
       { number: 13, title: "Issue 13", body: "" },
     ];
-    // 2 historically closed + 4 open
-    let openCallCount = 0;
-    vi.mocked(exec).mockImplementation(async (cmd: string) => {
-      if (cmd.includes("--state closed")) return "1\n2";
-      if (cmd.includes("--state open")) {
-        openCallCount++;
-        // After first iteration, remove issue 10 from open list
-        if (openCallCount === 1) return JSON.stringify(openIssues);
-        return JSON.stringify(openIssues.slice(1));
-      }
-      return "";
-    });
+    // 2 historically closed + 4 open.
+    setupExecMock([1, 2], openIssues);
 
     await runImplementAll(makePctx(), { skipPlan: false, skipReview: false });
 
@@ -132,5 +164,79 @@ describe("runImplementAll status bar", () => {
     const statusCalls = vi.mocked(setForgeflowStatus).mock.calls;
     // Issue 20 should be picked (not blocked), so we should see it in the status
     expect(statusCalls[0]?.[1]).toContain("#20");
+  });
+
+  it("queries closed issues for every label in IMPLEMENT_ALL_LABELS", async () => {
+    setupExecMock([], []);
+
+    await runImplementAll(makePctx(), { skipPlan: false, skipReview: false });
+
+    const closedCalls = vi
+      .mocked(exec)
+      .mock.calls.map((c) => c[0] as string)
+      .filter((c) => c.includes("--state closed"));
+
+    for (const label of IMPLEMENT_ALL_LABELS) {
+      expect(closedCalls.some((c) => c.includes(label))).toBe(true);
+    }
+  });
+
+  it("queries open issues for every label in IMPLEMENT_ALL_LABELS", async () => {
+    setupExecMock([], []);
+
+    await runImplementAll(makePctx(), { skipPlan: false, skipReview: false });
+
+    const openCalls = vi
+      .mocked(exec)
+      .mock.calls.map((c) => c[0] as string)
+      .filter((c) => c.includes("--state open"));
+
+    for (const label of IMPLEMENT_ALL_LABELS) {
+      expect(openCalls.some((c) => c.includes(label))).toBe(true);
+    }
+  });
+
+  it("deduplicates an issue that carries both tracked labels", async () => {
+    const shared = { number: 42, title: "Dual-labelled", body: "" };
+    setupExecMock([], [], {
+      openPerLabel: {
+        "auto-generated": [shared],
+        architecture: [shared],
+      },
+    });
+
+    await runImplementAll(makePctx(), { skipPlan: false, skipReview: false });
+
+    const implementCalls = vi.mocked(runImplement).mock.calls.filter((c) => c[0] === "42");
+    expect(implementCalls).toHaveLength(1);
+
+    // Progress widget should only ever know about one entry for #42.
+    const lastWidgetCall = vi.mocked(updateProgressWidget).mock.calls.at(-1);
+    expect(lastWidgetCall?.[1].size).toBe(1);
+  });
+
+  it("processes mixed auto-generated and architecture issues in ascending number order", async () => {
+    setupExecMock([], [], {
+      openPerLabel: {
+        "auto-generated": [
+          { number: 10, title: "Issue 10", body: "" },
+          { number: 12, title: "Issue 12", body: "" },
+        ],
+        architecture: [{ number: 11, title: "RFC 11", body: "" }],
+      },
+    });
+
+    await runImplementAll(makePctx(), { skipPlan: false, skipReview: false });
+
+    const running = vi
+      .mocked(setForgeflowStatus)
+      .mock.calls.map((c) => c[1] as string)
+      .filter((s) => /#\d+/.test(s))
+      .map((s) => s.match(/#(\d+)/)?.[1])
+      .filter((n): n is string => Boolean(n));
+    // First appearance of each number captures the order they were picked.
+    const firstSeen: string[] = [];
+    for (const n of running) if (!firstSeen.includes(n)) firstSeen.push(n);
+    expect(firstSeen).toEqual(["10", "11", "12"]);
   });
 });
