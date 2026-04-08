@@ -1,6 +1,6 @@
 import { mockExecFn, mockPipelineContext, mockRunAgent, sequencedRunAgent } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
-import type { ResolvedIssue } from "../utils/git.js";
+import type { ResolvedIssue } from "../utils/issue-tracker.js";
 import { runImplementation } from "./implementation-run.js";
 
 // `reviewAndFix` / `runImplementorPhase` poke at filesystem-backed signals.

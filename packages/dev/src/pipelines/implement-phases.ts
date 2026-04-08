@@ -7,7 +7,7 @@ import {
   type StageResult,
   signalExists,
 } from "@callumvass/forgeflow-shared/pipeline";
-import type { ResolvedIssue } from "../utils/git.js";
+import type { ResolvedIssue } from "../utils/issue-tracker.js";
 import { runReviewPipeline } from "./review-orchestrator.js";
 
 /**
@@ -80,7 +80,6 @@ export function buildImplementorPrompt(
   const branchNote = resolved.branch
     ? `\n- You should be on branch: ${resolved.branch} — do NOT create or switch branches.`
     : "\n- Do NOT create or switch branches.";
-  const prNote = resolved.existingPR ? `\n- PR #${resolved.existingPR} already exists for this branch.` : "";
   const closeNote = isGitHub
     ? `\n- The PR body MUST end with a blank line then 'Closes #${resolved.number}' on its own line (not inline with other text), so the issue auto-closes on merge.`
     : `\n- The PR body should reference Jira issue ${resolved.key}.`;
@@ -88,5 +87,5 @@ export function buildImplementorPrompt(
     ? `\n- If the plan has unresolved questions, resolve them yourself using sensible defaults. Do NOT stop and wait.`
     : "";
 
-  return `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}${customPromptSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit, push, and create a PR.\n\nCONSTRAINTS:${branchNote}${prNote}${closeNote}${unresolvedNote}\n- If blocked, write BLOCKED.md with the reason and stop.`;
+  return `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}${customPromptSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit, push, and create a PR.\n\nCONSTRAINTS:${branchNote}${closeNote}${unresolvedNote}\n- If blocked, write BLOCKED.md with the reason and stop.`;
 }

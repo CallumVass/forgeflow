@@ -1,45 +1,14 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
 import type { ExecFn } from "@callumvass/forgeflow-shared/pipeline";
-import { findPrNumber } from "./git-workflow.js";
 
 /**
- * Pair of shell-execution functions injected into git helpers.
+ * Pair of shell-execution functions injected into issue-tracker helpers.
  * `execFn` throws on non-zero exit; `execSafeFn` returns empty string on failure.
  * Names match `PipelineContext.execFn` / `PipelineContext.execSafeFn` so callers
  * can pass `pctx` directly via structural subtyping.
  */
-interface GitExecFns {
+interface IssueTrackerDeps {
   execFn: ExecFn;
   execSafeFn: ExecFn;
-}
-
-const PR_TEMPLATE_PATHS = [
-  ".github/pull_request_template.md",
-  ".github/PULL_REQUEST_TEMPLATE.md",
-  "pull_request_template.md",
-  "PULL_REQUEST_TEMPLATE.md",
-  ".github/PULL_REQUEST_TEMPLATE/pull_request_template.md",
-];
-
-/**
- * Build a PR body using the repo's PR template if one exists,
- * otherwise fall back to the default close/reference line.
- */
-export function buildPrBody(cwd: string, issue: ResolvedIssue): string {
-  const isGitHub = issue.source === "github" && issue.number > 0;
-  const defaultBody = isGitHub ? `Closes #${issue.number}` : `Jira: ${issue.key}`;
-
-  for (const rel of PR_TEMPLATE_PATHS) {
-    const abs = path.join(cwd, rel);
-    try {
-      const template = fs.readFileSync(abs, "utf-8");
-      const closeRef = isGitHub ? `Closes #${issue.number}` : `Jira: ${issue.key}`;
-      return `${closeRef}\n\n${template}`;
-    } catch {}
-  }
-
-  return defaultBody;
 }
 
 export interface ResolvedIssue {
@@ -49,7 +18,6 @@ export interface ResolvedIssue {
   title: string;
   body: string;
   branch: string;
-  existingPR?: number;
 }
 
 function slugify(text: string, maxLen = 40): string {
@@ -73,20 +41,23 @@ const JIRA_BRANCH_RE = /feat\/([A-Z]+-\d+)/;
  * Takes an `{ execFn, execSafeFn }` pair — these field names match
  * `PipelineContext`, so callers can pass `pctx` directly. Tests pass spies to
  * capture every `git`/`gh`/`jira` invocation without spawning real sub-processes.
+ *
+ * Does NOT inspect PR state. Callers that need to know whether a PR already
+ * exists for the resolved branch must call `findPrNumber` themselves.
  */
 export async function resolveIssue(
   cwd: string,
   issueArg: string | undefined,
-  execFns: GitExecFns,
+  deps: IssueTrackerDeps,
 ): Promise<ResolvedIssue | string> {
   // Explicit Jira key
   if (issueArg && JIRA_KEY_RE.test(issueArg)) {
-    return resolveJiraIssue(cwd, issueArg, execFns);
+    return resolveJiraIssue(cwd, issueArg, deps);
   }
 
   // Explicit GitHub issue number
   if (issueArg && /^\d+$/.test(issueArg)) {
-    return resolveGitHubIssue(cwd, parseInt(issueArg, 10), execFns);
+    return resolveGitHubIssue(cwd, parseInt(issueArg, 10), deps);
   }
 
   // Free-text description (not a number or Jira key)
@@ -95,25 +66,29 @@ export async function resolveIssue(
   }
 
   // Detect from branch name
-  const branch = await execFns.execFn("git branch --show-current", cwd);
+  const branch = await deps.execFn("git branch --show-current", cwd);
 
   const jiraMatch = branch.match(JIRA_BRANCH_RE);
   if (jiraMatch) {
     // biome-ignore lint/style/noNonNullAssertion: match[1] guaranteed by regex
-    return resolveJiraIssue(cwd, jiraMatch[1]!, execFns, branch);
+    return resolveJiraIssue(cwd, jiraMatch[1]!, deps, branch);
   }
 
   const ghMatch = branch.match(/(?:feat\/)?issue-(\d+)/);
   if (ghMatch) {
     // biome-ignore lint/style/noNonNullAssertion: match[1] guaranteed by regex
-    return resolveGitHubIssue(cwd, parseInt(ghMatch[1]!, 10), execFns);
+    return resolveGitHubIssue(cwd, parseInt(ghMatch[1]!, 10), deps);
   }
 
   return `On branch "${branch}" — can't detect issue. Use /implement <issue#> or /implement <JIRA-KEY>.`;
 }
 
-async function resolveGitHubIssue(cwd: string, issueNum: number, execFns: GitExecFns): Promise<ResolvedIssue | string> {
-  const issueJson = await execFns.execSafeFn(`gh issue view ${issueNum} --json number,title,body`, cwd);
+async function resolveGitHubIssue(
+  cwd: string,
+  issueNum: number,
+  deps: IssueTrackerDeps,
+): Promise<ResolvedIssue | string> {
+  const issueJson = await deps.execSafeFn(`gh issue view ${issueNum} --json number,title,body`, cwd);
   if (!issueJson) return `Could not fetch issue #${issueNum}.`;
 
   let issue: { number: number; title: string; body: string };
@@ -123,19 +98,16 @@ async function resolveGitHubIssue(cwd: string, issueNum: number, execFns: GitExe
     return `Could not parse issue #${issueNum}.`;
   }
 
-  const branch = `feat/issue-${issueNum}`;
-  const existingPR = (await findPrNumber(cwd, branch, execFns.execFn)) ?? undefined;
-
-  return { source: "github", key: String(issueNum), ...issue, branch, existingPR };
+  return { source: "github", key: String(issueNum), ...issue, branch: `feat/issue-${issueNum}` };
 }
 
 async function resolveJiraIssue(
   cwd: string,
   jiraKey: string,
-  execFns: GitExecFns,
+  deps: IssueTrackerDeps,
   existingBranch?: string,
 ): Promise<ResolvedIssue | string> {
-  const raw = await execFns.execSafeFn(`jira issue view ${jiraKey} --raw`, cwd);
+  const raw = await deps.execSafeFn(`jira issue view ${jiraKey} --raw`, cwd);
   if (!raw) return `Could not fetch Jira issue ${jiraKey}.`;
 
   // biome-ignore lint/suspicious/noExplicitAny: Jira JSON shape varies by instance
@@ -161,7 +133,5 @@ async function resolveJiraIssue(
   const body = bodyParts.join("\n\n");
   const branch = existingBranch ?? `feat/${jiraKey}-${slugify(title)}`;
 
-  const existingPR = (await findPrNumber(cwd, branch, execFns.execFn)) ?? undefined;
-
-  return { source: "jira", key: jiraKey, number: 0, title, body, branch, existingPR };
+  return { source: "jira", key: jiraKey, number: 0, title, body, branch };
 }

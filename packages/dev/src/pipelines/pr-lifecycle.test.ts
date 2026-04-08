@@ -1,7 +1,7 @@
 import { emptyStage, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
 import { mockExecFn, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
-import type { ResolvedIssue } from "../utils/git.js";
+import type { ResolvedIssue } from "../utils/issue-tracker.js";
 import { finalisePr } from "./pr-lifecycle.js";
 
 const githubResolved: ResolvedIssue = {

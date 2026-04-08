@@ -26,7 +26,7 @@ const ghIssueJson = JSON.stringify({ number: 42, title: "Test issue", body: "Iss
  * Build a scripted `execFn` covering every command `runImplement` drives in
  * an autonomous fresh run:
  *  - `gh issue view` (via execSafeFn)
- *  - `gh pr list --head ... ` for findPrNumber (existingPR + post-ensurePr lookups)
+ *  - `gh pr list --head ... ` for findPrNumber (resume-detection + post-ensurePr lookups)
  *  - `git rev-list main..<branch>` for setupBranch (0 → fresh path)
  *  - `git branch -D / git checkout -b / git branch --show-current` for fresh checkout
  *  - `git diff main...HEAD` for reviewAndFix (empty → skip)
@@ -81,7 +81,7 @@ describe("runImplement orchestrator (integration)", () => {
   it("resume-with-existing-PR: message contains 'PR #N already exists' and stages have no planner/implementor entries", async () => {
     const runAgentFn = sequencedRunAgent([]);
     const execFn = scriptedExec({
-      "gh pr list": "99", // findPrNumber → 99 → existingPR
+      "gh pr list": "99", // findPrNumber → 99 → resume-existing-PR path
       // If the implementation wrongly mutates the branch, these assertions catch it
       "git rev-list": "5",
     });

@@ -1,5 +1,5 @@
 import { emptyStage, type PipelineContext, type StageResult, toAgentOpts } from "@callumvass/forgeflow-shared/pipeline";
-import type { ResolvedIssue } from "../utils/git.js";
+import type { ResolvedIssue } from "../utils/issue-tracker.js";
 import {
   buildImplementorPrompt,
   type PhaseContext,

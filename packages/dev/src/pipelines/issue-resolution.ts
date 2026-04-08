@@ -1,11 +1,12 @@
 import type { PipelineContext } from "@callumvass/forgeflow-shared/pipeline";
-import { type ResolvedIssue, resolveIssue } from "../utils/git.js";
-import { setupBranch } from "../utils/git-workflow.js";
+import { setupBranch } from "../utils/branch-lifecycle.js";
+import { type ResolvedIssue, resolveIssue } from "../utils/issue-tracker.js";
+import { findPrNumber } from "../utils/pr-lifecycle.js";
 
 /**
  * Discriminated union describing how `runImplement` should resume work for
- * the requested issue. Replaces the implicit
- * `existingPR` / `branchResult.status === "resumed"` / "fresh" ladder.
+ * the requested issue. Replaces the implicit existing-PR / `branchResult.status
+ * === "resumed"` / "fresh" ladder that used to live inline in `runImplement`.
  */
 export type ResumeMode =
   | { kind: "existing-pr"; prNumber: number }
@@ -23,10 +24,12 @@ export interface IssuePlan {
 /**
  * Resolve which issue to implement and the correct resume mode for it.
  *
- * Encapsulates the `resolveIssue` → `setupBranch` → label-building sequence
- * that used to live inline in `runImplement`. Short-circuits on an
- * existing PR (no branch mutation) and does not call `setupBranch` if the
- * issue cannot be resolved at all.
+ * Encapsulates the `resolveIssue` → `findPrNumber` → `setupBranch` →
+ * label-building sequence that used to live inline in `runImplement`. Calls
+ * `findPrNumber` here (rather than inside `resolveIssue`) so the issue-tracker
+ * layer stays oblivious of PR state. Short-circuits on an existing PR (no
+ * branch mutation) and does not call `setupBranch` if the issue cannot be
+ * resolved at all.
  */
 export async function resolveIssuePlan(
   issueArg: string,
@@ -43,10 +46,12 @@ export async function resolveIssuePlan(
     : `Jira ${resolved.key}: ${resolved.title}\n\n${resolved.body}`;
 
   // Existing PR → review-and-fix only. Do NOT mutate the branch.
-  if (resolved.existingPR) {
+  // Inspect PR state at the layering boundary, not inside resolveIssue.
+  const existingPr = resolved.branch ? await findPrNumber(cwd, resolved.branch, execFn) : null;
+  if (existingPr != null) {
     return {
       resolved,
-      resume: { kind: "existing-pr", prNumber: resolved.existingPR },
+      resume: { kind: "existing-pr", prNumber: existingPr },
       issueLabel,
       issueContext,
     };

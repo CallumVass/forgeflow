@@ -1,7 +1,7 @@
 import { type mockExecFn, mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../utils/git-workflow.js", () => ({
+vi.mock("../utils/pr-lifecycle.js", () => ({
   findPrNumber: vi.fn(async () => 100),
   mergePr: vi.fn(async () => {}),
   returnToMain: vi.fn(async () => {}),
