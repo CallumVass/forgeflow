@@ -100,6 +100,74 @@ export async function findPrNumber(cwd: string, branch: string, execFn: ExecFn):
 }
 
 /**
+ * Block until every check on `prNumber` has completed, then classify
+ * the outcome by reading the JSON rollup.
+ *
+ * `gh pr checks --watch` polls GitHub at a 10-second interval and
+ * returns once all checks reach a terminal state. Its exit code is
+ * non-zero when any check fails, so it is invoked through `execSafeFn`
+ * (which swallows non-zero exits) and the pass/fail decision is taken
+ * from the subsequent `--json bucket,name` query. The `bucket` field
+ * is `gh`'s normalised state: `pass` | `fail` | `pending` | `skipping`
+ * | `cancel`. Only `fail` and `cancel` count as failures; `skipping`
+ * is treated as pass because skipped checks should not block a merge.
+ *
+ * Returns the list of failed check names so callers (the CI fix loop)
+ * can surface them to the operator and to the implementor agent.
+ *
+ * If the rollup JSON is unparseable (e.g. network hiccup, unexpected
+ * gh output), this returns `passed: false` with an empty failedChecks
+ * list so the caller surfaces the ambiguity rather than silently merging.
+ */
+export async function waitForChecks(
+  cwd: string,
+  prNumber: number,
+  execSafeFn: ExecFn,
+): Promise<{ passed: boolean; failedChecks: string[] }> {
+  // `--interval 10` matches gh's default and keeps the polling cost
+  // honest; `--required` is deliberately NOT set because forgeflow
+  // treats every check configured on the PR as gating for the merge.
+  await execSafeFn(`gh pr checks ${prNumber} --watch --interval 10`, cwd);
+
+  const json = await execSafeFn(`gh pr checks ${prNumber} --json bucket,name`, cwd);
+  let checks: Array<{ bucket?: string; name?: string }> = [];
+  try {
+    checks = JSON.parse(json || "[]");
+  } catch {
+    return { passed: false, failedChecks: [] };
+  }
+
+  const failedChecks = checks
+    .filter((c) => c.bucket === "fail" || c.bucket === "cancel")
+    .map((c) => c.name ?? "unknown");
+
+  return { passed: failedChecks.length === 0, failedChecks };
+}
+
+/**
+ * Fetch the failed-run logs for a PR's most recent workflow runs so the
+ * CI fix agent has something concrete to work from. Uses `gh run list`
+ * (scoped to the PR's branch) to locate runs and `gh run view --log-failed`
+ * to pull logs. Swallows all errors and returns an empty string on
+ * failure — the caller treats missing logs as "no context available".
+ */
+export async function fetchFailedCiLogs(cwd: string, branch: string, execSafeFn: ExecFn): Promise<string> {
+  // The latest failed run on this branch — use JSON so the jq is
+  // deterministic across gh versions.
+  const runIdRaw = await execSafeFn(
+    `gh run list --branch "${branch}" --status failure --limit 1 --json databaseId --jq '.[0].databaseId // empty'`,
+    cwd,
+  );
+  const runId = runIdRaw.trim();
+  if (!runId) return "";
+
+  // `--log-failed` is CPU-cheap and returns only the failing job output,
+  // which is what the fix agent needs to locate the problem.
+  const logs = await execSafeFn(`gh run view ${runId} --log-failed`, cwd);
+  return logs;
+}
+
+/**
  * Squash-merge a PR and delete the branch. Verifies merge succeeded.
  */
 export async function mergePr(cwd: string, prNumber: number, execFn: ExecFn): Promise<void> {
