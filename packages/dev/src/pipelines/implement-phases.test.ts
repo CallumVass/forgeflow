@@ -1,39 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { makeGitHubResolvedIssue, makeJiraResolvedIssue } from "../utils/issue-tracker.fixtures.js";
+import { buildImplementorPrompt } from "./implement-phases.js";
 
-vi.mock("@callumvass/forgeflow-shared/pipeline", async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
-  return {
-    ...actual,
-    cleanSignal: vi.fn(),
-    signalExists: vi.fn(() => false),
-    readSignal: vi.fn(() => null),
-  };
-});
-
-vi.mock("./review-orchestrator.js", () => ({
-  runReviewPipeline: vi.fn(async () => ({ passed: true })),
-}));
-
-import { readSignal, signalExists } from "@callumvass/forgeflow-shared/pipeline";
-import { mockExecFn, mockPipelineContext, mockRunAgent } from "@callumvass/forgeflow-shared/testing";
-import {
-  buildImplementorPrompt,
-  type PhaseContext,
-  refactorAndReview,
-  reviewAndFix,
-  runImplementorPhase,
-} from "./implement-phases.js";
-import { runReviewPipeline } from "./review-orchestrator.js";
-
-describe("buildImplementorPrompt", () => {
-  it("returns correct prompt for a GitHub issue with plan, branch, and close note", () => {
-    const result = buildImplementorPrompt("Issue #42: Test issue\n\nIssue body", "test plan", undefined, {
-      source: "github",
-      key: "42",
-      number: 42,
-      title: "Test issue",
-      body: "Issue body",
-      branch: "feat/issue-42",
+describe("buildImplementorPrompt — cold-start shape", () => {
+  it("includes full issue context, plan, branch note, and Closes # for a GitHub issue", () => {
+    const result = buildImplementorPrompt({
+      issueContext: "Issue #42: Test issue\n\nIssue body",
+      plan: "test plan",
+      customPrompt: undefined,
+      resolved: makeGitHubResolvedIssue(),
+      isColdStart: true,
     });
 
     expect(result).toContain("Issue #42: Test issue");
@@ -43,154 +19,94 @@ describe("buildImplementorPrompt", () => {
     expect(result).toContain("Closes #42");
   });
 
-  it("returns correct prompt for a Jira issue (references key, no 'Closes #N')", () => {
-    const result = buildImplementorPrompt("Jira PROJ-123: Jira issue\n\nJira body", "", undefined, {
-      source: "jira",
-      key: "PROJ-123",
-      number: 0,
-      title: "Jira issue",
-      body: "Jira body",
-      branch: "feat/PROJ-123",
+  it("references the Jira key and omits Closes # for a Jira issue", () => {
+    const result = buildImplementorPrompt({
+      issueContext: "Jira CUS-123: Jira issue\n\nJira body",
+      plan: "",
+      customPrompt: undefined,
+      resolved: makeJiraResolvedIssue(),
+      isColdStart: true,
     });
 
-    expect(result).toContain("Jira PROJ-123: Jira issue");
+    expect(result).toContain("Jira CUS-123: Jira issue");
     expect(result).toContain("Jira body");
     expect(result).not.toContain("Closes #");
-    expect(result).toContain("reference Jira issue PROJ-123");
+    expect(result).toContain("reference Jira issue CUS-123");
   });
 
-  it("includes custom prompt section and autonomous unresolved-questions note when provided", () => {
-    const result = buildImplementorPrompt(
-      "Issue #1: Test\n\nBody",
-      "some plan",
-      "Extra instructions here",
-      {
-        source: "github",
-        key: "1",
-        number: 1,
-        title: "Test",
-        body: "Body",
-        branch: "feat/issue-1",
-      },
-      true, // autonomous
-    );
+  it("includes customPrompt and the autonomous unresolved-questions note when requested", () => {
+    const result = buildImplementorPrompt({
+      issueContext: "Issue #1: Test\n\nBody",
+      plan: "some plan",
+      customPrompt: "Extra instructions here",
+      resolved: makeGitHubResolvedIssue({ number: 1, key: "1", branch: "feat/issue-1" }),
+      autonomous: true,
+      isColdStart: true,
+    });
 
     expect(result).toContain("ADDITIONAL INSTRUCTIONS FROM USER:\nExtra instructions here");
     expect(result).toContain("resolve them yourself using sensible defaults");
   });
-});
 
-interface PhaseSpies {
-  pctx: PhaseContext;
-  runAgentFn: ReturnType<typeof mockRunAgent>;
-  execFn: ReturnType<typeof mockExecFn>;
-}
+  it("omits the unresolved-questions note when not autonomous", () => {
+    const result = buildImplementorPrompt({
+      issueContext: "ctx",
+      plan: "plan",
+      customPrompt: undefined,
+      resolved: makeGitHubResolvedIssue(),
+      autonomous: false,
+      isColdStart: true,
+    });
 
-function makePhaseContext(
-  runAgentFn: ReturnType<typeof mockRunAgent> = mockRunAgent(),
-  execFn: ReturnType<typeof mockExecFn> = mockExecFn(),
-): PhaseSpies {
-  const base = mockPipelineContext({ cwd: "/tmp", runAgentFn, execFn });
-  const pctx: PhaseContext = {
-    ...base,
-    agentOpts: {
-      agentsDir: "/agents",
-      cwd: "/tmp",
-      stages: [],
-      pipeline: "implement",
-    },
-    stages: [],
-  };
-  return { pctx, runAgentFn, execFn };
-}
-
-describe("reviewAndFix", () => {
-  it("skips review when git diff returns empty string", async () => {
-    const { pctx, execFn } = makePhaseContext(mockRunAgent(), mockExecFn({ "git diff": "" }));
-    vi.mocked(runReviewPipeline).mockClear();
-
-    await reviewAndFix(pctx);
-
-    expect(execFn).toHaveBeenCalledWith("git diff main...HEAD", "/tmp");
-    expect(runReviewPipeline).not.toHaveBeenCalled();
-  });
-
-  it("calls runReviewPipeline with diff and runs fix-findings agent when review fails", async () => {
-    const { pctx, runAgentFn } = makePhaseContext(mockRunAgent(), mockExecFn({ "git diff": "some diff" }));
-    vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: false, findings: "Some findings" });
-
-    await reviewAndFix(pctx);
-
-    expect(runReviewPipeline).toHaveBeenCalledWith("some diff", expect.objectContaining({ cwd: "/tmp" }));
-    expect(runAgentFn).toHaveBeenCalledWith(
-      "implementor",
-      expect.stringContaining("Fix the following code review findings"),
-      expect.objectContaining({ stageName: "fix-findings" }),
-    );
-  });
-
-  it("does not invoke fix-findings agent when review passes", async () => {
-    const { pctx, runAgentFn } = makePhaseContext(mockRunAgent(), mockExecFn({ "git diff": "some diff" }));
-    vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: true });
-
-    await reviewAndFix(pctx);
-
-    expect(runReviewPipeline).toHaveBeenCalled();
-    expect(runAgentFn).not.toHaveBeenCalled();
+    expect(result).not.toContain("resolve them yourself using sensible defaults");
   });
 });
 
-describe("refactorAndReview", () => {
-  it("runs refactorer agent then delegates to reviewAndFix; skips review when skipReview is true", async () => {
-    const { pctx, runAgentFn } = makePhaseContext(mockRunAgent(), mockExecFn({ "git diff": "" }));
-    vi.mocked(runReviewPipeline).mockClear();
+describe("buildImplementorPrompt — forked shape (isColdStart=false)", () => {
+  it("does NOT inline the issue context, plan, or custom prompt — those come from fork history", () => {
+    const result = buildImplementorPrompt({
+      issueContext: "Issue #42: Test issue\n\nIssue body",
+      plan: "test plan",
+      customPrompt: "Extra instructions here",
+      resolved: makeGitHubResolvedIssue(),
+      isColdStart: false,
+    });
 
-    await refactorAndReview(pctx, true);
-
-    expect(runAgentFn).toHaveBeenCalledWith("refactorer", expect.stringContaining("Refactor"), expect.any(Object));
-    // skipReview=true means no review
-    expect(runReviewPipeline).not.toHaveBeenCalled();
-  });
-});
-
-describe("runImplementorPhase", () => {
-  it("calls pctx.runAgentFn with the prompt and returns blocked reason when blocked signal exists", async () => {
-    const { pctx, runAgentFn } = makePhaseContext();
-    vi.mocked(signalExists).mockReturnValueOnce(true);
-    vi.mocked(readSignal).mockReturnValueOnce("blocked reason");
-
-    const result = await runImplementorPhase(pctx, "test prompt");
-
-    expect(runAgentFn).toHaveBeenCalledWith(
-      "implementor",
-      "test prompt",
-      expect.not.objectContaining({ tools: expect.anything() }),
-    );
-    expect(result).toBe("blocked reason");
+    expect(result).not.toContain("Issue #42: Test issue");
+    expect(result).not.toContain("IMPLEMENTATION PLAN:");
+    expect(result).not.toContain("ADDITIONAL INSTRUCTIONS FROM USER");
+    expect(result).toContain("Implement the plan you see in this session's prior turns");
   });
 
-  it("returns null when no blocked signal exists", async () => {
-    const { pctx, runAgentFn } = makePhaseContext();
-    vi.mocked(signalExists).mockReturnValueOnce(false);
+  it("keeps the branch, Closes #, and autonomous-constraint notes because they bind behaviour", () => {
+    const result = buildImplementorPrompt({
+      issueContext: "anything",
+      plan: "anything",
+      customPrompt: undefined,
+      resolved: makeGitHubResolvedIssue(),
+      autonomous: true,
+      isColdStart: false,
+    });
 
-    const result = await runImplementorPhase(pctx, "test prompt");
-
-    expect(runAgentFn).toHaveBeenCalledWith("implementor", "test prompt", expect.any(Object));
-    expect(result).toBeNull();
+    expect(result).toContain("You should be on branch: feat/issue-42");
+    expect(result).toContain("Closes #42");
+    expect(result).toContain("resolve them yourself using sensible defaults");
+    expect(result).toContain("If blocked, write BLOCKED.md");
   });
 
-  it("never passes a tools field to runAgentFn for implementor, refactorer, or fix-findings", async () => {
-    const { pctx, runAgentFn } = makePhaseContext(mockRunAgent(), mockExecFn({ "git diff": "some diff" }));
-    vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: false, findings: "Some findings" });
+  it("teaches the implementor to distinguish inherited tool results from inherited reasoning", () => {
+    const result = buildImplementorPrompt({
+      issueContext: "ctx",
+      plan: "plan",
+      customPrompt: undefined,
+      resolved: makeGitHubResolvedIssue(),
+      isColdStart: false,
+    });
 
-    await runImplementorPhase(pctx, "prompt");
-    await refactorAndReview(pctx, true);
-    await reviewAndFix(pctx);
-
-    for (const call of runAgentFn.mock.calls) {
-      const opts = call[2] as Record<string, unknown>;
-      expect(opts).not.toHaveProperty("tools");
-    }
-    expect(runAgentFn).toHaveBeenCalled();
+    // Anti-anchoring preamble from the #133 mitigation, inlined into
+    // the task prompt so it always fires on forked phases.
+    expect(result).toContain("tool results");
+    expect(result).toContain("ground truth");
+    expect(result).toContain("working notes");
   });
 });

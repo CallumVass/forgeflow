@@ -1,82 +1,43 @@
-import {
-  cleanSignal,
-  emptyStage,
-  type PipelineContext,
-  type RunAgentOpts,
-  readSignal,
-  type StageResult,
-  signalExists,
-} from "@callumvass/forgeflow-shared/pipeline";
 import type { ResolvedIssue } from "../utils/issue-tracker.js";
-import { runReviewPipeline } from "./review-orchestrator.js";
+
+/** Input shape for `buildImplementorPrompt`. */
+interface ImplementorPromptInput {
+  issueContext: string;
+  plan: string;
+  customPrompt: string | undefined;
+  resolved: ResolvedIssue;
+  autonomous?: boolean;
+  /**
+   * When `true`, the implementor is cold-started (no forked planner
+   * session in its history) and the task prompt includes the full
+   * issue context and plan text inline. When `false`, the implementor
+   * was forked from the planning sub-chain and already has the issue
+   * context + plan in its conversation history, so the task prompt
+   * becomes a thin directive pointing at what it should do with them.
+   */
+  isColdStart: boolean;
+}
 
 /**
- * Per-phase context: a `PipelineContext` (carrying the `runAgentFn` /
- * `execFn` seams) plus the live `agentOpts` and `stages` for the current
- * implementation phase.
+ * Build the implementor's task prompt.
+ *
+ * Two shapes, selected by `isColdStart`:
+ *
+ * - **Cold start** (`--skip-plan`, or a resume path): the prompt
+ *   contains the full issue context, the plan (if any), the custom
+ *   prompt, and the TDD workflow instructions. Essentially the
+ *   pre-fork behaviour.
+ *
+ * - **Forked from planning**: the prompt is a thin directive that
+ *   references "the plan you see in this session's prior turns" and
+ *   lists constraints only. Issue context, plan text, custom prompt,
+ *   and architectural notes are all already in the implementor's
+ *   conversation history via fork inheritance.
  */
-export interface PhaseContext extends PipelineContext {
-  agentOpts: RunAgentOpts;
-  stages: StageResult[];
-}
+export function buildImplementorPrompt(input: ImplementorPromptInput): string {
+  const { issueContext, plan, customPrompt, resolved, autonomous, isColdStart } = input;
 
-/** Run code review on the branch diff and auto-fix findings if any. */
-export async function reviewAndFix(pctx: PhaseContext, pipeline = "implement"): Promise<void> {
-  const diff = await pctx.execFn("git diff main...HEAD", pctx.cwd);
-  if (!diff) return;
-  const reviewResult = await runReviewPipeline(diff, { ...pctx, stages: pctx.stages, pipeline });
-  if (!reviewResult.passed) {
-    const findings = reviewResult.findings ?? "";
-    pctx.stages.push(emptyStage("fix-findings"));
-    await pctx.runAgentFn(
-      "implementor",
-      `Fix the following code review findings:\n\n${findings}\n\nRULES:\n- Fix only the cited issues. Do not refactor or improve unrelated code.\n- Run the check command after fixes.\n- Commit and push the fixes.`,
-      { ...pctx.agentOpts, pipeline, stageName: "fix-findings" },
-    );
-    cleanSignal(pctx.cwd, "findings");
-  }
-}
-
-/** Run refactorer agent, then optionally review. */
-export async function refactorAndReview(
-  pctx: PhaseContext,
-  skipReview: boolean,
-  pipeline = "implement",
-): Promise<void> {
-  if (!pctx.stages.some((s) => s.name === "refactorer")) pctx.stages.push(emptyStage("refactorer"));
-  await pctx.runAgentFn(
-    "refactorer",
-    "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit and push if changed.",
-    { ...pctx.agentOpts, pipeline },
-  );
-
-  if (!skipReview) {
-    await reviewAndFix(pctx, pipeline);
-  }
-}
-
-/** Run the implementor agent and check for blocked signal. Returns blocked reason or null. */
-export async function runImplementorPhase(pctx: PhaseContext, prompt: string): Promise<string | null> {
-  cleanSignal(pctx.cwd, "blocked");
-  await pctx.runAgentFn("implementor", prompt, pctx.agentOpts);
-
-  if (signalExists(pctx.cwd, "blocked")) {
-    return readSignal(pctx.cwd, "blocked") ?? "";
-  }
-  return null;
-}
-
-/** Build the implementor agent prompt from issue context and plan. */
-export function buildImplementorPrompt(
-  issueContext: string,
-  plan: string,
-  customPrompt: string | undefined,
-  resolved: ResolvedIssue,
-  autonomous?: boolean,
-): string {
   const isGitHub = resolved.source === "github" && resolved.number > 0;
-  const planSection = plan ? `\n\nIMPLEMENTATION PLAN:\n${plan}` : "";
-  const customPromptSection = customPrompt ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${customPrompt}` : "";
   const branchNote = resolved.branch
     ? `\n- You should be on branch: ${resolved.branch} — do NOT create or switch branches.`
     : "\n- Do NOT create or switch branches.";
@@ -86,6 +47,18 @@ export function buildImplementorPrompt(
   const unresolvedNote = autonomous
     ? `\n- If the plan has unresolved questions, resolve them yourself using sensible defaults. Do NOT stop and wait.`
     : "";
+  const constraints = `\n\nCONSTRAINTS:${branchNote}${closeNote}${unresolvedNote}\n- If blocked, write BLOCKED.md with the reason and stop.`;
 
-  return `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}${customPromptSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit, push, and create a PR.\n\nCONSTRAINTS:${branchNote}${closeNote}${unresolvedNote}\n- If blocked, write BLOCKED.md with the reason and stop.`;
+  if (!isColdStart) {
+    // Forked from planning. Everything the implementor needs is already
+    // in its session history; the task prompt just tells it what to do
+    // with that context.
+    return `Implement the plan you see in this session's prior turns using strict TDD (red-green-refactor).\n\nYour conversation history already contains the planner's codebase exploration and the architecture-reviewer's critique. Treat tool results (reads, bash, grep) as ground truth; treat prior assistant turns as working notes rather than binding decisions. Your authoritative inputs are the plan text and the failing tests you are about to write.\n\nWORKFLOW:\n1. TDD through the plan one behaviour at a time.\n2. Refactor after all tests pass.\n3. Run the check command, fix failures.\n4. Commit, push, and create a PR.${constraints}`;
+  }
+
+  // Cold-start path: caller needs the fat prompt because nothing is in history.
+  const planSection = plan ? `\n\nIMPLEMENTATION PLAN:\n${plan}` : "";
+  const customPromptSection = customPrompt ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${customPrompt}` : "";
+
+  return `Implement the following issue using strict TDD (red-green-refactor).\n\n${issueContext}${planSection}${customPromptSection}\n\nWORKFLOW:\n1. Read the codebase.\n2. TDD${plan ? " following the plan" : ""}.\n3. Refactor after all tests pass.\n4. Run check command, fix failures.\n5. Commit, push, and create a PR.${constraints}`;
 }
