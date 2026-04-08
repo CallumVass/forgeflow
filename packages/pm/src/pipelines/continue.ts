@@ -7,7 +7,7 @@ import {
   TOOLS_NO_EDIT,
   toAgentOpts,
 } from "@callumvass/forgeflow-shared/pipeline";
-import { prdExists, promptEditPrd } from "../prd-document.js";
+import { missingPrdResult, prdExists, promptEditPrd } from "../prd-document.js";
 import { runQaLoop } from "./qa-loop.js";
 
 function updatePrompt(description: string) {
@@ -38,7 +38,7 @@ CRITICAL RULES:
  */
 export async function runContinue(description: string, maxIterations: number, pctx: PipelineContext) {
   const { ctx } = pctx;
-  if (!prdExists(pctx.cwd)) return pipelineResult("PRD.md not found.", "continue", []);
+  if (!prdExists(pctx.cwd)) return missingPrdResult("continue");
 
   const stages: StageResult[] = [];
   const agentOpts = toAgentOpts(pctx, { stages, pipeline: "continue" });

@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { PipelineContext } from "@callumvass/forgeflow-shared/pipeline";
+import { type PipelineContext, type PipelineResult, pipelineResult } from "@callumvass/forgeflow-shared/pipeline";
 
 /**
  * PRD.md filesystem mechanics. All PRD IO for PM pipelines flows through this
@@ -42,4 +42,13 @@ export async function promptEditPrd(pctx: PipelineContext, title: string): Promi
   if (edited == null) return null;
   if (edited !== original) writePrd(cwd, edited);
   return edited;
+}
+
+/**
+ * Standard "PRD.md not found" pipeline result. Callers should guard on
+ * `prdExists(cwd)` and return this when the PRD is missing so every PM
+ * pipeline reports the same error text.
+ */
+export function missingPrdResult(pipeline: string): PipelineResult {
+  return pipelineResult("PRD.md not found.", pipeline, []);
 }
