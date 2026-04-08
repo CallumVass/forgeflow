@@ -1,7 +1,8 @@
 import { type Mock, vi } from "vitest";
 import type { ExecFn } from "./exec.js";
+import type { ExtensionConfig } from "./extension-types.js";
 import type { ForgeflowContext, ForgeflowTheme, ForgeflowUI, PipelineContext } from "./pipeline.js";
-import { emptyStage, type RunAgentFn, type StageResult } from "./pipeline.js";
+import { emptyStage, type PipelineDetails, type RunAgentFn, type StageResult } from "./pipeline.js";
 
 /** Create a StageResult with defaults, overridable for tests. */
 export function makeStage(overrides: Partial<StageResult> = {}): StageResult {
@@ -97,6 +98,79 @@ export function mockPi() {
     registerCommand: vi.fn(),
     registerShortcut: vi.fn(),
     sendUserMessage: vi.fn(),
+  };
+}
+
+/**
+ * Look up the handler passed to `pi.registerCommand(name, opts)` on a
+ * `mockPi()` instance. Returns `undefined` if no command with that name was
+ * registered.
+ */
+export function getRegisteredCommandHandler(pi: ReturnType<typeof mockPi>, name: string) {
+  const call = pi.registerCommand.mock.calls.find((c: unknown[]) => c[0] === name);
+  return call ? (call[1] as { handler: (args: string, ctx: unknown) => Promise<void> }).handler : undefined;
+}
+
+/**
+ * Look up the handler passed to `pi.registerShortcut(key, opts)` on a
+ * `mockPi()` instance. Returns `undefined` if no shortcut with that key was
+ * registered.
+ */
+export function getRegisteredShortcutHandler(pi: ReturnType<typeof mockPi>, key: string) {
+  const call = pi.registerShortcut.mock.calls.find((c: unknown[]) => c[0] === key);
+  return call ? (call[1] as { handler: (ctx: unknown) => Promise<void> }).handler : undefined;
+}
+
+/**
+ * Create a minimal `ExtensionConfig` for tests that exercise
+ * `createForgeflowExtension`, `registerForgeflowTool`, or
+ * `registerForgeflowCommands`. Defaults provide two pipelines (`alpha`,
+ * `beta`) and two commands (one with `parseArgs`, one without). Override any
+ * field via the `overrides` argument.
+ */
+export function mockExtensionConfig(overrides?: Partial<ExtensionConfig>): ExtensionConfig {
+  return {
+    toolName: "forgeflow-test",
+    toolLabel: "Forgeflow Test",
+    description: "Test extension",
+    params: {
+      issue: { type: "string", description: "Issue number" },
+      verbose: { type: "boolean", description: "Verbose output" },
+      count: { type: "number", description: "Iteration count" },
+    },
+    pipelines: [
+      {
+        name: "alpha",
+        execute: vi.fn(async () => ({
+          content: [{ type: "text" as const, text: "alpha done" }],
+          details: { pipeline: "alpha", stages: [] } as PipelineDetails,
+        })),
+      },
+      {
+        name: "beta",
+        execute: vi.fn(async () => ({
+          content: [{ type: "text" as const, text: "beta done" }],
+          details: { pipeline: "beta", stages: [] } as PipelineDetails,
+        })),
+      },
+    ],
+    commands: [
+      {
+        name: "alpha-cmd",
+        description: "Run alpha",
+        pipeline: "alpha",
+        parseArgs: (args) => ({
+          params: { issue: args.trim() },
+          suffix: "Do not interpret.",
+        }),
+      },
+      {
+        name: "beta-cmd",
+        description: "Run beta",
+        pipeline: "beta",
+      },
+    ],
+    ...overrides,
   };
 }
 
