@@ -1,10 +1,11 @@
 import { mockExecFn } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
-import { ensurePr, findPrNumber, mergePr, returnToMain } from "./pr-lifecycle.js";
+import { assertBranchHasCommits, ensurePr, findPrNumber, mergePr, returnToMain } from "./pr-lifecycle.js";
 
 describe("ensurePr", () => {
   it("creates a PR when none exists and returns created: true", async () => {
     const execFn = mockExecFn({
+      "rev-list": "3",
       "pr list": "",
       "pr create": "https://github.com/repo/pull/7",
     });
@@ -17,12 +18,55 @@ describe("ensurePr", () => {
 
   it("returns the existing PR number when one already exists", async () => {
     const execFn = mockExecFn({
+      "rev-list": "2",
       "pr list": "5",
     });
 
     const result = await ensurePr("/tmp", "My title", "Body", "feat/issue-42", execFn);
 
     expect(result).toEqual({ number: 5, created: false });
+  });
+
+  it("refuses to push a zero-commit branch and reports untracked files", async () => {
+    const execFn = mockExecFn({
+      "rev-list": "0",
+      "status --porcelain": "?? packages/shared/src/run-dir.ts\n?? packages/shared/src/run-dir.test.ts",
+    });
+
+    await expect(ensurePr("/tmp", "My title", "Body", "feat/issue-127", execFn)).rejects.toThrow(
+      /feat\/issue-127 has 0 commits ahead of main[\s\S]*run-dir\.ts[\s\S]*forgot to 'git add'/,
+    );
+
+    // Must NOT have attempted the push or the PR create.
+    expect(execFn).not.toHaveBeenCalledWith(expect.stringContaining("git push"), expect.anything());
+    expect(execFn).not.toHaveBeenCalledWith(expect.stringContaining("pr create"), expect.anything());
+  });
+
+  it("refuses to push a zero-commit branch and reports a clean working tree", async () => {
+    const execFn = mockExecFn({
+      "rev-list": "0",
+      "status --porcelain": "",
+    });
+
+    await expect(ensurePr("/tmp", "T", "B", "feat/issue-9", execFn)).rejects.toThrow(
+      /0 commits ahead of main[\s\S]*Working tree is clean/,
+    );
+  });
+});
+
+describe("assertBranchHasCommits", () => {
+  it("resolves when the branch has commits ahead of main", async () => {
+    const execFn = mockExecFn({ "rev-list": "1" });
+    await expect(assertBranchHasCommits("/tmp", "feat/issue-1", execFn)).resolves.toBeUndefined();
+  });
+
+  it("still throws even if git status itself errors", async () => {
+    const execFn = vi.fn(async (cmd: string) => {
+      if (cmd.includes("rev-list")) return "0";
+      if (cmd.includes("status --porcelain")) throw new Error("git status blew up");
+      return "";
+    });
+    await expect(assertBranchHasCommits("/tmp", "feat/issue-1", execFn)).rejects.toThrow(/0 commits ahead of main/);
   });
 });
 
