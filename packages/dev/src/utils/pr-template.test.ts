@@ -2,26 +2,11 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { ResolvedIssue } from "./issue-tracker.js";
+import { makeGitHubResolvedIssue, makeJiraResolvedIssue } from "./issue-tracker.fixtures.js";
 import { buildPrBody } from "./pr-template.js";
 
-const githubIssue: ResolvedIssue = {
-  source: "github",
-  key: "42",
-  number: 42,
-  title: "GH",
-  body: "GH body",
-  branch: "feat/issue-42",
-};
-
-const jiraIssue: ResolvedIssue = {
-  source: "jira",
-  key: "CUS-123",
-  number: 0,
-  title: "Jira",
-  body: "Jira body",
-  branch: "feat/CUS-123-jira",
-};
+const githubIssue = makeGitHubResolvedIssue({ title: "GH", body: "GH body" });
+const jiraIssue = makeJiraResolvedIssue({ title: "Jira", body: "Jira body", branch: "feat/CUS-123-jira" });
 
 describe("buildPrBody", () => {
   let tmpDir: string;
