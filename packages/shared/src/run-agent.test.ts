@@ -112,4 +112,103 @@ ${body}`,
     await expect(runAgent("ghost", "", opts)).rejects.toThrow(/missing/);
     expect(spawnMock).not.toHaveBeenCalled();
   });
+
+  describe("agentOverrides", () => {
+    it("appends --model and --thinking when both are set for the agent", async () => {
+      writeAgent("planner", "read, grep, find");
+      const opts = {
+        ...makeOpts(tmpDir, tmpDir),
+        stages: [emptyStage("planner")],
+        agentOverrides: {
+          planner: { model: "claude-opus-4-5", thinkingLevel: "high" as const },
+        },
+      };
+      wireSpawnToClose(0);
+
+      await runAgent("planner", "do stuff", opts);
+
+      const callArgs = spawnMock.mock.calls[0]?.[1] as string[];
+      expect(callArgs).toContain("--model");
+      expect(callArgs[callArgs.indexOf("--model") + 1]).toBe("claude-opus-4-5");
+      expect(callArgs).toContain("--thinking");
+      expect(callArgs[callArgs.indexOf("--thinking") + 1]).toBe("high");
+    });
+
+    it("appends only --thinking when model is absent", async () => {
+      writeAgent("planner", "read, grep, find");
+      const opts = {
+        ...makeOpts(tmpDir, tmpDir),
+        stages: [emptyStage("planner")],
+        agentOverrides: {
+          planner: { thinkingLevel: "medium" as const },
+        },
+      };
+      wireSpawnToClose(0);
+
+      await runAgent("planner", "do stuff", opts);
+
+      const callArgs = spawnMock.mock.calls[0]?.[1] as string[];
+      expect(callArgs).not.toContain("--model");
+      expect(callArgs).toContain("--thinking");
+      expect(callArgs[callArgs.indexOf("--thinking") + 1]).toBe("medium");
+    });
+
+    it("appends only --model when thinkingLevel is absent", async () => {
+      writeAgent("planner", "read, grep, find");
+      const opts = {
+        ...makeOpts(tmpDir, tmpDir),
+        stages: [emptyStage("planner")],
+        agentOverrides: {
+          planner: { model: "claude-opus-4-5" },
+        },
+      };
+      wireSpawnToClose(0);
+
+      await runAgent("planner", "do stuff", opts);
+
+      const callArgs = spawnMock.mock.calls[0]?.[1] as string[];
+      expect(callArgs).toContain("--model");
+      expect(callArgs[callArgs.indexOf("--model") + 1]).toBe("claude-opus-4-5");
+      expect(callArgs).not.toContain("--thinking");
+    });
+
+    it("adds neither flag when agentOverrides is empty or missing the agent key", async () => {
+      writeAgent("planner", "read, grep, find");
+      const opts = {
+        ...makeOpts(tmpDir, tmpDir),
+        stages: [emptyStage("planner")],
+        agentOverrides: {
+          implementor: { model: "claude-sonnet-4-5", thinkingLevel: "medium" as const },
+        },
+      };
+      wireSpawnToClose(0);
+
+      await runAgent("planner", "do stuff", opts);
+
+      const callArgs = spawnMock.mock.calls[0]?.[1] as string[];
+      expect(callArgs).not.toContain("--model");
+      expect(callArgs).not.toContain("--thinking");
+    });
+
+    it("looks up overrides by the raw agent name, not stageName", async () => {
+      writeAgent("implementor", "read, write, edit, bash, grep, find");
+      // Pipeline uses a disambiguating stageName (e.g. "fix-findings"), but the
+      // config keys are agent file stems — the override must still apply.
+      const opts = {
+        ...makeOpts(tmpDir, tmpDir),
+        stages: [emptyStage("fix-findings")],
+        stageName: "fix-findings",
+        agentOverrides: {
+          implementor: { model: "claude-sonnet-4-5", thinkingLevel: "medium" as const },
+        },
+      };
+      wireSpawnToClose(0);
+
+      await runAgent("implementor", "do stuff", opts);
+
+      const callArgs = spawnMock.mock.calls[0]?.[1] as string[];
+      expect(callArgs[callArgs.indexOf("--model") + 1]).toBe("claude-sonnet-4-5");
+      expect(callArgs[callArgs.indexOf("--thinking") + 1]).toBe("medium");
+    });
+  });
 });

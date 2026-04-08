@@ -51,6 +51,13 @@ export async function runAgent(agentName: string, task: string, options: RunAgen
 
   const args: string[] = ["--mode", "json", "-p", "--no-session", "--tools", agent.tools.join(",")];
 
+  // Per-agent overrides are keyed by the raw agent file stem (not `stageName`),
+  // so a pipeline that spawns the same agent under a disambiguating stage name
+  // (e.g. `fix-findings` → `implementor`) still picks up the override.
+  const override = options.agentOverrides?.[agentName];
+  if (override?.model) args.push("--model", override.model);
+  if (override?.thinkingLevel) args.push("--thinking", override.thinkingLevel);
+
   let tmpDir: string | null = null;
   let tmpFile: string | null = null;
 

@@ -1,5 +1,6 @@
 import type { SessionEntry } from "@mariozechner/pi-coding-agent";
 import { type ExecFn, exec, execSafe } from "./exec.js";
+import { type AgentConfig, loadForgeflowConfig } from "./forgeflow-config.js";
 import { runAgent } from "./run-agent.js";
 import type { OnUpdate, RunAgentFn, RunAgentOpts, StageResult } from "./stages.js";
 
@@ -101,6 +102,14 @@ export interface PipelineContext {
   execFn: ExecFn;
   /** Run a shell command via bash. Returns empty string on failure. */
   execSafeFn: ExecFn;
+  /**
+   * Per-agent model / thinking overrides, loaded once at boundary
+   * construction from `.forgeflow.json` (project) merged over
+   * `~/.pi/agent/forgeflow.json` (global). Keyed by agent file stem.
+   * An empty object means every stage inherits the parent pi session's
+   * model and thinking level — today's default behaviour.
+   */
+  agentOverrides: Record<string, AgentConfig>;
 }
 
 /** Build a PipelineContext from the raw extension execute() arguments. */
@@ -110,8 +119,15 @@ export function toPipelineContext(
   onUpdate: OnUpdate,
   ctx: ForgeflowContext,
   agentsDir: string,
-  overrides?: Partial<Pick<PipelineContext, "runAgentFn" | "execFn" | "execSafeFn">>,
+  overrides?: Partial<Pick<PipelineContext, "runAgentFn" | "execFn" | "execSafeFn" | "agentOverrides">>,
 ): PipelineContext {
+  // Load forgeflow.json exactly once per pipeline run at the boundary.
+  // Warnings are routed through `ctx.ui.notify` so they reach the user
+  // without corrupting the pi TUI (the rest of forgeflow uses the same
+  // channel; no module in packages/*/src/*.ts calls `console.*`).
+  const agentOverrides =
+    overrides?.agentOverrides ?? loadForgeflowConfig(cwd, (msg) => ctx.ui.notify(msg, "warning")).agents ?? {};
+
   return {
     cwd,
     signal,
@@ -121,6 +137,7 @@ export function toPipelineContext(
     runAgentFn: overrides?.runAgentFn ?? runAgent,
     execFn: overrides?.execFn ?? exec,
     execSafeFn: overrides?.execSafeFn ?? execSafe,
+    agentOverrides,
   };
 }
 
@@ -131,6 +148,7 @@ export function toAgentOpts(pctx: PipelineContext, extra: { stages: StageResult[
     signal: pctx.signal,
     onUpdate: pctx.onUpdate,
     agentsDir: pctx.agentsDir,
+    agentOverrides: pctx.agentOverrides,
     ...extra,
   };
 }

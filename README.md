@@ -177,6 +177,66 @@ Runs code-reviewer → review-judge.
 
 Analyses the codebase for architectural friction and creates RFC issues.
 
+## Per-stage model overrides
+
+Forgeflow can route different pipeline stages to different pi models and thinking
+levels — for example, run cheap recon on Haiku with `thinking: off`, planning and
+review on Opus with `thinking: high`, and implementation on Sonnet with
+`thinking: medium`. Each stage agent has its own entry in `forgeflow.json` keyed
+by the agent file stem.
+
+### Config locations
+
+Forgeflow reads two files and merges them (project wins at the agent-entry level):
+
+| Scope   | Path                              | Precedence |
+|---------|-----------------------------------|------------|
+| Global  | `~/.pi/agent/forgeflow.json`      | lower      |
+| Project | `.forgeflow.json` (nearest ancestor of `cwd`) | higher     |
+
+Omitting a file, an `agents` entry, or any individual field keeps today's
+behaviour: every stage inherits whatever model and thinking level the parent
+`pi` session has active. Running `pi --model X --thinking high` followed by a
+forgeflow pipeline with no config still uses model X and thinking high for
+every stage.
+
+### Example
+
+```json
+{
+  "agents": {
+    "planner":               { "model": "claude-opus-4-5",   "thinkingLevel": "high" },
+    "implementor":           { "model": "claude-sonnet-4-5", "thinkingLevel": "medium" },
+    "refactorer":            { "model": "claude-sonnet-4-5", "thinkingLevel": "medium" },
+    "code-reviewer":         { "model": "claude-opus-4-5",   "thinkingLevel": "high" },
+    "review-judge":          { "model": "claude-haiku-4-5",  "thinkingLevel": "low" },
+    "architecture-reviewer": { "model": "claude-opus-4-5",   "thinkingLevel": "high" },
+    "skill-discoverer":      { "model": "claude-haiku-4-5",  "thinkingLevel": "off" },
+
+    "prd-architect":         { "model": "claude-opus-4-5",   "thinkingLevel": "high" },
+    "prd-critic":            { "model": "claude-opus-4-5",   "thinkingLevel": "high" },
+    "prd-integrator":        { "model": "claude-sonnet-4-5", "thinkingLevel": "medium" },
+    "investigator":          { "model": "claude-sonnet-4-5", "thinkingLevel": "medium" },
+    "gh-issue-creator":      { "model": "claude-sonnet-4-5", "thinkingLevel": "medium" },
+    "gh-single-issue-creator": { "model": "claude-sonnet-4-5", "thinkingLevel": "medium" },
+    "jira-issue-creator":    { "model": "claude-sonnet-4-5", "thinkingLevel": "medium" }
+  }
+}
+```
+
+Keys are the stem of the agent `.md` file (`packages/dev/agents/*.md`,
+`packages/pm/agents/*.md`). Every field is optional — `{ "planner": { "thinkingLevel": "high" } }`
+only bumps the thinking budget and leaves the model inherited, while
+`{ "planner": { "model": "claude-opus-4-5" } }` only switches the model.
+
+Supported `thinkingLevel` values (mirrors `pi --thinking`): `off`, `minimal`,
+`low`, `medium`, `high`, `xhigh`.
+
+Unknown agent names in the config are ignored silently. Invalid
+`thinkingLevel` values are dropped with a warning (the sibling `model` field
+still applies). Malformed JSON does not crash a pipeline — the loader logs a
+single warning and every stage runs with inherited defaults.
+
 ## Development
 
 ```bash

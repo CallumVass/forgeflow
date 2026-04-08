@@ -2,6 +2,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AgentToolUpdateCallback } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
+import type { AgentConfig } from "./forgeflow-config.js";
 
 // ─── Agents directory ─────────────────────────────────────────────────
 
@@ -57,6 +58,13 @@ export type RunAgentOpts = {
   pipeline: string;
   onUpdate?: OnUpdate;
   stageName?: string;
+  /**
+   * Per-agent model / thinking overrides, resolved once at the
+   * `toPipelineContext` boundary from `.forgeflow.json` +
+   * `~/.pi/agent/forgeflow.json`. Keyed by the raw agent file stem
+   * (e.g. `"planner"`, `"implementor"`), NOT `stageName`.
+   */
+  agentOverrides?: Record<string, AgentConfig>;
 };
 
 export type RunAgentFn = (agent: string, prompt: string, opts: RunAgentOpts) => Promise<StageResult>;
