@@ -89,6 +89,7 @@ export function mockPipelineContext(overrides?: Partial<PipelineContext>): Pipel
     runAgentFn: mockRunAgent(),
     execFn: vi.fn(async () => "") as Mock<ExecFn>,
     execSafeFn: vi.fn(async () => "") as Mock<ExecFn>,
+    agentOverrides: {},
     ...overrides,
   };
 }
