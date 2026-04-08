@@ -1,14 +1,13 @@
-import * as fs from "node:fs";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type QaLoopOptions, runQaLoop } from "./qa-loop.js";
 
-vi.mock("node:fs", async (importOriginal) => {
-  const actual = await importOriginal<typeof fs>();
-  return { ...actual, readFileSync: vi.fn(() => "# PRD content"), writeFileSync: vi.fn() };
-});
+vi.mock("../prd-document.js", () => ({
+  promptEditPrd: vi.fn(async () => null),
+}));
 
 import { emptyStage, type ForgeflowContext } from "@callumvass/forgeflow-shared/pipeline";
 import { mockForgeflowContext, mockPipelineContext, mockRunAgent } from "@callumvass/forgeflow-shared/testing";
+import { promptEditPrd } from "../prd-document.js";
 
 function mockCtx(
   opts: { hasUI?: boolean; editorResult?: string | undefined; selectResult?: string | undefined } = {},
@@ -42,6 +41,11 @@ function baseOpts(overrides: Partial<QaLoopOptions> = {}): QaLoopOptions {
 }
 
 describe("runQaLoop", () => {
+  beforeEach(() => {
+    vi.mocked(promptEditPrd).mockClear();
+    vi.mocked(promptEditPrd).mockResolvedValue(null);
+  });
+
   it("returns accepted when critic approves on first pass (no QUESTIONS.md)", async () => {
     const runAgentFn = mockRunAgent("PRD looks good");
     const signalExistsFn = vi.fn(() => false);
@@ -68,7 +72,7 @@ describe("runQaLoop", () => {
     expect(runAgentFn).toHaveBeenCalledTimes(3);
     const calls = runAgentFn.mock.calls as unknown[][];
     expect(calls.map((c) => c[0])).toEqual(["prd-critic", "prd-architect", "prd-integrator"]);
-    expect(ctx.ui.editor).toHaveBeenCalledOnce();
+    expect(vi.mocked(promptEditPrd)).toHaveBeenCalledOnce();
     expect(ctx.ui.select).toHaveBeenCalledOnce();
   });
 
@@ -104,20 +108,20 @@ describe("runQaLoop", () => {
     expect(runAgentFn).toHaveBeenCalledTimes(6);
   });
 
-  it("writes edited PRD content back to disk when user edits in editor", async () => {
+  it("invokes promptEditPrd once per QA iteration when ctx.hasUI is true", async () => {
     const runAgentFn = mockRunAgent();
-    const signalExistsFn = vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false);
-    const ctx = mockCtx({ editorResult: "# Updated PRD", selectResult: "Accept PRD" });
+    // iteration 1: questions exist; user continues → iteration 2: questions exist; loop hits cap
+    const signalExistsFn = vi.fn(() => true);
+    const ctx = mockCtx({ editorResult: "# Updated PRD", selectResult: "Continue refining" });
 
-    const mockedFs = vi.mocked(fs);
-    mockedFs.readFileSync.mockReturnValue("# PRD content");
+    await runQaLoop(baseOpts({ runAgentFn, signalExistsFn, ctx, maxIterations: 2 }));
 
-    await runQaLoop(baseOpts({ runAgentFn, signalExistsFn, ctx }));
-
-    expect(mockedFs.writeFileSync).toHaveBeenCalledWith("/tmp/test/PRD.md", "# Updated PRD", "utf-8");
+    expect(vi.mocked(promptEditPrd)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(promptEditPrd)).toHaveBeenNthCalledWith(1, expect.any(Object), "QA iteration 1 — Review PRD");
+    expect(vi.mocked(promptEditPrd)).toHaveBeenNthCalledWith(2, expect.any(Object), "QA iteration 2 — Review PRD");
   });
 
-  it("skips editor/select when ctx.hasUI is false and exits when critic stops creating QUESTIONS.md", async () => {
+  it("does not invoke promptEditPrd or editor/select when ctx.hasUI is false", async () => {
     const runAgentFn = mockRunAgent();
     // iteration 1: questions exist, iteration 2: no questions
     const signalExistsFn = vi.fn().mockReturnValueOnce(true).mockReturnValueOnce(false);
@@ -126,6 +130,7 @@ describe("runQaLoop", () => {
     const result = await runQaLoop(baseOpts({ runAgentFn, signalExistsFn, ctx }));
 
     expect(result.accepted).toBe(true);
+    expect(vi.mocked(promptEditPrd)).not.toHaveBeenCalled();
     expect(ctx.ui.editor).not.toHaveBeenCalled();
     expect(ctx.ui.select).not.toHaveBeenCalled();
     // iteration 1: critic + architect + integrator, iteration 2: critic

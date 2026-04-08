@@ -1,4 +1,3 @@
-import * as fs from "node:fs";
 import {
   emptyStage,
   type PipelineContext,
@@ -6,6 +5,7 @@ import {
   TOOLS_NO_EDIT,
   toAgentOpts,
 } from "@callumvass/forgeflow-shared/pipeline";
+import { missingPrdResult, prdExists } from "../prd-document.js";
 
 export async function runCreateIssue(idea: string, pctx: PipelineContext) {
   const { ctx } = pctx;
@@ -27,9 +27,7 @@ export async function runCreateIssue(idea: string, pctx: PipelineContext) {
 }
 
 export async function runCreateIssues(pctx: PipelineContext) {
-  if (!fs.existsSync(`${pctx.cwd}/PRD.md`)) {
-    return pipelineResult("PRD.md not found.", "create-issues", []);
-  }
+  if (!prdExists(pctx.cwd)) return missingPrdResult("create-issues");
 
   const stages = [emptyStage("gh-issue-creator")];
   const opts = toAgentOpts(pctx, { stages, pipeline: "create-issues" });

@@ -1,4 +1,3 @@
-import * as fs from "node:fs";
 import {
   emptyStage,
   type PipelineContext,
@@ -8,6 +7,7 @@ import {
   TOOLS_NO_EDIT,
   toAgentOpts,
 } from "@callumvass/forgeflow-shared/pipeline";
+import { promptEditPrd } from "../prd-document.js";
 
 export type SignalExistsFn = (cwd: string, signal: string) => boolean;
 
@@ -57,11 +57,7 @@ export async function runQaLoop(opts: QaLoopOptions): Promise<QaLoopResult> {
     );
 
     if (ctx.hasUI) {
-      const prdContent = fs.readFileSync(`${cwd}/PRD.md`, "utf-8");
-      const edited = await ctx.ui.editor(`QA iteration ${i} — Review PRD`, prdContent);
-      if (edited != null && edited !== prdContent) {
-        fs.writeFileSync(`${cwd}/PRD.md`, edited, "utf-8");
-      }
+      await promptEditPrd(opts, `QA iteration ${i} — Review PRD`);
       const action = await ctx.ui.select("PRD updated. What next?", ["Continue refining", "Accept PRD"]);
       if (action === "Accept PRD" || action == null) return { accepted: true };
     }
