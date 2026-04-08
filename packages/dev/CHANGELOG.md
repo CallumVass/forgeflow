@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.14.0...forgeflow-dev-v0.14.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* **dev:** guard ensurePr against zero-commit branches ([#131](https://github.com/CallumVass/forgeflow/issues/131)) ([ca5e5e8](https://github.com/CallumVass/forgeflow/commit/ca5e5e8dc7d626b0b446ecdf9f45bb7b47e037df))
+
 ## [0.14.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.13.0...forgeflow-dev-v0.14.0) (2026-04-08)
 
 
