@@ -49,7 +49,23 @@ export async function runAgent(agentName: string, task: string, options: RunAgen
   stage.status = "running";
   emitUpdate(options);
 
-  const args: string[] = ["--mode", "json", "-p", "--no-session", "--tools", agent.tools.join(",")];
+  const args: string[] = ["--mode", "json", "-p", "--tools", agent.tools.join(",")];
+
+  // Session wiring. Three cases in order of precedence:
+  //   1. sessionPath + forkFrom   → --fork <source> --session <target>
+  //      (the chain-builder threading real context across phases)
+  //   2. sessionPath only         → --session <target>
+  //      (auto-allocated by `withRunLifecycle` for cold-start phases)
+  //   3. neither                   → --no-session
+  //      (persistence disabled, or caller explicitly opted out)
+  if (options.sessionPath) {
+    if (options.forkFrom) {
+      args.push("--fork", options.forkFrom);
+    }
+    args.push("--session", options.sessionPath);
+  } else {
+    args.push("--no-session");
+  }
 
   // Per-agent overrides are keyed by the raw agent file stem (not `stageName`),
   // so a pipeline that spawns the same agent under a disambiguating stage name

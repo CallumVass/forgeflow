@@ -1,7 +1,17 @@
 import { type ConfluencePage, fetchConfluencePage } from "@callumvass/forgeflow-shared/confluence";
-import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/pipeline";
+import {
+  emptyStage,
+  type PipelineContext,
+  pipelineResult,
+  toAgentOpts,
+  withRunLifecycle,
+} from "@callumvass/forgeflow-shared/pipeline";
 
 export async function runInvestigate(description: string, templateUrl: string, pctx: PipelineContext) {
+  return withRunLifecycle(pctx, "investigate", (innerPctx) => runInvestigateInner(description, templateUrl, innerPctx));
+}
+
+async function runInvestigateInner(description: string, templateUrl: string, pctx: PipelineContext) {
   const { ctx } = pctx;
   const interactive = ctx.hasUI;
 

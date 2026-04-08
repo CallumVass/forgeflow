@@ -120,6 +120,10 @@ export function mockPipelineContext(overrides?: Partial<PipelineContext>): Pipel
     execFn: vi.fn(async () => "") as Mock<ExecFn>,
     execSafeFn: vi.fn(async () => "") as Mock<ExecFn>,
     agentOverrides: {},
+    // Default to persist:false in tests so no code under test ever
+    // touches `.forgeflow/run/` unless a test opts in explicitly via
+    // overrides. This keeps the test suite fully hermetic.
+    sessionsConfig: { persist: false, archiveRuns: 0, archiveMaxAge: 0 },
     ...overrides,
   };
 }

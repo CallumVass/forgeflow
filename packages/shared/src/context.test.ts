@@ -28,6 +28,8 @@ describe("toPipelineContext", () => {
       execFn: exec,
       execSafeFn: execSafe,
       agentOverrides: {},
+      // Back-filled with DEFAULT_SESSIONS when no forgeflow.json is present.
+      sessionsConfig: { persist: true, archiveRuns: 20, archiveMaxAge: 30 },
     });
   });
 

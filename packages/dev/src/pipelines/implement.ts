@@ -1,4 +1,9 @@
-import { type PipelineContext, pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
+import {
+  type PipelineContext,
+  pipelineResult,
+  type StageResult,
+  withRunLifecycle,
+} from "@callumvass/forgeflow-shared/pipeline";
 import { askCustomPrompt, setForgeflowStatus } from "../utils/ui.js";
 import {
   type RunInput,
@@ -18,7 +23,23 @@ interface ImplementFlags {
 
 const DEFAULT_FLAGS: ImplementFlags = { skipPlan: false, skipReview: false };
 
+/**
+ * Derive a run id for `.forgeflow/run/<runId>/` from the user-supplied
+ * issue argument. Falls back to "implement" when the argument is empty
+ * so the directory is never created with an empty or `-` name. Sanitising
+ * and length-capping are handled downstream in `createRunDir`.
+ */
+function implementRunId(issueArg: string): string {
+  const trimmed = issueArg.trim();
+  if (!trimmed) return "implement";
+  return `implement-${trimmed}`;
+}
+
 export async function runImplement(issueArg: string, pctx: PipelineContext, flags: ImplementFlags = DEFAULT_FLAGS) {
+  return withRunLifecycle(pctx, implementRunId(issueArg), (innerPctx) => runImplementInner(issueArg, innerPctx, flags));
+}
+
+async function runImplementInner(issueArg: string, pctx: PipelineContext, flags: ImplementFlags = DEFAULT_FLAGS) {
   const plan = await resolveIssuePlan(issueArg, pctx);
   if ("error" in plan) return pipelineResult(plan.error, "implement", []);
 

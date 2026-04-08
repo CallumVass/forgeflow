@@ -5,6 +5,7 @@ import {
   pipelineResult,
   type StageResult,
   sumUsage,
+  withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
 import { findPrNumber, mergePr, returnToMain } from "../utils/pr-lifecycle.js";
 import { setForgeflowStatus, updateProgressWidget } from "../utils/ui.js";
@@ -99,6 +100,10 @@ export function getReadyIssues(issues: IssueInfo[], completed: Set<number>): num
 }
 
 export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: boolean; skipReview: boolean }) {
+  return withRunLifecycle(pctx, "implement-all", (innerPctx) => runImplementAllInner(innerPctx, flags));
+}
+
+async function runImplementAllInner(pctx: PipelineContext, flags: { skipPlan: boolean; skipReview: boolean }) {
   const { cwd, signal, ctx, execFn } = pctx;
   const allStages: StageResult[] = [];
   const issueProgress = new Map<number, { title: string; status: IssueStatus }>();

@@ -1,6 +1,16 @@
-import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/pipeline";
+import {
+  emptyStage,
+  type PipelineContext,
+  pipelineResult,
+  toAgentOpts,
+  withRunLifecycle,
+} from "@callumvass/forgeflow-shared/pipeline";
 
 export async function runDiscoverSkills(query: string, pctx: PipelineContext) {
+  return withRunLifecycle(pctx, "discover-skills", (innerPctx) => runDiscoverSkillsInner(query, innerPctx));
+}
+
+async function runDiscoverSkillsInner(query: string, pctx: PipelineContext) {
   // If query looks like specific skill names (contains commas or known skill identifiers),
   // treat as install mode. Otherwise, discover mode.
   const isInstall = query.includes(",") || query.includes("/");

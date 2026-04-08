@@ -1,10 +1,24 @@
-import { type PipelineContext, pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
+import {
+  type PipelineContext,
+  pipelineResult,
+  type StageResult,
+  withRunLifecycle,
+} from "@callumvass/forgeflow-shared/pipeline";
 import { askCustomPrompt } from "../utils/ui.js";
 import { proposeAndPostComments } from "./review-comments.js";
 import { resolveDiffTarget } from "./review-diff.js";
 import { runReviewPipeline } from "./review-orchestrator.js";
 
+function reviewRunId(target: string): string {
+  const trimmed = target.trim();
+  return trimmed ? `review-${trimmed}` : "review";
+}
+
 export async function runReview(target: string, pctx: PipelineContext) {
+  return withRunLifecycle(pctx, reviewRunId(target), (innerPctx) => runReviewInner(target, innerPctx));
+}
+
+async function runReviewInner(target: string, pctx: PipelineContext) {
   const { cwd, ctx, execFn, execSafeFn } = pctx;
   const stages: StageResult[] = [];
   const { diffCmd, prNumber } = await resolveDiffTarget(cwd, target, execSafeFn);
