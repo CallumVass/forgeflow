@@ -5,11 +5,13 @@ import { findPrNumber } from "./git-workflow.js";
 
 /**
  * Pair of shell-execution functions injected into git helpers.
- * `exec` throws on non-zero exit; `execSafe` returns empty string on failure.
+ * `execFn` throws on non-zero exit; `execSafeFn` returns empty string on failure.
+ * Names match `PipelineContext.execFn` / `PipelineContext.execSafeFn` so callers
+ * can pass `pctx` directly via structural subtyping.
  */
-interface GitExecPair {
-  exec: ExecFn;
-  execSafe: ExecFn;
+interface GitExecFns {
+  execFn: ExecFn;
+  execSafeFn: ExecFn;
 }
 
 const PR_TEMPLATE_PATHS = [
@@ -68,14 +70,14 @@ const JIRA_BRANCH_RE = /feat\/([A-Z]+-\d+)/;
  * 2. Numeric GitHub issue → fetch from gh
  * 3. On a feature branch → extract from branch name
  *
- * Takes an `{ exec, execSafe }` pair so callers (pipelines) can pass
- * `pctx.execFn` / `pctx.execSafeFn`. Tests pass spies to capture every
- * `git`/`gh`/`jira` invocation without spawning real sub-processes.
+ * Takes an `{ execFn, execSafeFn }` pair — these field names match
+ * `PipelineContext`, so callers can pass `pctx` directly. Tests pass spies to
+ * capture every `git`/`gh`/`jira` invocation without spawning real sub-processes.
  */
 export async function resolveIssue(
   cwd: string,
   issueArg: string | undefined,
-  execFns: GitExecPair,
+  execFns: GitExecFns,
 ): Promise<ResolvedIssue | string> {
   // Explicit Jira key
   if (issueArg && JIRA_KEY_RE.test(issueArg)) {
@@ -93,7 +95,7 @@ export async function resolveIssue(
   }
 
   // Detect from branch name
-  const branch = await execFns.exec("git branch --show-current", cwd);
+  const branch = await execFns.execFn("git branch --show-current", cwd);
 
   const jiraMatch = branch.match(JIRA_BRANCH_RE);
   if (jiraMatch) {
@@ -110,12 +112,8 @@ export async function resolveIssue(
   return `On branch "${branch}" — can't detect issue. Use /implement <issue#> or /implement <JIRA-KEY>.`;
 }
 
-async function resolveGitHubIssue(
-  cwd: string,
-  issueNum: number,
-  execFns: GitExecPair,
-): Promise<ResolvedIssue | string> {
-  const issueJson = await execFns.execSafe(`gh issue view ${issueNum} --json number,title,body`, cwd);
+async function resolveGitHubIssue(cwd: string, issueNum: number, execFns: GitExecFns): Promise<ResolvedIssue | string> {
+  const issueJson = await execFns.execSafeFn(`gh issue view ${issueNum} --json number,title,body`, cwd);
   if (!issueJson) return `Could not fetch issue #${issueNum}.`;
 
   let issue: { number: number; title: string; body: string };
@@ -126,7 +124,7 @@ async function resolveGitHubIssue(
   }
 
   const branch = `feat/issue-${issueNum}`;
-  const existingPR = (await findPrNumber(cwd, branch, execFns.exec)) ?? undefined;
+  const existingPR = (await findPrNumber(cwd, branch, execFns.execFn)) ?? undefined;
 
   return { source: "github", key: String(issueNum), ...issue, branch, existingPR };
 }
@@ -134,10 +132,10 @@ async function resolveGitHubIssue(
 async function resolveJiraIssue(
   cwd: string,
   jiraKey: string,
-  execFns: GitExecPair,
+  execFns: GitExecFns,
   existingBranch?: string,
 ): Promise<ResolvedIssue | string> {
-  const raw = await execFns.execSafe(`jira issue view ${jiraKey} --raw`, cwd);
+  const raw = await execFns.execSafeFn(`jira issue view ${jiraKey} --raw`, cwd);
   if (!raw) return `Could not fetch Jira issue ${jiraKey}.`;
 
   // biome-ignore lint/suspicious/noExplicitAny: Jira JSON shape varies by instance
@@ -163,7 +161,7 @@ async function resolveJiraIssue(
   const body = bodyParts.join("\n\n");
   const branch = existingBranch ?? `feat/${jiraKey}-${slugify(title)}`;
 
-  const existingPR = (await findPrNumber(cwd, branch, execFns.exec)) ?? undefined;
+  const existingPR = (await findPrNumber(cwd, branch, execFns.execFn)) ?? undefined;
 
   return { source: "jira", key: jiraKey, number: 0, title, body, branch, existingPR };
 }

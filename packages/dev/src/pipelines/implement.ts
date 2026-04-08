@@ -25,9 +25,9 @@ export async function runImplement(
     skipReview: false,
   },
 ) {
-  const { cwd, onUpdate, ctx, execFn, execSafeFn } = pctx;
+  const { cwd, onUpdate, ctx, execFn } = pctx;
   const interactive = ctx.hasUI && !flags.autonomous;
-  const resolved = await resolveIssue(cwd, issueArg || undefined, { exec: execFn, execSafe: execSafeFn });
+  const resolved = await resolveIssue(cwd, issueArg || undefined, pctx);
   if (typeof resolved === "string") return pipelineResult(resolved, "implement", []);
 
   const isGH = resolved.source === "github" && resolved.number > 0;
