@@ -1,10 +1,41 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { type ForgeflowConfig, loadForgeflowConfig, mergeConfigs, VALID_THINKING_LEVELS } from "./forgeflow-config.js";
+import {
+  DEFAULT_SESSIONS,
+  type ForgeflowConfig,
+  loadForgeflowConfig,
+  mergeConfigs,
+  VALID_THINKING_LEVELS,
+} from "./forgeflow-config.js";
 import { setupIsolatedHomeFixture } from "./test-utils.js";
 
+/**
+ * Factory for the pair of on-disk config writers used by the
+ * `loadForgeflowConfig` and `sessions config` suites. Both suites need the
+ * same two helpers against different fixtures — the factory captures the
+ * fixture handle via closure so test bodies can call `writeGlobal({...})` /
+ * `writeProject({...})` without re-typing path-joining boilerplate.
+ */
+function createConfigWriters(fixture: { homeDir: string; cwdDir: string }) {
+  return {
+    writeGlobal(config: unknown): void {
+      const dir = path.join(fixture.homeDir, ".pi", "agent");
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, "forgeflow.json"), JSON.stringify(config), "utf-8");
+    },
+    writeProject(config: unknown, dir: string = fixture.cwdDir): void {
+      fs.writeFileSync(path.join(dir, ".forgeflow.json"), JSON.stringify(config), "utf-8");
+    },
+  };
+}
+
 describe("mergeConfigs", () => {
+  it("leaves sessions undefined when neither side supplies it (loader back-fills defaults separately)", () => {
+    expect(mergeConfigs({}, {})).toEqual({ agents: {} });
+    expect(mergeConfigs({ agents: {} }, { agents: {} })).toEqual({ agents: {} });
+  });
+
   it("replaces whole agent entries from global with project entries of the same name, preserves non-overlapping global entries, and tolerates empty inputs", () => {
     const global: ForgeflowConfig = {
       agents: {
@@ -36,6 +67,7 @@ describe("mergeConfigs", () => {
 
 describe("loadForgeflowConfig", () => {
   const fixture = setupIsolatedHomeFixture("cfg");
+  const { writeGlobal, writeProject } = createConfigWriters(fixture);
   let nested: string;
   let warn: ReturnType<typeof vi.fn>;
 
@@ -45,19 +77,9 @@ describe("loadForgeflowConfig", () => {
     warn = vi.fn();
   });
 
-  function writeGlobal(config: unknown): void {
-    const dir = path.join(fixture.homeDir, ".pi", "agent");
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, "forgeflow.json"), JSON.stringify(config), "utf-8");
-  }
-
-  function writeProject(config: unknown, dir = fixture.cwdDir): void {
-    fs.writeFileSync(path.join(dir, ".forgeflow.json"), JSON.stringify(config), "utf-8");
-  }
-
-  it("returns an empty config when no files are present", () => {
+  it("returns an empty config with sessions defaults when no files are present", () => {
     const result = loadForgeflowConfig(nested, warn);
-    expect(result).toEqual({ agents: {} });
+    expect(result).toEqual({ agents: {}, sessions: DEFAULT_SESSIONS });
     expect(warn).not.toHaveBeenCalled();
   });
 
@@ -81,6 +103,7 @@ describe("loadForgeflowConfig", () => {
         planner: { model: "claude-opus-4-5", thinkingLevel: "high" },
         implementor: { model: "claude-sonnet-4-5", thinkingLevel: "medium" },
       },
+      sessions: DEFAULT_SESSIONS,
     });
     expect(warn).not.toHaveBeenCalled();
   });
@@ -100,6 +123,7 @@ describe("loadForgeflowConfig", () => {
         planner: { model: "claude-opus-4-5" },
         implementor: {},
       },
+      sessions: DEFAULT_SESSIONS,
     });
     expect(warn).toHaveBeenCalledTimes(2);
   });
@@ -120,7 +144,56 @@ describe("loadForgeflowConfig", () => {
 
     const result = loadForgeflowConfig(nested, warn);
 
-    expect(result).toEqual({ agents: {} });
+    expect(result).toEqual({ agents: {}, sessions: DEFAULT_SESSIONS });
     expect(warn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("sessions config", () => {
+  const fixture = setupIsolatedHomeFixture("sessions");
+  const { writeGlobal, writeProject } = createConfigWriters(fixture);
+  let warn: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    warn = vi.fn();
+  });
+
+  it("merges sessions field-by-field so project can override one knob without losing sibling fields", () => {
+    // mergeConfigs field-level semantics: unlike `agents` (entry-level replacement),
+    // `sessions` fields merge individually so users can tune one retention knob
+    // without re-typing every field.
+    const merged = mergeConfigs(
+      { sessions: { persist: true, archiveRuns: 50, archiveMaxAge: 90 } },
+      { sessions: { archiveRuns: 5 } },
+    );
+    expect(merged.sessions).toEqual({ persist: true, archiveRuns: 5, archiveMaxAge: 90 });
+  });
+
+  it("backfills sessions defaults when neither file sets the block", () => {
+    const result = loadForgeflowConfig(fixture.cwdDir, warn);
+    expect(result.sessions).toEqual(DEFAULT_SESSIONS);
+    expect(DEFAULT_SESSIONS).toEqual({ persist: true, archiveRuns: 20, archiveMaxAge: 30 });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("applies sessions.persist=false opt-out from the global file even when the project sets only retention", () => {
+    writeGlobal({ sessions: { persist: false, archiveRuns: 10 } });
+    writeProject({ sessions: { archiveMaxAge: 7 } });
+
+    const result = loadForgeflowConfig(fixture.cwdDir, warn);
+
+    expect(result.sessions).toEqual({ persist: false, archiveRuns: 10, archiveMaxAge: 7 });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("drops non-numeric / non-boolean sessions fields with a warning and falls back to defaults", () => {
+    writeProject({
+      sessions: { persist: "yes", archiveRuns: "lots", archiveMaxAge: -3 },
+    });
+
+    const result = loadForgeflowConfig(fixture.cwdDir, warn);
+
+    expect(result.sessions).toEqual(DEFAULT_SESSIONS);
+    expect(warn).toHaveBeenCalledTimes(3);
   });
 });

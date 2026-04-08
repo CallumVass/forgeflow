@@ -25,25 +25,63 @@ export interface AgentConfig {
   thinkingLevel?: ThinkingLevel;
 }
 
+/**
+ * Sub-agent session persistence config. `persist` gates the whole feature;
+ * `archiveRuns` and `archiveMaxAge` are the GC knobs (whichever trips first
+ * prunes). See `run-dir.ts` for the lifecycle implementation.
+ */
+export interface SessionsConfig {
+  persist: boolean;
+  archiveRuns: number;
+  archiveMaxAge: number;
+}
+
+/**
+ * Defaults for the `sessions` block when neither `~/.pi/agent/forgeflow.json`
+ * nor the project `.forgeflow.json` set the field. The values are also the
+ * back-fill used by `sanitiseSessions` when individual fields are invalid.
+ */
+export const DEFAULT_SESSIONS: SessionsConfig = {
+  persist: true,
+  archiveRuns: 20,
+  archiveMaxAge: 30,
+};
+
 export interface ForgeflowConfig {
   agents?: Record<string, AgentConfig>;
+  sessions?: SessionsConfig;
 }
 
 /** Callback invoked by the loader for every dropped value or parse error. */
 type ForgeflowConfigWarn = (message: string) => void;
 
 /**
- * Merge two forgeflow configs. Project entries replace whole agent entries
- * from global (no field-level merging inside an agent entry); non-overlapping
- * global entries survive. Both sides are allowed to omit `agents`.
+ * Merge two forgeflow configs.
+ *
+ * - `agents`: project entries replace whole agent entries from global (no
+ *   field-level merging inside an agent entry); non-overlapping global
+ *   entries survive.
+ * - `sessions`: field-level merge — a project file that sets only
+ *   `archiveRuns` keeps the global `persist` and `archiveMaxAge`. This
+ *   matters for sensitive-project opt-out: a global `persist: false`
+ *   should not be silently re-enabled by a project that tweaks only a
+ *   retention knob.
+ *
+ * Both sides are allowed to omit either block. The returned `sessions`
+ * block is `undefined` when neither side supplied one; `loadForgeflowConfig`
+ * back-fills `DEFAULT_SESSIONS` before returning to callers.
  */
 export function mergeConfigs(global: ForgeflowConfig, project: ForgeflowConfig): ForgeflowConfig {
-  return {
+  const merged: ForgeflowConfig = {
     agents: {
       ...(global.agents ?? {}),
       ...(project.agents ?? {}),
     },
   };
+  if (global.sessions || project.sessions) {
+    merged.sessions = { ...(global.sessions ?? {}), ...(project.sessions ?? {}) } as SessionsConfig;
+  }
+  return merged;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -84,6 +122,59 @@ function sanitiseAgents(raw: unknown, sourceLabel: string, warn: ForgeflowConfig
   return out;
 }
 
+/**
+ * Coerce a value to a non-negative integer (floored). Returns `undefined`
+ * and emits a warning when the value is missing, non-numeric, non-finite,
+ * or negative. Shared by the retention knobs in `sanitiseSessions`.
+ */
+function coerceNonNegInt(
+  value: unknown,
+  fieldLabel: string,
+  sourceLabel: string,
+  warn: ForgeflowConfigWarn,
+): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return Math.floor(value);
+  }
+  warn(`forgeflow.json (${sourceLabel}): ${fieldLabel} must be a non-negative number — dropped`);
+  return undefined;
+}
+
+/**
+ * Coerce a raw `sessions` block into a partial `SessionsConfig`. Individual
+ * invalid fields are dropped (with a warning) — the field-level merge in
+ * `mergeConfigs` + the `DEFAULT_SESSIONS` back-fill in `loadForgeflowConfig`
+ * cover the hole, so a single garbage field doesn't nuke the whole block.
+ *
+ * Returns `undefined` when the input isn't an object at all — the caller
+ * uses that to signal "file did not set sessions" to `mergeConfigs`.
+ */
+function sanitiseSessions(
+  raw: unknown,
+  sourceLabel: string,
+  warn: ForgeflowConfigWarn,
+): Partial<SessionsConfig> | undefined {
+  if (raw === undefined) return undefined;
+  if (!isRecord(raw)) {
+    warn(`forgeflow.json (${sourceLabel}): "sessions" must be an object — ignored`);
+    return undefined;
+  }
+  const out: Partial<SessionsConfig> = {};
+  if (raw.persist !== undefined) {
+    if (typeof raw.persist === "boolean") out.persist = raw.persist;
+    else warn(`forgeflow.json (${sourceLabel}): sessions.persist must be a boolean — dropped`);
+  }
+  if (raw.archiveRuns !== undefined) {
+    const n = coerceNonNegInt(raw.archiveRuns, "sessions.archiveRuns", sourceLabel, warn);
+    if (n !== undefined) out.archiveRuns = n;
+  }
+  if (raw.archiveMaxAge !== undefined) {
+    const n = coerceNonNegInt(raw.archiveMaxAge, "sessions.archiveMaxAge", sourceLabel, warn);
+    if (n !== undefined) out.archiveMaxAge = n;
+  }
+  return out;
+}
+
 function readConfigFile(filePath: string, sourceLabel: string, warn: ForgeflowConfigWarn): ForgeflowConfig {
   let raw: string;
   try {
@@ -101,7 +192,10 @@ function readConfigFile(filePath: string, sourceLabel: string, warn: ForgeflowCo
     return { agents: {} };
   }
   if (!isRecord(parsed)) return { agents: {} };
-  return { agents: sanitiseAgents(parsed.agents, sourceLabel, warn) };
+  const config: ForgeflowConfig = { agents: sanitiseAgents(parsed.agents, sourceLabel, warn) };
+  const sessions = sanitiseSessions(parsed.sessions, sourceLabel, warn);
+  if (sessions !== undefined) config.sessions = sessions as SessionsConfig;
+  return config;
 }
 
 /**
@@ -145,5 +239,9 @@ export function loadForgeflowConfig(cwd: string, warn: ForgeflowConfigWarn = () 
   const projectPath = findProjectConfigPath(cwd);
   const projectConfig = projectPath ? readConfigFile(projectPath, "project", warn) : { agents: {} };
 
-  return mergeConfigs(globalConfig, projectConfig);
+  const merged = mergeConfigs(globalConfig, projectConfig);
+  // Back-fill the sessions block last, so any field the user omitted
+  // defaults to DEFAULT_SESSIONS but fields they explicitly set survive.
+  merged.sessions = { ...DEFAULT_SESSIONS, ...(merged.sessions ?? {}) };
+  return merged;
 }
