@@ -35,6 +35,30 @@ npx pi install @callumvass/forgeflow-pm
 - **prd-quality** — PRD completeness and quality criteria
 - **writing-style** — Consistent tone and formatting rules
 
+## Configuration
+
+Forgeflow reads optional per-agent model and thinking-level overrides from
+`.forgeflow.json` (nearest one walked up from the current directory) merged
+over `~/.pi/agent/forgeflow.json` (global). Project entries replace whole
+global entries at the agent level. Both files are optional — with neither,
+every sub-agent inherits the parent pi session's model and thinking level.
+
+```json
+{
+  "agents": {
+    "prd-critic":           { "model": "claude-opus-4",   "thinkingLevel": "high" },
+    "prd-architect":        { "model": "claude-sonnet-4", "thinkingLevel": "medium" },
+    "gh-issue-creator":     { "thinkingLevel": "high" },
+    "investigator":         { "thinkingLevel": "high" }
+  }
+}
+```
+
+Valid `thinkingLevel` values: `off`, `minimal`, `low`, `medium`, `high`,
+`xhigh`. Invalid values and malformed JSON are reported via the pi
+notification UI and dropped; the pipeline still runs with inherited
+defaults.
+
 ## Usage examples
 
 See the [root README](../../README.md#commands) for detailed usage examples of each command.
