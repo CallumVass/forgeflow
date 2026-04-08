@@ -1,5 +1,5 @@
-import { exec } from "@callumvass/forgeflow-shared/exec";
 import {
+  type ExecFn,
   emptyStage,
   type PipelineContext,
   pipelineResult,
@@ -40,10 +40,10 @@ function countDone(progress: Map<number, { status: IssueStatus }>): number {
  * Used to seed the completed set so we don't re-pick historical work and so
  * dependency resolution sees prior completions.
  */
-async function fetchCompletedIssueNumbers(cwd: string): Promise<Set<number>> {
+async function fetchCompletedIssueNumbers(cwd: string, execFn: ExecFn): Promise<Set<number>> {
   const completed = new Set<number>();
   for (const label of IMPLEMENT_ALL_LABELS) {
-    const closedJson = await exec(
+    const closedJson = await execFn(
       `gh issue list --state closed --label "${label}" --json number --jq '.[].number'`,
       cwd,
     );
@@ -60,10 +60,10 @@ async function fetchCompletedIssueNumbers(cwd: string): Promise<Set<number>> {
  * carrying both labels is picked up exactly once) and sorted ascending so
  * picks are deterministic.
  */
-async function fetchOpenIssues(cwd: string): Promise<IssueInfo[]> {
+async function fetchOpenIssues(cwd: string, execFn: ExecFn): Promise<IssueInfo[]> {
   const issuesByNumber = new Map<number, IssueInfo>();
   for (const label of IMPLEMENT_ALL_LABELS) {
-    const issuesJson = await exec(
+    const issuesJson = await execFn(
       `gh issue list --state open --label "${label}" --json number,title,body --jq 'sort_by(.number)'`,
       cwd,
     );
@@ -99,12 +99,12 @@ export function getReadyIssues(issues: IssueInfo[], completed: Set<number>): num
 }
 
 export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: boolean; skipReview: boolean }) {
-  const { cwd, signal, ctx } = pctx;
+  const { cwd, signal, ctx, execFn } = pctx;
   const allStages: StageResult[] = [];
   const issueProgress = new Map<number, { title: string; status: IssueStatus }>();
 
   // Seed completed set with already-closed issues across every tracked label.
-  const completed = await fetchCompletedIssueNumbers(cwd);
+  const completed = await fetchCompletedIssueNumbers(cwd, execFn);
 
   let iteration = 0;
   const maxIterations = 50;
@@ -113,10 +113,10 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
     if (signal.aborted) break;
 
     // Return to main and pull
-    await returnToMain(cwd, exec);
+    await returnToMain(cwd, execFn);
 
     // Fetch open issues for every tracked label, deduped + sorted ascending.
-    const issues = await fetchOpenIssues(cwd);
+    const issues = await fetchOpenIssues(cwd, execFn);
 
     if (issues.length === 0) {
       return pipelineResult("All issues implemented.", "implement-all", allStages);
@@ -181,13 +181,13 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
 
     // Merge PR and return to main
     const branch = `feat/issue-${issueNum}`;
-    await returnToMain(cwd, exec);
+    await returnToMain(cwd, execFn);
 
-    const prNum = await findPrNumber(cwd, branch, exec);
+    const prNum = await findPrNumber(cwd, branch, execFn);
 
     if (prNum != null) {
       try {
-        await mergePr(cwd, prNum, exec);
+        await mergePr(cwd, prNum, execFn);
         completed.add(issueNum);
       } catch {
         issueProgress.set(issueNum, { title: issueTitle, status: "failed" });

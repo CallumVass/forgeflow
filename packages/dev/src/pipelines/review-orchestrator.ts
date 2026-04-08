@@ -1,10 +1,9 @@
-import { resolveRunAgent } from "@callumvass/forgeflow-shared/agent";
 import {
   cleanSignal,
   emptyStage,
-  type RunAgentFn,
-  type RunAgentOpts,
+  type PipelineContext,
   readSignal,
+  type StageResult,
   signalExists,
   TOOLS_NO_EDIT,
 } from "@callumvass/forgeflow-shared/pipeline";
@@ -14,21 +13,19 @@ interface ReviewResult {
   findings?: string;
 }
 
+interface ReviewPipelineOptions extends PipelineContext {
+  stages: StageResult[];
+  pipeline?: string;
+  customPrompt?: string;
+}
+
 /**
  * Run the code-reviewer → review-judge pipeline.
  * Takes a diff string, returns validated findings or a "passed" result.
  * No UI interaction, no PR posting.
  */
-export async function runReviewPipeline(
-  diff: string,
-  opts: Pick<RunAgentOpts, "cwd" | "signal" | "stages" | "pipeline" | "onUpdate" | "agentsDir"> & {
-    customPrompt?: string;
-    runAgentFn?: RunAgentFn;
-  },
-): Promise<ReviewResult> {
-  const { cwd, signal, stages, pipeline = "review", onUpdate, customPrompt, agentsDir } = opts;
-
-  const runAgentFn = await resolveRunAgent(opts.runAgentFn);
+export async function runReviewPipeline(diff: string, opts: ReviewPipelineOptions): Promise<ReviewResult> {
+  const { cwd, signal, stages, pipeline = "review", onUpdate, customPrompt, agentsDir, runAgentFn } = opts;
 
   const agentOpts = { agentsDir, cwd, signal, stages, pipeline, onUpdate };
   const extraInstructions = customPrompt ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${customPrompt}` : "";

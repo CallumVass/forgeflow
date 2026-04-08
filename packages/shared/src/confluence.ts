@@ -1,4 +1,4 @@
-import { execSafe } from "./exec.js";
+import type { ExecFn } from "./exec.js";
 
 /**
  * Extract a Confluence page ID from a URL.
@@ -50,8 +50,12 @@ export interface ConfluencePage {
 /**
  * Fetch a Confluence page by URL. Returns the page title and body as markdown-ish plain text.
  * Requires CONFLUENCE_URL, CONFLUENCE_EMAIL, CONFLUENCE_TOKEN env vars.
+ *
+ * Takes an injected `execSafeFn` so callers (pipelines) can pass
+ * `pctx.execSafeFn`. Tests can pass a spy to capture the curl invocation
+ * without spawning a real sub-process.
  */
-export async function fetchConfluencePage(pageUrl: string): Promise<ConfluencePage | string> {
+export async function fetchConfluencePage(pageUrl: string, execSafeFn: ExecFn): Promise<ConfluencePage | string> {
   const baseUrl = process.env.CONFLUENCE_URL;
   const email = process.env.CONFLUENCE_EMAIL;
   const token = process.env.CONFLUENCE_TOKEN;
@@ -68,7 +72,7 @@ export async function fetchConfluencePage(pageUrl: string): Promise<ConfluencePa
   const auth = Buffer.from(`${email}:${token}`).toString("base64");
   const apiUrl = `${baseUrl.replace(/\/$/, "")}/wiki/api/v2/pages/${pageId}?body-format=storage`;
 
-  const raw = await execSafe(`curl -s -H "Authorization: Basic ${auth}" -H "Accept: application/json" "${apiUrl}"`);
+  const raw = await execSafeFn(`curl -s -H "Authorization: Basic ${auth}" -H "Accept: application/json" "${apiUrl}"`);
 
   if (!raw) return `Failed to fetch Confluence page ${pageId}.`;
 

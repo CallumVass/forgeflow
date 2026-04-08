@@ -1,8 +1,5 @@
+import { type mockExecFn, mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@callumvass/forgeflow-shared/exec", () => ({
-  exec: vi.fn(async () => ""),
-}));
 
 vi.mock("../utils/git-workflow.js", () => ({
   findPrNumber: vi.fn(async () => 100),
@@ -23,8 +20,6 @@ vi.mock("./implement.js", () => ({
   })),
 }));
 
-import { exec } from "@callumvass/forgeflow-shared/exec";
-import { mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { setForgeflowStatus, updateProgressWidget } from "../utils/ui.js";
 import { runImplement } from "./implement.js";
 import { getReadyIssues, IMPLEMENT_ALL_LABELS, runImplementAll } from "./implement-all.js";
@@ -84,6 +79,11 @@ describe("runImplementAll status bar", () => {
 
   type OpenIssue = { number: number; title: string; body: string };
 
+  /**
+   * Build an `execFn` spy whose responses depend on which `gh issue list` query
+   * is being executed. The spy still appears as a plain `vi.fn()` to assertions —
+   * we just install scripted side-effects via `mockImplementation`.
+   */
   function setupExecMock(
     closedNumbers: number[],
     openIssues: OpenIssue[],
@@ -100,7 +100,7 @@ describe("runImplementAll status bar", () => {
         details: { pipeline: "implement", stages: [] },
       };
     });
-    vi.mocked(exec).mockImplementation(async (cmd: string) => {
+    const execFn = vi.fn(async (cmd: string) => {
       if (cmd.includes("--state closed")) return closedOutput;
       if (cmd.includes("--state open")) {
         if (opts.openPerLabel) {
@@ -115,11 +115,13 @@ describe("runImplementAll status bar", () => {
       }
       return "";
     });
+    return execFn;
   }
 
-  function makePctx() {
+  function makePctx(execFn: ReturnType<typeof mockExecFn>) {
     return mockPipelineContext({
       cwd: "/tmp",
+      execFn,
       ctx: mockForgeflowContext({ hasUI: true, cwd: "/tmp" }),
     });
   }
@@ -129,9 +131,9 @@ describe("runImplementAll status bar", () => {
       { number: 10, title: "Issue 10", body: "" },
       { number: 11, title: "Issue 11", body: "" },
     ];
-    setupExecMock([5, 6, 7], openIssues);
+    const execFn = setupExecMock([5, 6, 7], openIssues);
 
-    await runImplementAll(makePctx(), { skipPlan: false, skipReview: false });
+    await runImplementAll(makePctx(execFn), { skipPlan: false, skipReview: false });
 
     const statusCalls = vi.mocked(setForgeflowStatus).mock.calls;
     expect(statusCalls[0]?.[1]).toContain("0/2");
@@ -145,9 +147,9 @@ describe("runImplementAll status bar", () => {
       { number: 13, title: "Issue 13", body: "" },
     ];
     // 2 historically closed + 4 open.
-    setupExecMock([1, 2], openIssues);
+    const execFn = setupExecMock([1, 2], openIssues);
 
-    await runImplementAll(makePctx(), { skipPlan: false, skipReview: false });
+    await runImplementAll(makePctx(execFn), { skipPlan: false, skipReview: false });
 
     const statusCalls = vi.mocked(setForgeflowStatus).mock.calls;
     // After completing issue 10: should show 1/4, not 3/6
@@ -157,9 +159,9 @@ describe("runImplementAll status bar", () => {
   it("dependency resolution still uses historical closed issues", async () => {
     // Issue 20 depends on issue 10, which is historically closed
     const openIssues = [{ number: 20, title: "Issue 20", body: "## Dependencies\n#10" }];
-    setupExecMock([10], openIssues);
+    const execFn = setupExecMock([10], openIssues);
 
-    await runImplementAll(makePctx(), { skipPlan: false, skipReview: false });
+    await runImplementAll(makePctx(execFn), { skipPlan: false, skipReview: false });
 
     const statusCalls = vi.mocked(setForgeflowStatus).mock.calls;
     // Issue 20 should be picked (not blocked), so we should see it in the status
@@ -167,14 +169,11 @@ describe("runImplementAll status bar", () => {
   });
 
   it("queries closed issues for every label in IMPLEMENT_ALL_LABELS", async () => {
-    setupExecMock([], []);
+    const execFn = setupExecMock([], []);
 
-    await runImplementAll(makePctx(), { skipPlan: false, skipReview: false });
+    await runImplementAll(makePctx(execFn), { skipPlan: false, skipReview: false });
 
-    const closedCalls = vi
-      .mocked(exec)
-      .mock.calls.map((c) => c[0] as string)
-      .filter((c) => c.includes("--state closed"));
+    const closedCalls = execFn.mock.calls.map((c) => c[0] as string).filter((c) => c.includes("--state closed"));
 
     for (const label of IMPLEMENT_ALL_LABELS) {
       expect(closedCalls.some((c) => c.includes(label))).toBe(true);
@@ -182,14 +181,11 @@ describe("runImplementAll status bar", () => {
   });
 
   it("queries open issues for every label in IMPLEMENT_ALL_LABELS", async () => {
-    setupExecMock([], []);
+    const execFn = setupExecMock([], []);
 
-    await runImplementAll(makePctx(), { skipPlan: false, skipReview: false });
+    await runImplementAll(makePctx(execFn), { skipPlan: false, skipReview: false });
 
-    const openCalls = vi
-      .mocked(exec)
-      .mock.calls.map((c) => c[0] as string)
-      .filter((c) => c.includes("--state open"));
+    const openCalls = execFn.mock.calls.map((c) => c[0] as string).filter((c) => c.includes("--state open"));
 
     for (const label of IMPLEMENT_ALL_LABELS) {
       expect(openCalls.some((c) => c.includes(label))).toBe(true);
@@ -198,14 +194,14 @@ describe("runImplementAll status bar", () => {
 
   it("deduplicates an issue that carries both tracked labels", async () => {
     const shared = { number: 42, title: "Dual-labelled", body: "" };
-    setupExecMock([], [], {
+    const execFn = setupExecMock([], [], {
       openPerLabel: {
         "auto-generated": [shared],
         architecture: [shared],
       },
     });
 
-    await runImplementAll(makePctx(), { skipPlan: false, skipReview: false });
+    await runImplementAll(makePctx(execFn), { skipPlan: false, skipReview: false });
 
     const implementCalls = vi.mocked(runImplement).mock.calls.filter((c) => c[0] === "42");
     expect(implementCalls).toHaveLength(1);
@@ -216,7 +212,7 @@ describe("runImplementAll status bar", () => {
   });
 
   it("processes mixed auto-generated and architecture issues in ascending number order", async () => {
-    setupExecMock([], [], {
+    const execFn = setupExecMock([], [], {
       openPerLabel: {
         "auto-generated": [
           { number: 10, title: "Issue 10", body: "" },
@@ -226,7 +222,7 @@ describe("runImplementAll status bar", () => {
       },
     });
 
-    await runImplementAll(makePctx(), { skipPlan: false, skipReview: false });
+    await runImplementAll(makePctx(execFn), { skipPlan: false, skipReview: false });
 
     const running = vi
       .mocked(setForgeflowStatus)

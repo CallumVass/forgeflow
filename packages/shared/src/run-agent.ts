@@ -4,16 +4,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
 import { applyMessageToStage, extractFinalOutput, parseMessageLine } from "./message-parser.js";
-import { emptyStage, type RunAgentFn, type RunAgentOpts, type StageResult } from "./pipeline.js";
+import { emptyStage, type RunAgentOpts, type StageResult } from "./pipeline.js";
 import { emitUpdate } from "./progress.js";
-
-/**
- * Resolve a RunAgentFn — use the injected one for tests, or return the real one.
- */
-export async function resolveRunAgent(injected?: RunAgentFn): Promise<RunAgentFn> {
-  if (injected) return injected;
-  return runAgent;
-}
 
 function getPiInvocation(args: string[]): { command: string; args: string[] } {
   const currentScript = process.argv[1];

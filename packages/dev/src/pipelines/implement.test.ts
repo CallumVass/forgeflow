@@ -60,7 +60,7 @@ describe("runImplement orchestrator", () => {
       skipReview: false,
     });
 
-    expect(setupBranch).toHaveBeenCalledWith("/tmp", "feat/issue-42");
+    expect(setupBranch).toHaveBeenCalledWith("/tmp", "feat/issue-42", expect.any(Function));
     expect(runPlanning).toHaveBeenCalled();
     expect(buildImplementorPrompt).toHaveBeenCalled();
     expect(runImplementorPhase).toHaveBeenCalledWith(expect.objectContaining({ cwd: "/tmp" }), "mocked prompt");

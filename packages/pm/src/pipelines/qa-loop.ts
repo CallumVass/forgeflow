@@ -1,9 +1,7 @@
 import * as fs from "node:fs";
-import { resolveRunAgent } from "@callumvass/forgeflow-shared/agent";
 import {
   emptyStage,
   type PipelineContext,
-  type RunAgentFn,
   type StageResult,
   signalExists,
   TOOLS_ALL,
@@ -18,7 +16,6 @@ export interface QaLoopOptions extends PipelineContext {
   pipeline: string;
   maxIterations: number;
   criticPrompt: string;
-  runAgentFn?: RunAgentFn;
   signalExistsFn?: SignalExistsFn;
 }
 
@@ -28,9 +25,8 @@ interface QaLoopResult {
 }
 
 export async function runQaLoop(opts: QaLoopOptions): Promise<QaLoopResult> {
-  const { cwd, stages, pipeline, ctx, maxIterations, criticPrompt } = opts;
+  const { cwd, stages, pipeline, ctx, maxIterations, criticPrompt, runAgentFn } = opts;
 
-  const runAgentFn = await resolveRunAgent(opts.runAgentFn);
   const signalExistsFn = opts.signalExistsFn ?? (signalExists as SignalExistsFn);
 
   const agentOpts = toAgentOpts(opts, { stages, pipeline });

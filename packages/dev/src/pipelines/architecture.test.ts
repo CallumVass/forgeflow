@@ -17,8 +17,8 @@ describe("runArchitecture", () => {
   it("passes all reviewer candidates through in non-interactive mode", async () => {
     const runAgentFn = sequencedRunAgent([{ output: THREE_CANDIDATES }]);
 
-    const pctx = mockPipelineContext();
-    const result = await runArchitecture(pctx, { runAgentFn });
+    const pctx = mockPipelineContext({ runAgentFn });
+    const result = await runArchitecture(pctx);
 
     expect(result.content[0].text).toContain("1. High coupling in auth module");
     expect(result.content[0].text).toContain("2. Missing error boundaries");
@@ -29,8 +29,8 @@ describe("runArchitecture", () => {
   it("returns early with error when reviewer fails", async () => {
     const runAgentFn = sequencedRunAgent([{ output: "Something went wrong", status: "failed" }]);
 
-    const pctx = mockPipelineContext();
-    const result = await runArchitecture(pctx, { runAgentFn });
+    const pctx = mockPipelineContext({ runAgentFn });
+    const result = await runArchitecture(pctx);
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain("failed");
@@ -40,8 +40,8 @@ describe("runArchitecture", () => {
   it("returns raw reviewer output when no candidates parse", async () => {
     const runAgentFn = sequencedRunAgent([{ output: "Some free-form reviewer notes with no numbered headings." }]);
 
-    const pctx = mockPipelineContext();
-    const result = await runArchitecture(pctx, { runAgentFn });
+    const pctx = mockPipelineContext({ runAgentFn });
+    const result = await runArchitecture(pctx);
 
     expect(result.content[0].text).toContain("Some free-form reviewer notes with no numbered headings.");
     expect(runAgentFn).toHaveBeenCalledOnce();
@@ -49,7 +49,9 @@ describe("runArchitecture", () => {
 
   it("shows all reviewer candidates in the interactive selection prompt", async () => {
     const selectFn = vi.fn(async () => "Skip");
+    const runAgentFn = sequencedRunAgent([{ output: THREE_CANDIDATES }]);
     const pctx = mockPipelineContext({
+      runAgentFn,
       ctx: mockForgeflowContext({
         hasUI: true,
         ui: {
@@ -59,9 +61,7 @@ describe("runArchitecture", () => {
       }),
     });
 
-    const runAgentFn = sequencedRunAgent([{ output: THREE_CANDIDATES }]);
-
-    await runArchitecture(pctx, { runAgentFn });
+    await runArchitecture(pctx);
 
     // biome-ignore lint/style/noNonNullAssertion: test assertion — call is guaranteed
     const options = (selectFn.mock.calls as unknown[][])[0]![1] as string[];

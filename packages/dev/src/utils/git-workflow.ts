@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { exec as defaultExec, type ExecFn } from "@callumvass/forgeflow-shared/exec";
+import type { ExecFn } from "@callumvass/forgeflow-shared/pipeline";
 
 interface BranchSetupResult {
   status: "fresh" | "resumed" | "failed";
@@ -18,11 +18,7 @@ interface PrResult {
  * Set up a feature branch. If the branch has commits ahead of main, resume it.
  * Otherwise, delete any stale branch and create fresh.
  */
-export async function setupBranch(
-  cwd: string,
-  branch: string,
-  execFn: ExecFn = defaultExec,
-): Promise<BranchSetupResult> {
+export async function setupBranch(cwd: string, branch: string, execFn: ExecFn): Promise<BranchSetupResult> {
   // Check how many commits the branch is ahead of main
   const aheadStr = await execFn(`git rev-list main..${branch} --count 2>/dev/null || echo 0`, cwd);
   const ahead = parseInt(aheadStr, 10) || 0;
@@ -63,7 +59,7 @@ export async function ensurePr(
   title: string,
   body: string,
   branch: string,
-  execFn: ExecFn = defaultExec,
+  execFn: ExecFn,
 ): Promise<PrResult> {
   // Push first
   await execFn(`git push -u origin ${branch}`, cwd);
@@ -99,7 +95,7 @@ export async function ensurePr(
 /**
  * Find the PR number for a given branch. Returns null if no PR exists.
  */
-export async function findPrNumber(cwd: string, branch: string, execFn: ExecFn = defaultExec): Promise<number | null> {
+export async function findPrNumber(cwd: string, branch: string, execFn: ExecFn): Promise<number | null> {
   const result = await execFn(`gh pr list --head "${branch}" --json number --jq '.[0].number'`, cwd);
   if (result && result !== "null") {
     return parseInt(result, 10);
@@ -110,7 +106,7 @@ export async function findPrNumber(cwd: string, branch: string, execFn: ExecFn =
 /**
  * Squash-merge a PR and delete the branch. Verifies merge succeeded.
  */
-export async function mergePr(cwd: string, prNumber: number, execFn: ExecFn = defaultExec): Promise<void> {
+export async function mergePr(cwd: string, prNumber: number, execFn: ExecFn): Promise<void> {
   const mergeResult = await execFn(`gh pr merge ${prNumber} --squash --delete-branch`, cwd);
 
   if (mergeResult.includes("Merged") || mergeResult.includes("merged")) {
@@ -130,7 +126,7 @@ export async function mergePr(cwd: string, prNumber: number, execFn: ExecFn = de
 /**
  * Return to main branch and pull latest.
  */
-export async function returnToMain(cwd: string, execFn: ExecFn = defaultExec): Promise<void> {
+export async function returnToMain(cwd: string, execFn: ExecFn): Promise<void> {
   await execFn("git checkout main", cwd);
   await execFn("git pull --rebase", cwd);
 }
@@ -138,7 +134,7 @@ export async function returnToMain(cwd: string, execFn: ExecFn = defaultExec): P
 /**
  * Verify the current branch matches the expected branch. Throws if not.
  */
-export async function verifyOnBranch(cwd: string, expected: string, execFn: ExecFn = defaultExec): Promise<void> {
+export async function verifyOnBranch(cwd: string, expected: string, execFn: ExecFn): Promise<void> {
   const current = await execFn("git branch --show-current", cwd);
   if (current !== expected) {
     throw new Error(`Expected branch ${expected} but on ${current}`);

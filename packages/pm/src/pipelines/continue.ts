@@ -1,5 +1,4 @@
 import * as fs from "node:fs";
-import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import {
   emptyStage,
   type PipelineContext,
@@ -46,7 +45,10 @@ export async function runContinue(description: string, maxIterations: number, pc
 
   // Phase 1: Update PRD with Done/Next structure
   stages.push(emptyStage("prd-architect"));
-  const archResult = await runAgent("prd-architect", updatePrompt(description), { ...agentOpts, tools: TOOLS_ALL });
+  const archResult = await pctx.runAgentFn("prd-architect", updatePrompt(description), {
+    ...agentOpts,
+    tools: TOOLS_ALL,
+  });
   if (archResult.status === "failed") {
     return pipelineResult(`PRD update failed.\nStderr: ${archResult.stderr.slice(0, 300)}`, "continue", stages, true);
   }
@@ -73,7 +75,7 @@ export async function runContinue(description: string, maxIterations: number, pc
 
   // Phase 3: Create issues from the Next section
   stages.push(emptyStage("gh-issue-creator"));
-  await runAgent(
+  await pctx.runAgentFn(
     "gh-issue-creator",
     "Decompose PRD.md into vertical-slice GitHub issues. Focus on the ## Next section — the ## Done section is context only. Read the issue-template skill for the standard format.",
     { ...agentOpts, tools: TOOLS_NO_EDIT },

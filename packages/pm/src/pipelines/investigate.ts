@@ -1,4 +1,3 @@
-import { runAgent } from "@callumvass/forgeflow-shared/agent";
 import { type ConfluencePage, fetchConfluencePage } from "@callumvass/forgeflow-shared/confluence";
 import {
   emptyStage,
@@ -31,7 +30,7 @@ export async function runInvestigate(description: string, templateUrl: string, p
 
   let templateSection = "";
   if (templateUrl) {
-    const result = await fetchConfluencePage(templateUrl);
+    const result = await fetchConfluencePage(templateUrl, pctx.execSafeFn);
     if (typeof result === "string") {
       return pipelineResult(result, "investigate", [], true);
     }
@@ -50,7 +49,7 @@ ${!templateUrl ? "No template was provided. Structure your output as: Problem, C
 
 Read the writing-style skill before writing.`;
 
-  await runAgent("investigator", task, { ...opts, tools: TOOLS_ALL });
+  await pctx.runAgentFn("investigator", task, { ...opts, tools: TOOLS_ALL });
 
   return pipelineResult("Investigation complete.", "investigate", stages);
 }
