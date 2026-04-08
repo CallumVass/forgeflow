@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.14.1...forgeflow-dev-v0.15.0) (2026-04-08)
+
+
+### Features
+
+* fork-based /implement architecture + /implement-all CI wait + issue-writer hardening ([#135](https://github.com/CallumVass/forgeflow/issues/135)) ([c2fb853](https://github.com/CallumVass/forgeflow/commit/c2fb853dc17942a66e682f593d0a1d415788c5be))
+
 ## [0.14.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.14.0...forgeflow-dev-v0.14.1) (2026-04-08)
 
 
