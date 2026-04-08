@@ -1,11 +1,5 @@
 import { type ConfluencePage, fetchConfluencePage } from "@callumvass/forgeflow-shared/confluence";
-import {
-  emptyStage,
-  type PipelineContext,
-  pipelineResult,
-  TOOLS_ALL,
-  toAgentOpts,
-} from "@callumvass/forgeflow-shared/pipeline";
+import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/pipeline";
 
 export async function runJiraIssues(docUrls: string[], exampleUrl: string, pctx: PipelineContext) {
   const { ctx } = pctx;
@@ -63,7 +57,7 @@ ${!exampleUrl ? "No example ticket was provided. Use standard format: Summary, D
 
 Read the writing-style skill before writing any issue content.`;
 
-  await pctx.runAgentFn("jira-issue-creator", task, { ...opts, tools: TOOLS_ALL });
+  await pctx.runAgentFn("jira-issue-creator", task, opts);
 
   return pipelineResult("Jira issue creation complete.", "create-jira-issues", stages);
 }

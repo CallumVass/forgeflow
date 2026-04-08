@@ -1,10 +1,4 @@
-import {
-  emptyStage,
-  type PipelineContext,
-  type StageResult,
-  TOOLS_READONLY,
-  toAgentOpts,
-} from "@callumvass/forgeflow-shared/pipeline";
+import { emptyStage, type PipelineContext, type StageResult, toAgentOpts } from "@callumvass/forgeflow-shared/pipeline";
 
 /**
  * Build the prompt for the comment-proposal agent call.
@@ -88,10 +82,7 @@ export async function proposeAndPostComments(
   const proposalPrompt = buildCommentProposalPrompt(findings, pr.number, pr.repo);
 
   stages.push(emptyStage("propose-comments"));
-  await runAgentFn("review-judge", proposalPrompt, {
-    ...agentOpts,
-    tools: TOOLS_READONLY,
-  });
+  await runAgentFn("review-judge", proposalPrompt, agentOpts);
 
   const commentStage = stages.find((s) => s.name === "propose-comments");
   const proposedCommands = commentStage?.output || "";

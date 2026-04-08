@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
+import { loadAgent } from "./agent-loader.js";
 import { applyMessageToStage, extractFinalOutput, parseMessageLine } from "./message-parser.js";
 import { emptyStage, type RunAgentOpts, type StageResult } from "./pipeline.js";
 import { emitUpdate } from "./progress.js";
@@ -30,7 +31,9 @@ async function writePromptToTempFile(name: string, prompt: string): Promise<{ di
 
 /** Run a forgeflow agent as a sub-process with streaming updates. */
 export async function runAgent(agentName: string, task: string, options: RunAgentOpts): Promise<StageResult> {
-  const agentPath = path.join(options.agentsDir, `${agentName}.md`);
+  // Single source of truth: the agent's own .md frontmatter. Pipelines never
+  // supply a tool list — it is read here from disk via `loadAgent`.
+  const agent = await loadAgent(options.agentsDir, agentName);
   const lookupName = options.stageName ?? agentName;
   const stage =
     options.stages.find((s) => s.name === lookupName && s.status === "pending") ??
@@ -46,16 +49,13 @@ export async function runAgent(agentName: string, task: string, options: RunAgen
   stage.status = "running";
   emitUpdate(options);
 
-  const tools = options.tools ?? ["read", "write", "edit", "bash", "grep", "find"];
-  const args: string[] = ["--mode", "json", "-p", "--no-session", "--tools", tools.join(",")];
+  const args: string[] = ["--mode", "json", "-p", "--no-session", "--tools", agent.tools.join(",")];
 
   let tmpDir: string | null = null;
   let tmpFile: string | null = null;
 
   try {
-    // Read agent system prompt and write to temp file
-    const systemPrompt = fs.readFileSync(agentPath, "utf-8");
-    const tmp = await writePromptToTempFile(agentName, systemPrompt);
+    const tmp = await writePromptToTempFile(agentName, agent.systemPrompt);
     tmpDir = tmp.dir;
     tmpFile = tmp.filePath;
     args.push("--append-system-prompt", tmpFile);

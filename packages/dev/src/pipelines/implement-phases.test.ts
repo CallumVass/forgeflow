@@ -164,7 +164,7 @@ describe("runImplementorPhase", () => {
     expect(runAgentFn).toHaveBeenCalledWith(
       "implementor",
       "test prompt",
-      expect.objectContaining({ tools: expect.any(Array) }),
+      expect.not.objectContaining({ tools: expect.anything() }),
     );
     expect(result).toBe("blocked reason");
   });
@@ -177,5 +177,20 @@ describe("runImplementorPhase", () => {
 
     expect(runAgentFn).toHaveBeenCalledWith("implementor", "test prompt", expect.any(Object));
     expect(result).toBeNull();
+  });
+
+  it("never passes a tools field to runAgentFn for implementor, refactorer, or fix-findings", async () => {
+    const { pctx, runAgentFn } = makePhaseContext(mockRunAgent(), mockExecFn({ "git diff": "some diff" }));
+    vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: false, findings: "Some findings" });
+
+    await runImplementorPhase(pctx, "prompt");
+    await refactorAndReview(pctx, true);
+    await reviewAndFix(pctx);
+
+    for (const call of runAgentFn.mock.calls) {
+      const opts = call[2] as Record<string, unknown>;
+      expect(opts).not.toHaveProperty("tools");
+    }
+    expect(runAgentFn).toHaveBeenCalled();
   });
 });

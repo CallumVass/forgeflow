@@ -1,10 +1,4 @@
-import {
-  emptyStage,
-  type PipelineContext,
-  pipelineResult,
-  TOOLS_NO_EDIT,
-  toAgentOpts,
-} from "@callumvass/forgeflow-shared/pipeline";
+import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/pipeline";
 import { missingPrdResult, prdExists } from "../prd-document.js";
 
 export async function runCreateIssue(idea: string, pctx: PipelineContext) {
@@ -21,7 +15,7 @@ export async function runCreateIssue(idea: string, pctx: PipelineContext) {
   const stages = [emptyStage("gh-single-issue-creator")];
   const opts = toAgentOpts(pctx, { stages, pipeline: "create-issue" });
 
-  await pctx.runAgentFn("gh-single-issue-creator", idea, { ...opts, tools: TOOLS_NO_EDIT });
+  await pctx.runAgentFn("gh-single-issue-creator", idea, opts);
 
   return pipelineResult("Issue created.", "create-issue", stages);
 }
@@ -35,7 +29,7 @@ export async function runCreateIssues(pctx: PipelineContext) {
   await pctx.runAgentFn(
     "gh-issue-creator",
     "Decompose PRD.md into vertical-slice GitHub issues. Read the issue-template skill for the standard format.",
-    { ...opts, tools: TOOLS_NO_EDIT },
+    opts,
   );
 
   return pipelineResult("Issue creation complete.", "create-issues", stages);
