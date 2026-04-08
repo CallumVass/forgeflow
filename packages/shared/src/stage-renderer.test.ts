@@ -54,59 +54,57 @@ describe("renderExpanded", () => {
 });
 
 describe("renderCollapsed", () => {
-  it("returns a Text with header, stage status, tool calls for running, preview for done", () => {
+  it("in live state (any stage pending or running), emits only minimal per-stage lines with no pipeline header, no tool calls, no previews, and no expand hint", () => {
     const theme = mockTheme();
     const details: PipelineDetails = {
-      pipeline: "review",
+      pipeline: "architecture",
       stages: [
         makeStage({
-          name: "checker",
-          status: "done",
-          output: "All checks passed",
-          usage: { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, cost: 0.001, turns: 1 },
-        }),
-        makeStage({
-          name: "reviewer",
+          name: "architecture-reviewer",
           status: "running",
           messages: [
             {
               role: "assistant",
               content: [
-                { type: "toolCall", name: "read", arguments: { path: "a.ts" } },
-                { type: "toolCall", name: "read", arguments: { path: "b.ts" } },
-                { type: "toolCall", name: "grep", arguments: { pattern: "TODO" } },
-                { type: "toolCall", name: "bash", arguments: { command: "npm test" } },
+                { type: "toolCall", name: "read", arguments: { path: "live-file-1.ts" } },
+                { type: "toolCall", name: "read", arguments: { path: "live-file-2.ts" } },
+                { type: "toolCall", name: "grep", arguments: { pattern: "LIVE-TODO" } },
               ],
             },
           ],
+          output: "partial output should not leak",
+          usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0, cost: 0.0001, turns: 1 },
         }),
-        makeStage({ name: "judge", status: "pending" }),
+        makeStage({ name: "next-stage", status: "pending" }),
       ],
     };
 
-    const textNode = renderCollapsed(details, theme, "forgeflow-pm");
-    const lines = textNode.render(120);
-    const joined = lines.join("\n");
+    const joined = renderCollapsed(details, theme, "forgeflow-dev").render(200).join("\n");
 
-    // Header
-    expect(joined).toContain("forgeflow-pm");
-    expect(joined).toContain("review");
+    // Running stage: icon + name on one line.
+    expect(joined).toContain("[warning]⟳ [toolTitle]architecture-reviewer");
+    // Pending stage: muted icon + name on one line.
+    expect(joined).toContain("[muted]○ [toolTitle]next-stage");
 
-    // Done stage shows preview
-    expect(joined).toContain("All checks passed");
-    expect(joined).toContain("1t");
+    // No pipeline header — it is already shown by renderCall.
+    expect(joined).not.toContain("forgeflow-dev");
+    expect(joined).not.toContain("[accent]architecture");
 
-    // Running stage shows last 3 tool calls (b.ts, TODO, npm test — not a.ts)
-    expect(joined).not.toContain("a.ts");
-    expect(joined).toContain("b.ts");
-    expect(joined).toContain("TODO");
-    expect(joined).toContain("npm test");
+    // No tool-call list — live detail lives in the widget.
+    expect(joined).not.toContain("→");
+    expect(joined).not.toContain("live-file-1.ts");
+    expect(joined).not.toContain("live-file-2.ts");
+    expect(joined).not.toContain("LIVE-TODO");
 
-    // Pending stage shown
-    expect(joined).toContain("judge");
+    // No previews or usage leaking through while still live.
+    expect(joined).not.toContain("partial output should not leak");
+    expect(joined).not.toContain("1t");
+
+    // No expand hint while still running.
+    expect(joined).not.toContain("to expand");
   });
 
-  it("shows multi-line preview for done stages, error-coloured preview for failed, last 3 tool calls for running, and a single expand hint", () => {
+  it("after the pipeline completes, shows the full header, per-stage usage, 3-line preview, error-coloured failures, and a single expand hint", () => {
     const theme = mockTheme();
     const details: PipelineDetails = {
       pipeline: "implement",
@@ -124,27 +122,16 @@ describe("renderCollapsed", () => {
           output: "failure first line\nfailure second line",
           usage: { input: 50, output: 25, cacheRead: 0, cacheWrite: 0, cost: 0.0005, turns: 1 },
         }),
-        makeStage({
-          name: "reviewer",
-          status: "running",
-          messages: [
-            {
-              role: "assistant",
-              content: [
-                { type: "toolCall", name: "read", arguments: { path: "a.ts" } },
-                { type: "toolCall", name: "read", arguments: { path: "b.ts" } },
-                { type: "toolCall", name: "grep", arguments: { pattern: "TODO" } },
-                { type: "toolCall", name: "bash", arguments: { command: "npm test" } },
-              ],
-            },
-          ],
-        }),
       ],
     };
 
     const textNode = renderCollapsed(details, theme, "forgeflow-dev");
     const lines = textNode.render(200);
     const joined = lines.join("\n");
+
+    // Header present once the pipeline is complete.
+    expect(joined).toContain("forgeflow-dev");
+    expect(joined).toContain("[accent]implement");
 
     // Done stage shows first 3 non-blank lines, leading whitespace stripped, and drops the 4th line.
     expect(joined).toContain("first preview line");
@@ -161,12 +148,6 @@ describe("renderCollapsed", () => {
     expect(joined).toContain("[error]failure first line");
     // Subsequent failed lines are still shown.
     expect(joined).toContain("failure second line");
-
-    // Running stage shows last 3 tool calls only.
-    expect(joined).not.toContain("a.ts");
-    expect(joined).toContain("b.ts");
-    expect(joined).toContain("TODO");
-    expect(joined).toContain("npm test");
 
     // Expand hint appears exactly once at the end.
     expect(joined).toContain("to expand");
