@@ -1,14 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerForgeflowCommands } from "./extension-commands.js";
 import { resetStagesOverlayRegistry } from "./extension-registry.js";
-import { mockExtensionConfig, mockForgeflowContext, mockPi } from "./test-utils.js";
-
-// ─── Helpers ──────────────────────────────────────────────────────────
-
-function getShortcutHandler(pi: ReturnType<typeof mockPi>, key: string) {
-  const call = pi.registerShortcut.mock.calls.find((c: unknown[]) => c[0] === key);
-  return call ? (call[1] as { handler: (ctx: unknown) => Promise<void> }).handler : undefined;
-}
+import { getRegisteredShortcutHandler, mockExtensionConfig, mockForgeflowContext, mockPi } from "./test-utils.js";
 
 beforeEach(() => {
   resetStagesOverlayRegistry();
@@ -64,7 +57,7 @@ describe("registerForgeflowCommands", () => {
     // extensions when invoked, proving both registrations populated the same
     // shared registry. Capture the tool names by intercepting ctx.ui.custom,
     // which the overlay calls with a factory closure that reads the registry.
-    const handler = getShortcutHandler(piA, "ctrl+shift+s");
+    const handler = getRegisteredShortcutHandler(piA, "ctrl+shift+s");
     expect(handler).toBeDefined();
 
     const custom = vi.fn(async () => undefined);

@@ -21,12 +21,8 @@ export function registerForgeflowCommands(pi: ExtensionAPI, config: ExtensionCon
     pi.registerCommand(cmd.name, {
       description: cmd.description,
       handler: async (args) => {
-        if (cmd.parseArgs) {
-          const { params, suffix } = cmd.parseArgs(args);
-          pi.sendUserMessage(buildSendMessage(config.toolName, cmd.pipeline, params ?? {}, suffix));
-        } else {
-          pi.sendUserMessage(buildSendMessage(config.toolName, cmd.pipeline, {}));
-        }
+        const { params, suffix } = cmd.parseArgs?.(args) ?? {};
+        pi.sendUserMessage(buildSendMessage(config.toolName, cmd.pipeline, params ?? {}, suffix));
       },
     });
   }

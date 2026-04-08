@@ -102,6 +102,26 @@ export function mockPi() {
 }
 
 /**
+ * Look up the handler passed to `pi.registerCommand(name, opts)` on a
+ * `mockPi()` instance. Returns `undefined` if no command with that name was
+ * registered.
+ */
+export function getRegisteredCommandHandler(pi: ReturnType<typeof mockPi>, name: string) {
+  const call = pi.registerCommand.mock.calls.find((c: unknown[]) => c[0] === name);
+  return call ? (call[1] as { handler: (args: string, ctx: unknown) => Promise<void> }).handler : undefined;
+}
+
+/**
+ * Look up the handler passed to `pi.registerShortcut(key, opts)` on a
+ * `mockPi()` instance. Returns `undefined` if no shortcut with that key was
+ * registered.
+ */
+export function getRegisteredShortcutHandler(pi: ReturnType<typeof mockPi>, key: string) {
+  const call = pi.registerShortcut.mock.calls.find((c: unknown[]) => c[0] === key);
+  return call ? (call[1] as { handler: (ctx: unknown) => Promise<void> }).handler : undefined;
+}
+
+/**
  * Create a minimal `ExtensionConfig` for tests that exercise
  * `createForgeflowExtension`, `registerForgeflowTool`, or
  * `registerForgeflowCommands`. Defaults provide two pipelines (`alpha`,

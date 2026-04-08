@@ -5,7 +5,14 @@ import { resetStagesOverlayRegistry } from "./extension-registry.js";
 import type { ExtensionConfig } from "./extension-types.js";
 import type { PipelineDetails, StageResult } from "./pipeline.js";
 import { findLatestPipelineDetails, openStagesOverlay } from "./stages-overlay.js";
-import { makeStage, mockExtensionConfig, mockForgeflowContext, mockPi } from "./test-utils.js";
+import {
+  getRegisteredCommandHandler,
+  getRegisteredShortcutHandler,
+  makeStage,
+  mockExtensionConfig,
+  mockForgeflowContext,
+  mockPi,
+} from "./test-utils.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -81,16 +88,6 @@ function samplePipelineDetails(overrides: Partial<PipelineDetails> = {}): Pipeli
     makeStage({ name: "reviewer", status: "pending" }),
   ];
   return { pipeline: "implement", stages, ...overrides };
-}
-
-function getCommandHandler(pi: ReturnType<typeof mockPi>, name: string) {
-  const call = pi.registerCommand.mock.calls.find((c: unknown[]) => c[0] === name);
-  return call ? (call[1] as { handler: (args: string, ctx: unknown) => Promise<void> }).handler : undefined;
-}
-
-function getShortcutHandler(pi: ReturnType<typeof mockPi>, key: string) {
-  const call = pi.registerShortcut.mock.calls.find((c: unknown[]) => c[0] === key);
-  return call ? (call[1] as { handler: (ctx: unknown) => Promise<void> }).handler : undefined;
 }
 
 function minimalConfig(overrides?: Partial<ExtensionConfig>): ExtensionConfig {
@@ -397,7 +394,7 @@ describe("createForgeflowExtension (stages overlay wiring)", () => {
     const ext = createForgeflowExtension(minimalConfig({ toolName: "forgeflow-test" }));
     ext(pi as never);
 
-    const handler = getCommandHandler(pi, "stages");
+    const handler = getRegisteredCommandHandler(pi, "stages");
     expect(handler).toBeDefined();
 
     const details = samplePipelineDetails();
@@ -422,7 +419,7 @@ describe("createForgeflowExtension (stages overlay wiring)", () => {
     const ext = createForgeflowExtension(minimalConfig({ toolName: "forgeflow-test" }));
     ext(pi as never);
 
-    const handler = getShortcutHandler(pi, "ctrl+shift+s");
+    const handler = getRegisteredShortcutHandler(pi, "ctrl+shift+s");
     expect(handler).toBeDefined();
 
     const details = samplePipelineDetails();
@@ -465,7 +462,7 @@ describe("createForgeflowExtension (stages overlay wiring)", () => {
     createForgeflowExtension(minimalConfig({ toolName: "forgeflow-pm" }))(piA as never);
     createForgeflowExtension(minimalConfig({ toolName: "forgeflow-dev" }))(piB as never);
 
-    const handler = getShortcutHandler(piA, "ctrl+shift+s");
+    const handler = getRegisteredShortcutHandler(piA, "ctrl+shift+s");
     if (!handler) throw new Error("expected ctrl+shift+s shortcut to be registered on the first extension");
 
     // The most recent forgeflow tool result in the session belongs to the
