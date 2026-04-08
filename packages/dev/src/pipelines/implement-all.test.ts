@@ -7,6 +7,13 @@ vi.mock("../utils/pr-lifecycle.js", () => ({
   returnToMain: vi.fn(async () => {}),
 }));
 
+// Stub the CI wait-and-fix loop so the existing status-bar tests do
+// not block on `gh pr checks --watch`. Individual tests can override
+// via `vi.mocked(waitForChecksAndFix).mockResolvedValueOnce({...})`.
+vi.mock("./ci-wait.js", () => ({
+  waitForChecksAndFix: vi.fn(async () => ({ passed: true, attempts: 0, failedChecks: [] })),
+}));
+
 vi.mock("../utils/ui.js", () => ({
   setForgeflowStatus: vi.fn(),
   updateProgressWidget: vi.fn(),

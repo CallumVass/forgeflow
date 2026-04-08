@@ -1,8 +1,17 @@
-import { type PipelineContext, pipelineResult, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
+import {
+  type PipelineContext,
+  pipelineResult,
+  type StageResult,
+  withRunLifecycle,
+} from "@callumvass/forgeflow-shared/pipeline";
 import { missingPrdResult, prdExists } from "../prd-document.js";
 import { runQaLoop } from "./qa-loop.js";
 
 export async function runPrdQa(maxIterations: number, pctx: PipelineContext) {
+  return withRunLifecycle(pctx, "prd-qa", (innerPctx) => runPrdQaInner(maxIterations, innerPctx));
+}
+
+async function runPrdQaInner(maxIterations: number, pctx: PipelineContext) {
   if (!prdExists(pctx.cwd)) return missingPrdResult("prd-qa");
 
   const stages: StageResult[] = [];

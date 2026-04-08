@@ -1,6 +1,14 @@
 import { mockExecFn } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
-import { assertBranchHasCommits, ensurePr, findPrNumber, mergePr, returnToMain } from "./pr-lifecycle.js";
+import {
+  assertBranchHasCommits,
+  ensurePr,
+  fetchFailedCiLogs,
+  findPrNumber,
+  mergePr,
+  returnToMain,
+  waitForChecks,
+} from "./pr-lifecycle.js";
 
 describe("ensurePr", () => {
   it("creates a PR when none exists and returns created: true", async () => {
@@ -122,5 +130,72 @@ describe("returnToMain", () => {
 
     expect(execFn).toHaveBeenCalledWith(expect.stringContaining("checkout main"), "/tmp");
     expect(execFn).toHaveBeenCalledWith(expect.stringContaining("pull"), "/tmp");
+  });
+});
+
+describe("waitForChecks", () => {
+  it("blocks on --watch then returns passed when every check's bucket is pass/skipping", async () => {
+    const execSafeFn = mockExecFn({
+      "--watch": "",
+      "--json bucket,name": JSON.stringify([
+        { bucket: "pass", name: "build" },
+        { bucket: "pass", name: "test" },
+        { bucket: "skipping", name: "optional-lint" },
+      ]),
+    });
+
+    const result = await waitForChecks("/tmp", 7, execSafeFn);
+
+    expect(result).toEqual({ passed: true, failedChecks: [] });
+    expect(execSafeFn).toHaveBeenCalledWith(expect.stringMatching(/gh pr checks 7 --watch/), "/tmp");
+  });
+
+  it("collects fail/cancel check names and reports passed:false", async () => {
+    const execSafeFn = mockExecFn({
+      "--watch": "",
+      "--json bucket,name": JSON.stringify([
+        { bucket: "pass", name: "build" },
+        { bucket: "fail", name: "unit-tests" },
+        { bucket: "cancel", name: "integration" },
+      ]),
+    });
+
+    const result = await waitForChecks("/tmp", 7, execSafeFn);
+
+    expect(result.passed).toBe(false);
+    expect(result.failedChecks.sort()).toEqual(["integration", "unit-tests"]);
+  });
+
+  it("returns passed:false with empty failedChecks when the rollup JSON is unparseable", async () => {
+    const execSafeFn = mockExecFn({
+      "--watch": "",
+      "--json bucket,name": "not json",
+    });
+
+    const result = await waitForChecks("/tmp", 7, execSafeFn);
+
+    expect(result).toEqual({ passed: false, failedChecks: [] });
+  });
+});
+
+describe("fetchFailedCiLogs", () => {
+  it("returns logs for the latest failed run on the branch", async () => {
+    const execSafeFn = vi.fn(async (cmd: string) => {
+      if (cmd.includes("gh run list")) return "1234567890";
+      if (cmd.includes("gh run view 1234567890 --log-failed")) return "actual CI failure output";
+      return "";
+    });
+
+    const logs = await fetchFailedCiLogs("/tmp", "feat/issue-42", execSafeFn);
+
+    expect(logs).toBe("actual CI failure output");
+  });
+
+  it("returns empty string when no failed run exists on the branch", async () => {
+    const execSafeFn = mockExecFn({ "gh run list": "" });
+
+    const logs = await fetchFailedCiLogs("/tmp", "feat/issue-42", execSafeFn);
+
+    expect(logs).toBe("");
   });
 });

@@ -1,4 +1,10 @@
-import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/pipeline";
+import {
+  emptyStage,
+  type PipelineContext,
+  pipelineResult,
+  toAgentOpts,
+  withRunLifecycle,
+} from "@callumvass/forgeflow-shared/pipeline";
 import { ARCHITECTURE_LABEL } from "./implement-all.js";
 
 /**
@@ -32,6 +38,10 @@ export function parseCandidates(text: string): ArchitectureCandidate[] {
 }
 
 export async function runArchitecture(pctx: PipelineContext) {
+  return withRunLifecycle(pctx, "architecture", (innerPctx) => runArchitectureInner(innerPctx));
+}
+
+async function runArchitectureInner(pctx: PipelineContext) {
   const { ctx, runAgentFn } = pctx;
   const stages = [emptyStage("architecture-reviewer")];
   const agentOpts = toAgentOpts(pctx, { stages, pipeline: "architecture" });

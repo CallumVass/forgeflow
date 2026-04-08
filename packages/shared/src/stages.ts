@@ -65,6 +65,23 @@ export type RunAgentOpts = {
    * (e.g. `"planner"`, `"implementor"`), NOT `stageName`.
    */
   agentOverrides?: Record<string, AgentConfig>;
+  /**
+   * Path of the session JSONL file this sub-agent should write to.
+   * Set by `withRunLifecycle` (auto-allocated per call) or by the
+   * chain-builder (explicitly, to thread forks). When absent,
+   * `runAgent` falls back to `--no-session` so ephemeral callers
+   * still work.
+   */
+  sessionPath?: string;
+  /**
+   * When set, spawn the sub-agent as `pi --fork <forkFrom>`, inheriting
+   * the source session's conversation history as prior tool results and
+   * assistant turns. The sub-agent still writes to its own
+   * `sessionPath` — fork and session paths are orthogonal and both may
+   * be supplied. Used by the chain-builder to share context across
+   * build-chain phases.
+   */
+  forkFrom?: string;
 };
 
 export type RunAgentFn = (agent: string, prompt: string, opts: RunAgentOpts) => Promise<StageResult>;

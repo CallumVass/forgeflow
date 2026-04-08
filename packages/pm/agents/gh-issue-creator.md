@@ -36,6 +36,7 @@ If the PRD contains a `## Done` section, that describes work already completed. 
 ## Test Plan Rules
 
 - **Every slice MUST include a "trigger test"** — a test that starts from the user's entry point (API endpoint, route render, CLI command) and verifies the expected output at the other end. This is the test that proves the slice is actually wired together, not just built in pieces.
+- **Trigger tests must name real production entry points.** "A minimal pipeline" or "a small harness" is not a trigger test. The sentence must literally reference the production function, route, or CLI command whose wiring the slice proves.
 - Test plans must test through system boundaries (HTTP API, rendered route), NOT internal modules. If a test plan item names an internal class or module directly, rewrite it to go through the API or route instead. Internal modules get tested transitively.
 
 Bad test plan (tests layers separately — components can pass while disconnected):
@@ -53,6 +54,24 @@ Good test plan (tests through boundaries — forces wiring):
 - Target ~300-500 lines of implementation per issue (excluding tests). If a slice would be larger, split it into sub-slices that each still cross layers.
 - Target 8-15 issues total. More smaller issues > fewer large ones.
 - Each issue should touch ≤10 files.
+- **Hard test cap: ≤15 tests per issue.** Matches the implementor's hard test-budget. Over 15 = the implementor will truncate work silently.
+- **Hard integration-point cap: 1 production call site per issue.** If your draft wires a new module into multiple places in the codebase, each place is a separate slice. Do not combine sites because they share code.
+
+## TDD rehearsal per issue
+
+Every issue body MUST include a `## TDD Rehearsal` section with the
+red-green cycles counted out and totals listed. Walk the cycles in
+your head before writing them down:
+
+1. Which behaviour does the first failing test prove?
+2. What does the minimal green code look like?
+3. Is there a single-file integration point to verify reachability?
+4. Repeat until every acceptance criterion is covered OR you have
+   used 15 tests.
+
+If cycle 14 still has uncovered criteria, the issue is too big.
+Split it. It is faster to split once than to watch the implementor
+hit its budget and stop with half the integration done.
 
 ## Context Rules
 

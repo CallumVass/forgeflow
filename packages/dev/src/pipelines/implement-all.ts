@@ -5,9 +5,11 @@ import {
   pipelineResult,
   type StageResult,
   sumUsage,
+  withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
 import { findPrNumber, mergePr, returnToMain } from "../utils/pr-lifecycle.js";
 import { setForgeflowStatus, updateProgressWidget } from "../utils/ui.js";
+import { waitForChecksAndFix } from "./ci-wait.js";
 import { runImplement } from "./implement.js";
 
 /**
@@ -99,6 +101,10 @@ export function getReadyIssues(issues: IssueInfo[], completed: Set<number>): num
 }
 
 export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: boolean; skipReview: boolean }) {
+  return withRunLifecycle(pctx, "implement-all", (innerPctx) => runImplementAllInner(innerPctx, flags));
+}
+
+async function runImplementAllInner(pctx: PipelineContext, flags: { skipPlan: boolean; skipReview: boolean }) {
   const { cwd, signal, ctx, execFn } = pctx;
   const allStages: StageResult[] = [];
   const issueProgress = new Map<number, { title: string; status: IssueStatus }>();
@@ -179,22 +185,17 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
       );
     }
 
-    // Merge PR and return to main
+    // --- CI wait-and-fix loop ---
+    //
+    // runImplement ends on the feature branch. Stay here until CI has
+    // a verdict so any fix cycles that `waitForChecksAndFix` triggers
+    // can push to the branch without needing a checkout dance. Only
+    // return to main once the PR is either merged or declared failed.
     const branch = `feat/issue-${issueNum}`;
-    await returnToMain(cwd, execFn);
-
     const prNum = await findPrNumber(cwd, branch, execFn);
 
-    if (prNum != null) {
-      try {
-        await mergePr(cwd, prNum, execFn);
-        completed.add(issueNum);
-      } catch {
-        issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
-        updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
-        return pipelineResult(`Failed to merge PR #${prNum} for issue #${issueNum}.`, "implement-all", allStages, true);
-      }
-    } else {
+    if (prNum == null) {
+      await returnToMain(cwd, execFn);
       issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
       updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
       return pipelineResult(
@@ -203,6 +204,32 @@ export async function runImplementAll(pctx: PipelineContext, flags: { skipPlan: 
         allStages,
         true,
       );
+    }
+
+    // Block on CI; fix failures autonomously up to the attempt cap.
+    const ciResult = await waitForChecksAndFix(pctx, prNum, branch, allStages);
+    if (!ciResult.passed) {
+      await returnToMain(cwd, execFn);
+      issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
+      updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
+      const checks = ciResult.failedChecks.length > 0 ? ciResult.failedChecks.join(", ") : "unknown";
+      return pipelineResult(
+        `CI failed for PR #${prNum} (${ciResult.reason ?? "unknown"}): ${checks} after ${ciResult.attempts} fix attempt(s).`,
+        "implement-all",
+        allStages,
+        true,
+      );
+    }
+
+    await returnToMain(cwd, execFn);
+
+    try {
+      await mergePr(cwd, prNum, execFn);
+      completed.add(issueNum);
+    } catch {
+      issueProgress.set(issueNum, { title: issueTitle, status: "failed" });
+      updateProgressWidget(ctx, issueProgress, sumUsage(allStages).cost);
+      return pipelineResult(`Failed to merge PR #${prNum} for issue #${issueNum}.`, "implement-all", allStages, true);
     }
 
     // Mark done and update widget

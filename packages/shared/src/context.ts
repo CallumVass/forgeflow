@@ -1,10 +1,13 @@
 import type { SessionEntry } from "@mariozechner/pi-coding-agent";
 import { type ExecFn, exec, execSafe } from "./exec.js";
-import { type AgentConfig, loadForgeflowConfig } from "./forgeflow-config.js";
+import { type AgentConfig, DEFAULT_SESSIONS, loadForgeflowConfig, type SessionsConfig } from "./forgeflow-config.js";
 import { runAgent } from "./run-agent.js";
+import type { RunDirHandle } from "./run-dir.js";
 import type { OnUpdate, RunAgentFn, RunAgentOpts, StageResult } from "./stages.js";
 
 export type { ExecFn } from "./exec.js";
+export type { ArchiveOutcome, RunDirHandle } from "./run-dir.js";
+export { withRunLifecycle } from "./run-dir.js";
 
 // ─── Context types and builders ───────────────────────────────────────
 
@@ -110,6 +113,24 @@ export interface PipelineContext {
    * model and thinking level — today's default behaviour.
    */
   agentOverrides: Record<string, AgentConfig>;
+  /**
+   * Sub-agent session persistence config. Loaded once at boundary
+   * construction from `.forgeflow.json` + `~/.pi/agent/forgeflow.json`,
+   * back-filled with `DEFAULT_SESSIONS`. When `persist` is `false`,
+   * `withRunLifecycle` is a no-op and `runAgent` falls back to
+   * `--no-session` behaviour project-wide.
+   */
+  sessionsConfig: SessionsConfig;
+  /**
+   * Active run directory handle, set by `withRunLifecycle` for the
+   * duration of a pipeline run. Pipelines that need to thread session
+   * paths between phases (the chain-builder) read this directly; the
+   * patched `runAgentFn` installed by `withRunLifecycle` auto-allocates
+   * a session file per call for callers that do not thread manually.
+   * `undefined` outside of `withRunLifecycle` or when persistence is
+   * disabled.
+   */
+  runDir?: RunDirHandle;
 }
 
 /** Build a PipelineContext from the raw extension execute() arguments. */
@@ -119,14 +140,20 @@ export function toPipelineContext(
   onUpdate: OnUpdate,
   ctx: ForgeflowContext,
   agentsDir: string,
-  overrides?: Partial<Pick<PipelineContext, "runAgentFn" | "execFn" | "execSafeFn" | "agentOverrides">>,
+  overrides?: Partial<
+    Pick<PipelineContext, "runAgentFn" | "execFn" | "execSafeFn" | "agentOverrides" | "sessionsConfig">
+  >,
 ): PipelineContext {
   // Load forgeflow.json exactly once per pipeline run at the boundary.
   // Warnings are routed through `ctx.ui.notify` so they reach the user
   // without corrupting the pi TUI (the rest of forgeflow uses the same
   // channel; no module in packages/*/src/*.ts calls `console.*`).
-  const agentOverrides =
-    overrides?.agentOverrides ?? loadForgeflowConfig(cwd, (msg) => ctx.ui.notify(msg, "warning")).agents ?? {};
+  const loaded = loadForgeflowConfig(cwd, (msg) => ctx.ui.notify(msg, "warning"));
+  const agentOverrides = overrides?.agentOverrides ?? loaded.agents ?? {};
+  // `loadForgeflowConfig` back-fills `sessions` with DEFAULT_SESSIONS
+  // before returning, so the `?? DEFAULT_SESSIONS` below is defensive
+  // belt-and-braces for the type system rather than a runtime path.
+  const sessionsConfig = overrides?.sessionsConfig ?? loaded.sessions ?? DEFAULT_SESSIONS;
 
   return {
     cwd,
@@ -138,6 +165,7 @@ export function toPipelineContext(
     execFn: overrides?.execFn ?? exec,
     execSafeFn: overrides?.execSafeFn ?? execSafe,
     agentOverrides,
+    sessionsConfig,
   };
 }
 

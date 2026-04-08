@@ -1,7 +1,17 @@
-import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/pipeline";
+import {
+  emptyStage,
+  type PipelineContext,
+  pipelineResult,
+  toAgentOpts,
+  withRunLifecycle,
+} from "@callumvass/forgeflow-shared/pipeline";
 import { missingPrdResult, prdExists } from "../prd-document.js";
 
 export async function runCreateIssue(idea: string, pctx: PipelineContext) {
+  return withRunLifecycle(pctx, "create-gh-issue", (innerPctx) => runCreateIssueInner(idea, innerPctx));
+}
+
+async function runCreateIssueInner(idea: string, pctx: PipelineContext) {
   const { ctx } = pctx;
   // Ask for feature idea interactively if not provided
   if (!idea && ctx.hasUI) {
@@ -21,6 +31,10 @@ export async function runCreateIssue(idea: string, pctx: PipelineContext) {
 }
 
 export async function runCreateIssues(pctx: PipelineContext) {
+  return withRunLifecycle(pctx, "create-gh-issues", (innerPctx) => runCreateIssuesInner(innerPctx));
+}
+
+async function runCreateIssuesInner(pctx: PipelineContext) {
   if (!prdExists(pctx.cwd)) return missingPrdResult("create-issues");
 
   const stages = [emptyStage("gh-issue-creator")];

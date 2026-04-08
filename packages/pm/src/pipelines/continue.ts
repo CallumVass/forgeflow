@@ -4,6 +4,7 @@ import {
   pipelineResult,
   type StageResult,
   toAgentOpts,
+  withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
 import { missingPrdResult, prdExists, promptEditPrd } from "../prd-document.js";
 import { runQaLoop } from "./qa-loop.js";
@@ -35,6 +36,10 @@ CRITICAL RULES:
  * Continue pipeline: update PRD with Done/Next, run QA loop, create issues.
  */
 export async function runContinue(description: string, maxIterations: number, pctx: PipelineContext) {
+  return withRunLifecycle(pctx, "continue", (innerPctx) => runContinueInner(description, maxIterations, innerPctx));
+}
+
+async function runContinueInner(description: string, maxIterations: number, pctx: PipelineContext) {
   const { ctx } = pctx;
   if (!prdExists(pctx.cwd)) return missingPrdResult("continue");
 

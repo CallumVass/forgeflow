@@ -1,7 +1,19 @@
 import { type ConfluencePage, fetchConfluencePage } from "@callumvass/forgeflow-shared/confluence";
-import { emptyStage, type PipelineContext, pipelineResult, toAgentOpts } from "@callumvass/forgeflow-shared/pipeline";
+import {
+  emptyStage,
+  type PipelineContext,
+  pipelineResult,
+  toAgentOpts,
+  withRunLifecycle,
+} from "@callumvass/forgeflow-shared/pipeline";
 
 export async function runJiraIssues(docUrls: string[], exampleUrl: string, pctx: PipelineContext) {
+  return withRunLifecycle(pctx, "create-jira-issues", (innerPctx) =>
+    runJiraIssuesInner(docUrls, exampleUrl, innerPctx),
+  );
+}
+
+async function runJiraIssuesInner(docUrls: string[], exampleUrl: string, pctx: PipelineContext) {
   const { ctx } = pctx;
   const interactive = ctx.hasUI;
 
