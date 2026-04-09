@@ -48,7 +48,14 @@ describe("runInvestigate", () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input);
       if (url.includes("accessible-resources")) {
-        return jsonResponse([{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example", scopes: [] }]);
+        return jsonResponse([
+          {
+            id: "cloud-1",
+            url: "https://example.atlassian.net",
+            name: "Example",
+            scopes: ["read:confluence-content.all", "read:jira-work", "write:jira-work"],
+          },
+        ]);
       }
       if (url.includes("/wiki/api/v2/pages/100")) {
         return jsonResponse({

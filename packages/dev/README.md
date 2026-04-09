@@ -100,7 +100,7 @@ files.
 
 ## Atlassian OAuth
 
-Create an Atlassian OAuth app in https://developer.atlassian.com/console/myapps/, add the callback URL `http://127.0.0.1:33389/callback`, grant `offline_access`, `read:jira-work`, `write:jira-work`, and `read:confluence-content.all`, then export `ATLASSIAN_CLIENT_ID`, `ATLASSIAN_CLIENT_SECRET`, `ATLASSIAN_URL`, and `ATLASSIAN_REDIRECT_URI`. After that, run `/atlassian-login`. Atlassian OAuth then powers `/implement PROJ-123` for Jira-backed implementation and `/atlassian-read <jira-or-confluence-url>` for quick ticket/page reads.
+Create an Atlassian OAuth app in https://developer.atlassian.com/console/myapps/, add the callback URL `http://127.0.0.1:33389/callback`, grant `offline_access`, `read:jira-work`, `write:jira-work`, and `read:confluence-content.all`, then export `ATLASSIAN_CLIENT_ID`, `ATLASSIAN_CLIENT_SECRET`, `ATLASSIAN_URL`, and `ATLASSIAN_REDIRECT_URI`. After that, run `/atlassian-login` and copy the OAuth URL shown in the widget or terminal into your browser. Atlassian OAuth then powers `/implement PROJ-123` for Jira-backed implementation and `/atlassian-read <jira-or-confluence-url>` for quick ticket/page reads.
 
 ## Usage examples
 

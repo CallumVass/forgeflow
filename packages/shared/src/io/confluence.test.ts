@@ -28,7 +28,14 @@ describe("fetchConfluencePage", () => {
       const url = String(input);
       if (url.includes("accessible-resources")) {
         return new Response(
-          JSON.stringify([{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example", scopes: [] }]),
+          JSON.stringify([
+            {
+              id: "cloud-1",
+              url: "https://example.atlassian.net",
+              name: "Example",
+              scopes: ["read:confluence-content.all"],
+            },
+          ]),
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
       }

@@ -50,7 +50,14 @@ describe("resolveIssue", () => {
         const url = String(input);
         if (url.includes("accessible-resources")) {
           return new Response(
-            JSON.stringify([{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example", scopes: [] }]),
+            JSON.stringify([
+              {
+                id: "cloud-1",
+                url: "https://example.atlassian.net",
+                name: "Example",
+                scopes: ["read:jira-work", "write:jira-work"],
+              },
+            ]),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
@@ -92,7 +99,14 @@ describe("resolveIssue", () => {
         const url = String(input);
         if (url.includes("accessible-resources")) {
           return new Response(
-            JSON.stringify([{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example", scopes: [] }]),
+            JSON.stringify([
+              {
+                id: "cloud-1",
+                url: "https://example.atlassian.net",
+                name: "Example",
+                scopes: ["read:jira-work", "write:jira-work"],
+              },
+            ]),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }

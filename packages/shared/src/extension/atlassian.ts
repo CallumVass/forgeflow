@@ -26,7 +26,7 @@ export function registerAtlassianCommands(pi: ExtensionAPI, deps: AtlassianComma
       const result = await (deps.loginFn ?? loginWithAtlassianOauth)({
         onStatus: (text) => setStatus(text),
         onAuthUrl: (url) => {
-          setWidget(["Open this Atlassian OAuth URL if your browser does not launch:", url]);
+          setWidget(["Copy this Atlassian OAuth URL into your browser:", url]);
         },
       });
 
