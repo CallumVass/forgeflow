@@ -51,7 +51,7 @@ Choose tools appropriate to the project's ecosystem. Do NOT assume a JavaScript 
 
 ### Structural Plan
 - Owning boundary: `<path>`
-- Public entry point: `<path>`
+- Public entry point: `<small public entry point for that boundary in the project's language>`
 - Files likely in scope:
   - `<path>`
 - Avoid:
@@ -84,7 +84,10 @@ N. <behaviour>
 - Name one owning boundary.
 - Prefer existing boundaries.
 - Do NOT propose `utils/`, `helpers/`, `misc/`, or `lib/` as the home for slice-specific code.
-- Do NOT place new production files in a flat package root unless the file is a package entry point.
+- Generic roots such as `src/`, `app/`, `server/`, `client/`, `test/`, and `tests/` are roots, not owning boundaries.
+- Do NOT place new production files directly under a flat source root unless the file is a true application entry point.
+- Do NOT place new test files directly under a flat test root when a feature/domain test area should own them.
+- In greenfield or nearly empty repos, the first plan must establish at least one feature/domain boundary beneath the broad source root.
 - First test must be a trigger test.
 - Boundary tests are the default.
 - Unit tests are only for pure algorithmic logic.

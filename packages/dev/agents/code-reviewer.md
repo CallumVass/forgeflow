@@ -46,6 +46,7 @@ For each matched plugin:
 - **Precision > recall**: better to miss a minor issue than report a false positive.
 - **No anti-patterns**: do not flag items on the anti-pattern list in the code-review skill.
 - **Deterministic checks first**: assume `npm run check` has already run. Do not duplicate what those tools catch.
-- **Boundary hygiene findings must be concrete**: only flag obvious structural drift such as new junk-drawer folders, new flat-root production files, or cross-feature internal imports where a public entry point exists.
+- **Boundary hygiene findings must be concrete**: only flag obvious structural drift such as new junk-drawer folders, new flat-root production files, new flat-root test files, or cross-feature internal imports where a public entry point exists.
+- In repos with broad roots such as `src/`, `app/`, `server/`, `client/`, `test/`, or `tests/`, treat new unrelated top-level files under those roots as a hygiene finding unless they are true entry points or shared harness files.
 - **One pass, structured**: follow the checklist. Do not freestyle.
 - **Plugin references are lazy**: only read a plugin's `references/` when a specific finding needs verification.

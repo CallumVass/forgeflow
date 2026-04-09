@@ -20,10 +20,12 @@ Before writing the first test:
 1. Identify the owning boundary from the issue and plan.
 2. If missing, infer the smallest feature/domain folder that should own the slice.
 3. Prefer extending an existing boundary.
-4. If none exists, create one with a small public `index.ts`.
-5. Do NOT add new production files to a flat package root unless they are package entry points.
-6. Do NOT create `utils/`, `helpers/`, `misc/`, or `lib/` folders for slice-specific code.
-7. If the slice appears to need multiple owning boundaries, stop and write `BLOCKED.md`.
+4. If none exists, create one with a small public entry point appropriate to the project language (`index.ts`, `__init__.py`, `routes.rb`, or equivalent).
+5. Generic roots such as `src/`, `app/`, `server/`, `client/`, `test/`, and `tests/` are roots, not owning boundaries.
+6. Do NOT add new production files directly under a flat source root unless they are true application entry points.
+7. Do NOT add new test files directly under a flat test root when a feature/domain test area should own them.
+8. Do NOT create `utils/`, `helpers/`, `misc/`, or `lib/` folders for slice-specific code.
+9. If the slice appears to need multiple owning boundaries, stop and write `BLOCKED.md`.
 
 ## Greenfield rule — CRITICAL
 
@@ -39,7 +41,7 @@ Examples:
 
 If a necessary project-shaping choice is still missing and the repo does not already establish one, write `BLOCKED.md` instead of making an arbitrary stack decision.
 
-Choose tools appropriate to the project's ecosystem. Do NOT assume a JavaScript stack in non-JS projects.
+Choose tools appropriate to the project's ecosystem. Do NOT assume a JavaScript stack in non-JS projects. In greenfield repos, do not let the first few flat files under a broad source root become the default architecture — deepen into a feature/domain boundary as soon as the slice has a clear owner.
 
 ## TDD workflow
 

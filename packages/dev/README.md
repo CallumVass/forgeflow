@@ -85,9 +85,12 @@ Each issue should name one owning boundary, and the planner/implementor treat th
 
 That means:
 - prefer extending an existing feature/domain folder
-- create a small public `index.ts` when a new boundary is needed
+- create a small public entry point when a new boundary is needed (`index.ts`, `__init__.py`, `routes.rb`, or equivalent)
+- treat generic roots such as `src/`, `app/`, `server/`, `client/`, `test/`, and `tests/` as roots, not owning boundaries
 - avoid `utils/`, `helpers/`, `misc/`, and `lib/` junk drawers
 - block if one issue really spans multiple owning boundaries
+
+On greenfield repos, the first slice should establish a real feature/domain boundary beneath the broad source root so `/implement-all` does not normalise flat sibling files as the project grows.
 
 ## Library and framework behaviour
 

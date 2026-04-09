@@ -18,7 +18,7 @@ When asked to explore, organically navigate the codebase. Don't follow a rigid c
 - **Excessive fan-in**: Files imported by 10+ other files — fragile bottleneck, any change ripples everywhere.
 - **Duplicated abstractions**: Same concept modeled differently in different places (e.g., two "User" types, two error-handling patterns).
 - **Missing boundaries**: Business logic mixed with infrastructure, UI mixed with data access, configuration scattered across modules.
-- **Flat-root sprawl**: Too many unrelated production files sitting in one package root or one folder instead of feature or domain boundaries.
+- **Flat-root sprawl**: Too many unrelated production files sitting in one broad source root (`src/`, `app/`, `server/`, `client/`, or equivalent) or one folder instead of feature or domain boundaries.
 - **Boundaryless growth**: New capabilities added beside each other rather than inside a single owning feature folder.
 - **Junk-drawer accumulation**: `utils`, `helpers`, `misc`, or `lib` folders collecting unrelated concepts.
 - **Cross-feature leakage**: One feature imports another feature's internals instead of going through a small public entry point.
@@ -28,7 +28,7 @@ When asked to explore, organically navigate the codebase. Don't follow a rigid c
 
 Use concrete data, not vibes:
 - `wc -l` to find large files
-- `find` / `ls` to count unrelated files per source folder and spot flat-root sprawl
+- `find` / `ls` to count unrelated files per source or test root and spot flat-root sprawl
 - `grep -r "import.*from" --include="*.ts"` (or language equivalent) to map dependency graphs
 - `git log --format='%H' --diff-filter=M -- file1 file2 | head -20` to check co-change frequency
 - Count exports per module to assess interface surface area

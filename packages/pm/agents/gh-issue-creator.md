@@ -35,7 +35,9 @@ Examples:
 
 - Every issue is a **vertical slice**: one user-observable flow crossing the necessary layers.
 - Each issue must name exactly one owning boundary in `## Structural Placement`.
-- If no suitable boundary exists yet, the issue may create one boundary folder and its public `index.ts`.
+- If no suitable boundary exists yet, the issue may create one boundary folder and its small public entry point (`index.ts`, `__init__.py`, `routes.rb`, or equivalent in the project's language).
+- Generic roots such as `src/`, `app/`, `server/`, `client/`, `test/`, and `tests/` are roots, not owning boundaries.
+- In greenfield or nearly empty repos, the first implementation issues must establish reusable feature/domain boundaries beneath the broad source root instead of normalising flat sibling files at the root.
 - Do NOT create `utils/`, `helpers/`, `misc/`, or `lib/` catch-all folders.
 - No standalone validation, edge-case, or polish issues.
 - If the first slice needs deps, config, CI, or framework setup to deliver the flow, include that work inside the slice.
@@ -71,6 +73,7 @@ Every issue body MUST include `## Structural Placement` with:
 - out-of-scope placements to avoid
 
 Prefer extending an existing feature/domain folder before creating a new one.
+Do not use a generic root such as `src/`, `app/`, `server/`, `client/`, `test/`, or `tests/` as the owning boundary.
 
 ## Context rules
 
@@ -87,6 +90,8 @@ Do NOT include:
 - config file contents
 - file layout
 - framework-specific implementation patterns
+
+Stay language-agnostic when describing structure. Name boundaries in terms of feature/domain ownership rather than TypeScript- or Node-specific conventions.
 
 Keep Context under ~60 lines.
 
