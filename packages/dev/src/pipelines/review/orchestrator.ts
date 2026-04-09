@@ -1,11 +1,4 @@
-import {
-  cleanSignal,
-  emptyStage,
-  type PipelineContext,
-  readSignal,
-  type StageResult,
-  signalExists,
-} from "@callumvass/forgeflow-shared/pipeline";
+import { emptyStage, type PipelineContext, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
 import { runChain } from "../shared/index.js";
 
 /** Review pipeline result. */
@@ -28,6 +21,14 @@ interface ReviewPipelineOptions extends PipelineContext {
   customPrompt?: string;
 }
 
+const NO_FINDINGS = "NO_FINDINGS";
+
+function findingsFromStage(stages: StageResult[], stageName: string): string | undefined {
+  const output = stages.find((stage) => stage.name === stageName)?.output?.trim();
+  if (!output || output === NO_FINDINGS) return undefined;
+  return output;
+}
+
 /**
  * Run the code-reviewer → review-judge sub-chain against a diff.
  *
@@ -46,10 +47,7 @@ interface ReviewPipelineOptions extends PipelineContext {
  * the end of the review chain.
  */
 export async function runReviewPipeline(diff: string, opts: ReviewPipelineOptions): Promise<ReviewResult> {
-  const { cwd, stages, pipeline = "review", customPrompt } = opts;
-
-  // Clean up stale findings so a prior run can't fool the signal check.
-  cleanSignal(cwd, "findings");
+  const { stages, pipeline = "review", customPrompt } = opts;
 
   // Phase 1: code-reviewer. `resetFork` forces a fresh session at the
   // build→review boundary; `/review` callers (which have no prior chain)
@@ -69,13 +67,13 @@ export async function runReviewPipeline(diff: string, opts: ReviewPipelineOption
     { pipeline, stages, customPrompt },
   );
 
-  if (!signalExists(cwd, "findings")) {
+  const findings = findingsFromStage(stages, "code-reviewer");
+  if (!findings) {
     return { passed: true, tailSessionPath: reviewerChain.lastSessionPath };
   }
 
   // Phase 2: review-judge, forked from the reviewer within the review
   // chain. It needs the reviewer's reasoning as its evaluation input.
-  const findings = readSignal(cwd, "findings") ?? "";
 
   // Ensure a stage exists for the judge so runChain can reuse it (the
   // back-compat path in runChain looks up stages by name).
@@ -85,7 +83,8 @@ export async function runReviewPipeline(diff: string, opts: ReviewPipelineOption
     [
       {
         agent: "review-judge",
-        buildTask: () => `Validate the following code review findings against the actual code:\n\n${findings}`,
+        buildTask: () =>
+          `Validate the following code review findings against the actual code:\n\n${findings}\n\nIf any findings survive validation, output ONLY the validated FINDINGS report. If no findings survive, output exactly ${NO_FINDINGS}.`,
       },
     ],
     opts,
@@ -98,10 +97,10 @@ export async function runReviewPipeline(diff: string, opts: ReviewPipelineOption
     },
   );
 
-  if (!signalExists(cwd, "findings")) {
+  const validatedFindings = findingsFromStage(stages, "review-judge");
+  if (!validatedFindings) {
     return { passed: true, tailSessionPath: judgeChain.lastSessionPath };
   }
 
-  const validatedFindings = readSignal(cwd, "findings") ?? "";
   return { passed: false, findings: validatedFindings, tailSessionPath: judgeChain.lastSessionPath };
 }

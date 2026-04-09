@@ -23,7 +23,11 @@ export async function runReview(target: string, pctx: PipelineContext) {
 async function runReviewInner(target: string, pctx: PipelineContext) {
   const { cwd, ctx, execFn, execSafeFn } = pctx;
   const stages: StageResult[] = [];
-  const { diffCmd, prNumber } = await resolveDiffTarget(cwd, target, execSafeFn);
+  const { diffCmd, prNumber, setupCmds } = await resolveDiffTarget(cwd, target, execSafeFn);
+
+  for (const cmd of setupCmds) {
+    await execFn(cmd, cwd);
+  }
 
   const customPrompt = await askCustomPrompt(ctx, ctx.hasUI);
 

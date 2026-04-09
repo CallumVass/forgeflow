@@ -81,8 +81,10 @@ export async function proposeAndPostComments(
 
   const proposalPrompt = buildCommentProposalPrompt(findings, pr.number, pr.repo);
 
-  stages.push(emptyStage("propose-comments"));
-  await runAgentFn("review-judge", proposalPrompt, agentOpts);
+  if (!stages.some((s) => s.name === "propose-comments")) {
+    stages.push(emptyStage("propose-comments"));
+  }
+  await runAgentFn("review-judge", proposalPrompt, { ...agentOpts, stageName: "propose-comments" });
 
   const commentStage = stages.find((s) => s.name === "propose-comments");
   const proposedCommands = commentStage?.output || "";
