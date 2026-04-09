@@ -6,8 +6,10 @@ import {
   toPipelineContext,
 } from "@callumvass/forgeflow-shared/pipeline";
 import { commands } from "./commands.js";
+import { registerDatadogCommands } from "./datadog/commands.js";
 import { runArchitecture } from "./pipelines/architecture/index.js";
 import { runAtlassianRead } from "./pipelines/atlassian-read.js";
+import { runDatadog } from "./pipelines/datadog/index.js";
 import { runDiscoverSkills } from "./pipelines/discover-skills.js";
 import { runImplement } from "./pipelines/implement/index.js";
 import { runImplementAll } from "./pipelines/implement-all/index.js";
@@ -30,11 +32,13 @@ const registerForgeflow = createForgeflowExtension({
     "implement-all (loop through all open issues autonomously), review (deterministic checks→code review→judge),",
     "architecture (analyze codebase for structural friction→create RFC issues),",
     "atlassian-read (read a Jira issue or Confluence page by URL),",
+    "datadog (resolve repo Lambdas then investigate Datadog runtime questions through MCP),",
     "discover-skills (find and install domain-specific plugins).",
     "Each pipeline spawns specialized sub-agents with isolated context.",
   ].join(" "),
   params: {
     issue: { type: "string", description: "Issue number or description for implement pipeline" },
+    prompt: { type: "string", description: "Freeform Datadog investigation prompt" },
     url: { type: "string", description: "Atlassian URL for the atlassian-read pipeline" },
     target: { type: "string", description: "PR number or --branch for review pipeline" },
     skipPlan: { type: "boolean", description: "Skip planner, implement directly (default false)" },
@@ -67,6 +71,10 @@ const registerForgeflow = createForgeflowExtension({
       execute: (cwd, p, s, u, c) => runAtlassianRead((p.url as string) ?? "", pctx(cwd, s, u, c)),
     },
     {
+      name: "datadog",
+      execute: (cwd, p, s, u, c) => runDatadog((p.prompt as string) ?? "", pctx(cwd, s, u, c)),
+    },
+    {
       name: "discover-skills",
       execute: (cwd, p, s, u, c) => runDiscoverSkills((p.issue as string) ?? "", pctx(cwd, s, u, c)),
     },
@@ -78,6 +86,7 @@ const registerForgeflow = createForgeflowExtension({
       const prefix = /^[A-Z]+-\d+$/.test(args.issue as string) ? " " : " #";
       text += theme.fg("dim", `${prefix}${args.issue}`);
     }
+    if (args.prompt) text += theme.fg("dim", ` "${args.prompt}"`);
     if (args.url) text += theme.fg("dim", ` ${args.url}`);
     if (args.target) text += theme.fg("dim", ` ${args.target}`);
     return text;
@@ -87,4 +96,5 @@ const registerForgeflow = createForgeflowExtension({
 export default (pi: Parameters<typeof registerForgeflow>[0]) => {
   registerForgeflow(pi);
   registerAtlassianCommands(pi, { toolName: "forgeflow-dev" });
+  registerDatadogCommands(pi);
 };

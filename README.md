@@ -101,6 +101,8 @@ Confluence templates are supported, but not required.
 | `/review` | Run structured PR review |
 | `/architecture` | Analyse structural friction and create RFC issues |
 | `/discover-skills` | Find domain-specific plugins for the current stack |
+| `/datadog-login` | Authenticate to an OAuth-enabled Datadog MCP server |
+| `/datadog` | Resolve a Lambda from repo code and investigate it through Datadog MCP |
 
 ## Requirements
 
@@ -131,6 +133,23 @@ Then run:
 ```
 
 Set `ATLASSIAN_JIRA_PROJECT` unless you provide an example Jira ticket URL that lets forgeflow infer the project key.
+
+### Datadog MCP features
+For `/datadog-login` and `/datadog`:
+
+```bash
+export DATADOG_MCP_URL=https://your-datadog-mcp.example.com/mcp
+export DATADOG_MCP_REDIRECT_URI=http://127.0.0.1:33390/callback
+```
+
+Then run:
+
+```text
+/datadog-login
+/datadog "investigate why the billing lambda is slow in prod"
+```
+
+The current integration expects a Datadog MCP server that exposes `query-metrics`, `search-logs`, and optionally `search-spans`.
 
 ## More detail
 

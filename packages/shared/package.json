@@ -17,6 +17,7 @@
     "./stage-renderer": "./dist/stage-renderer.js",
     "./confluence": "./dist/confluence.js",
     "./atlassian": "./dist/atlassian/index.js",
+    "./datadog": "./dist/datadog/index.js",
     "./testing": "./dist/test-utils.js",
     "./extension": "./dist/extension.js",
     "./arg-parsing": "./dist/arg-parsing.js"
@@ -35,6 +36,7 @@
       "stage-renderer": ["dist/stage-renderer.d.ts"],
       "confluence": ["dist/confluence.d.ts"],
       "atlassian": ["dist/atlassian/index.d.ts"],
+      "datadog": ["dist/datadog/index.d.ts"],
       "testing": ["dist/test-utils.d.ts"],
       "extension": ["dist/extension.d.ts"],
       "arg-parsing": ["dist/arg-parsing.d.ts"]
