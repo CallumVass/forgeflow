@@ -169,6 +169,21 @@ function htmlToPlainText(html: string): string {
     .replace(/&nbsp;/g, " ");
 }
 
+function parseConfluencePageResponse(data: unknown, pageId: string): ConfluencePage | string {
+  if (!isRecord(data)) return `Unexpected Confluence response for page ${pageId}.`;
+
+  const title = typeof data.title === "string" ? data.title : "Untitled";
+  const bodyRecord = isRecord(data.body) ? data.body : undefined;
+  const storageRecord = bodyRecord && isRecord(bodyRecord.storage) ? bodyRecord.storage : undefined;
+  const html = typeof storageRecord?.value === "string" ? storageRecord.value : "";
+
+  return {
+    id: typeof data.id === "string" ? data.id : pageId,
+    title,
+    body: normalisePlainText(htmlToPlainText(html)),
+  };
+}
+
 export function extractJiraKey(input: string): string | null {
   const match = input.match(/\b[A-Z][A-Z0-9]+-\d+\b/);
   return match?.[0] ?? null;
@@ -202,19 +217,15 @@ export async function fetchConfluencePageViaOauth(
 
   const apiUrl = `https://api.atlassian.com/ex/confluence/${resource.id}/wiki/api/v2/pages/${pageId}?body-format=storage`;
   const data = await requestJson(apiUrl, auth.accessToken, deps);
-  if (typeof data === "string") return data;
-  if (!isRecord(data)) return `Unexpected Confluence response for page ${pageId}.`;
+  if (typeof data !== "string") return parseConfluencePageResponse(data, pageId);
 
-  const title = typeof data.title === "string" ? data.title : "Untitled";
-  const bodyRecord = isRecord(data.body) ? data.body : undefined;
-  const storageRecord = bodyRecord && isRecord(bodyRecord.storage) ? bodyRecord.storage : undefined;
-  const html = typeof storageRecord?.value === "string" ? storageRecord.value : "";
+  if (!/HTTP (401|403)/.test(data)) return data;
 
-  return {
-    id: typeof data.id === "string" ? data.id : pageId,
-    title,
-    body: normalisePlainText(htmlToPlainText(html)),
-  };
+  const legacyApiUrl = `https://api.atlassian.com/ex/confluence/${resource.id}/wiki/rest/api/content/${pageId}?expand=body.storage`;
+  const legacyData = await requestJson(legacyApiUrl, auth.accessToken, deps);
+  if (typeof legacyData === "string") return legacyData;
+
+  return parseConfluencePageResponse(legacyData, pageId);
 }
 
 export async function fetchJiraIssueViaOauth(

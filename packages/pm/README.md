@@ -88,7 +88,7 @@ This makes the generated issues much safer for greenfield codebases, where folde
 Create an Atlassian OAuth app in https://developer.atlassian.com/console/myapps/, add the callback URL `http://127.0.0.1:33389/callback`, grant `offline_access`, `read:jira-work`, `write:jira-work`, and `read:confluence-content.all`, then export `ATLASSIAN_CLIENT_ID`, `ATLASSIAN_CLIENT_SECRET`, `ATLASSIAN_URL`, and `ATLASSIAN_REDIRECT_URI`. After that, run `/atlassian-login`.
 
 With OAuth configured:
-- `/investigate` and `/create-jira-issues` fetch Confluence pages through Atlassian OAuth
+- `/investigate` and `/create-jira-issues` fetch Confluence pages through Atlassian OAuth, with a legacy Confluence REST fallback for sites where the newer v2 endpoint rejects classic OAuth scopes
 - `/create-jira-issues` can also accept a Jira example ticket URL
 - `/atlassian-read <jira-or-confluence-url>` fetches and prints the linked Jira issue or Confluence page
 - `/investigate` now also prefetches extra Jira and Confluence URLs mentioned in the investigation description, beyond the explicit `--template` page

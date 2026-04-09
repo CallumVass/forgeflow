@@ -377,21 +377,33 @@ async function tryOpen(command: string, args: string[]): Promise<boolean> {
   });
 }
 
-export async function openExternalUrl(url: string): Promise<boolean> {
-  const isWsl = process.platform === "linux" && Boolean(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP);
+function quoteForCmdStart(url: string): string {
+  return `"${url.replaceAll('"', '""')}"`;
+}
+
+export function buildOpenExternalUrlAttempts(
+  url: string,
+  platform: NodeJS.Platform = process.platform,
+  env: NodeJS.ProcessEnv = process.env,
+): Array<[string, string[]]> {
+  const isWsl = platform === "linux" && Boolean(env.WSL_DISTRO_NAME || env.WSL_INTEROP);
   const attempts: Array<[string, string[]]> = [];
 
-  if (process.platform === "darwin") attempts.push(["open", [url]]);
-  else if (process.platform === "win32") attempts.push(["cmd", ["/c", "start", "", url]]);
+  if (platform === "darwin") attempts.push(["open", [url]]);
+  else if (platform === "win32") attempts.push(["cmd", ["/c", "start", "", quoteForCmdStart(url)]]);
   else {
     if (isWsl) {
       attempts.push(["wslview", [url]]);
-      attempts.push(["cmd.exe", ["/c", "start", "", url]]);
+      attempts.push(["cmd.exe", ["/c", "start", "", quoteForCmdStart(url)]]);
     }
     attempts.push(["xdg-open", [url]]);
   }
 
-  for (const [command, args] of attempts) {
+  return attempts;
+}
+
+export async function openExternalUrl(url: string): Promise<boolean> {
+  for (const [command, args] of buildOpenExternalUrlAttempts(url)) {
     if (await tryOpen(command, args)) return true;
   }
   return false;

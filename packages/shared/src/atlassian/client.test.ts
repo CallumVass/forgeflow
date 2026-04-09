@@ -61,6 +61,32 @@ describe("Atlassian OAuth client", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("falls back to the legacy Confluence REST API when v2 rejects the token", async () => {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.includes("accessible-resources")) {
+        return jsonResponse([{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example", scopes: [] }]);
+      }
+      if (url.includes("/wiki/api/v2/pages/999")) {
+        return jsonResponse({ message: "Unauthorized; scope does not match" }, 401);
+      }
+      if (url.includes("/wiki/rest/api/content/999")) {
+        return jsonResponse({
+          id: "999",
+          title: "OAuth Page",
+          body: { storage: { value: "<p>Hello <strong>OAuth</strong></p>" } },
+        });
+      }
+      return jsonResponse({ message: `Unexpected URL ${url}` }, 500);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchConfluencePageViaOauth("https://example.atlassian.net/wiki/spaces/X/pages/999/Page");
+
+    expect(result).toEqual({ id: "999", title: "OAuth Page", body: "Hello **OAuth**" });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("fetches a Jira issue through Atlassian OAuth and flattens ADF/custom fields", async () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input);
