@@ -68,9 +68,15 @@ async function runImplementInner(issueArg: string, pctx: PipelineContext, flags:
     return pipelineResult(`Implementor blocked:\n${outcome.reason}`, "implement", outcome.stages, true);
   if (outcome.kind === "cancelled") return pipelineResult(outcome.reason, "implement", outcome.stages);
 
-  await finalisePr(resolved, pctx, { autonomous, stages: outcome.stages });
+  const { prNumber } = await finalisePr(resolved, pctx, { autonomous: true, stages: outcome.stages });
 
-  return pipelineResult(`Implementation of ${issueLabel} complete.`, "implement", outcome.stages);
+  return pipelineResult(
+    prNumber > 0
+      ? `Implementation of ${issueLabel} complete — PR #${prNumber} is ready for review.`
+      : `Implementation of ${issueLabel} complete.`,
+    "implement",
+    outcome.stages,
+  );
 }
 
 async function resumeExistingPr(issueLabel: string, prNumber: number, pctx: PipelineContext, flags: ImplementFlags) {
