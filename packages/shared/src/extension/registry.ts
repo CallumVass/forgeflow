@@ -16,10 +16,16 @@ interface StagesOverlayRegistry {
   registered: boolean;
 }
 
+interface AtlassianCommandRegistry {
+  registered: boolean;
+}
+
 const STAGES_OVERLAY_REGISTRY_KEY = Symbol.for("forgeflow.stagesOverlay.registry");
+const ATLASSIAN_COMMAND_REGISTRY_KEY = Symbol.for("forgeflow.atlassianCommand.registry");
 
 type GlobalWithRegistry = typeof globalThis & {
   [STAGES_OVERLAY_REGISTRY_KEY]?: StagesOverlayRegistry;
+  [ATLASSIAN_COMMAND_REGISTRY_KEY]?: AtlassianCommandRegistry;
 };
 
 /**
@@ -46,4 +52,21 @@ export function getStagesOverlayRegistry(): StagesOverlayRegistry {
 export function resetStagesOverlayRegistry(): void {
   const g = globalThis as GlobalWithRegistry;
   delete g[STAGES_OVERLAY_REGISTRY_KEY];
+}
+
+/** Get (or create) the process-wide Atlassian command registry. */
+export function getAtlassianCommandRegistry(): AtlassianCommandRegistry {
+  const g = globalThis as GlobalWithRegistry;
+  let registry = g[ATLASSIAN_COMMAND_REGISTRY_KEY];
+  if (!registry) {
+    registry = { registered: false };
+    g[ATLASSIAN_COMMAND_REGISTRY_KEY] = registry;
+  }
+  return registry;
+}
+
+/** Clear the process-wide Atlassian command registry. */
+export function resetAtlassianCommandRegistry(): void {
+  const g = globalThis as GlobalWithRegistry;
+  delete g[ATLASSIAN_COMMAND_REGISTRY_KEY];
 }

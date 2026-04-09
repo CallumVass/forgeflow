@@ -1,54 +1,63 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { writeAtlassianOauthToken } from "../atlassian/index.js";
 import { mockExecFn } from "../test-utils.js";
+import { setupIsolatedHomeFixture } from "../testing/test-utils.js";
 import { fetchConfluencePage } from "./confluence.js";
 
-const ORIGINAL_ENV = { ...process.env };
-
-beforeEach(() => {
-  process.env.CONFLUENCE_URL = "https://example.atlassian.net";
-  process.env.CONFLUENCE_EMAIL = "user@example.com";
-  process.env.CONFLUENCE_TOKEN = "token-123";
-});
+setupIsolatedHomeFixture("confluence");
 
 afterEach(() => {
-  process.env = { ...ORIGINAL_ENV };
+  vi.unstubAllGlobals();
+  delete process.env.ATLASSIAN_CLIENT_ID;
+  delete process.env.ATLASSIAN_CLIENT_SECRET;
+  delete process.env.ATLASSIAN_URL;
 });
 
 describe("fetchConfluencePage", () => {
-  it("flows the curl call through the injected execSafe spy and returns the parsed page", async () => {
-    const responseJson = JSON.stringify({
-      id: "999",
-      title: "My Page",
-      body: { storage: { value: "<p>Hello <strong>world</strong></p>" } },
+  it("fetches Confluence pages through Atlassian OAuth", async () => {
+    process.env.ATLASSIAN_CLIENT_ID = "client-id";
+    process.env.ATLASSIAN_CLIENT_SECRET = "client-secret";
+    process.env.ATLASSIAN_URL = "https://example.atlassian.net";
+    await writeAtlassianOauthToken({
+      accessToken: "access-token",
+      refreshToken: "refresh-token",
+      expiresAt: Date.now() + 3_600_000,
     });
-    const execSafe = mockExecFn({ curl: responseJson });
 
-    const result = await fetchConfluencePage("https://example.atlassian.net/wiki/spaces/X/pages/999/Page", execSafe);
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.includes("accessible-resources")) {
+        return new Response(
+          JSON.stringify([{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example", scopes: [] }]),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.includes("/wiki/api/v2/pages/77")) {
+        return new Response(
+          JSON.stringify({ id: "77", title: "OAuth", body: { storage: { value: "<p>Hello OAuth</p>" } } }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ message: `Unexpected URL ${url}` }), { status: 500 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
-    expect(execSafe).toHaveBeenCalledTimes(1);
-    const cmd = execSafe.mock.calls[0]?.[0] as string;
-    expect(cmd).toContain("curl");
-    expect(cmd).toContain("/wiki/api/v2/pages/999");
-    expect(cmd).toContain("Authorization: Basic ");
-    expect(result).toEqual({ id: "999", title: "My Page", body: "Hello **world**" });
-  });
+    const execSafe = mockExecFn({ curl: "should not be used" });
+    const result = await fetchConfluencePage("https://example.atlassian.net/wiki/spaces/X/pages/77/Page", execSafe);
 
-  it("returns an error string when env vars are missing", async () => {
-    delete process.env.CONFLUENCE_TOKEN;
-    const execSafe = mockExecFn();
-
-    const result = await fetchConfluencePage("https://example.atlassian.net/wiki/spaces/X/pages/1/Page", execSafe);
-
-    expect(typeof result).toBe("string");
+    expect(result).toEqual({ id: "77", title: "OAuth", body: "Hello OAuth" });
     expect(execSafe).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("returns an error string when the curl invocation yields an empty body", async () => {
-    const execSafe = mockExecFn({});
+  it("returns an error string when no Atlassian OAuth login exists", async () => {
+    process.env.ATLASSIAN_CLIENT_ID = "client-id";
+    process.env.ATLASSIAN_CLIENT_SECRET = "client-secret";
+    process.env.ATLASSIAN_URL = "https://example.atlassian.net";
 
-    const result = await fetchConfluencePage("https://example.atlassian.net/wiki/spaces/X/pages/123/Page", execSafe);
+    const result = await fetchConfluencePage("https://example.atlassian.net/wiki/spaces/X/pages/1/Page", mockExecFn());
 
     expect(typeof result).toBe("string");
-    expect(result as string).toContain("123");
+    expect(result).toContain("/atlassian-login");
   });
 });

@@ -50,21 +50,47 @@ pi update @callumvass/forgeflow-dev
 - [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`)
 - A GitHub repo with issues enabled
 
-### Jira (`/create-jira-issues`, `/implement PROJ-123`)
+### Atlassian OAuth (`/atlassian-login`, `/create-jira-issues`, `/investigate`, `/implement PROJ-123`)
 
-- [Jira CLI](https://github.com/ankitpokhrel/jira-cli) installed and authenticated (`jira init`)
+Forgeflow uses Atlassian OAuth for Jira and Confluence access.
 
-### Confluence (`/investigate`, `/create-jira-issues`)
+### Create an Atlassian OAuth app
+
+1. Open the Atlassian developer console:
+   - https://developer.atlassian.com/console/myapps/
+2. Create an OAuth 2.0 app.
+3. Add this callback URL:
+   - `http://127.0.0.1:33389/callback`
+4. Add these scopes:
+   - `offline_access`
+   - `read:jira-work`
+   - `write:jira-work`
+   - `read:confluence-content.all`
+5. Copy the app's **Client ID** and **Client secret**.
+
+Your organisation may require admin approval before the app can access your Jira / Confluence site.
 
 Set these environment variables (add to your shell profile):
 
 ```bash
-export CONFLUENCE_URL=https://yourcompany.atlassian.net
-export CONFLUENCE_EMAIL=you@company.com
-export CONFLUENCE_TOKEN=your-api-token
+export ATLASSIAN_CLIENT_ID=your-oauth-client-id
+export ATLASSIAN_CLIENT_SECRET=your-oauth-client-secret
+export ATLASSIAN_URL=https://yourcompany.atlassian.net
+# Must match a redirect URI configured on your Atlassian OAuth app
+export ATLASSIAN_REDIRECT_URI=http://127.0.0.1:33389/callback
+# Required for Jira issue creation unless you pass a Jira example ticket URL
+export ATLASSIAN_JIRA_PROJECT=PROJ
+# Optional, defaults to Story
+export ATLASSIAN_JIRA_ISSUE_TYPE=Story
 ```
 
-Generate an API token at https://id.atlassian.com/manage-profile/security/api-tokens
+Then run:
+
+```bash
+/atlassian-login
+```
+
+Forgeflow stores the OAuth refresh/access token under `~/.pi/agent/forgeflow-atlassian-oauth.json`.
 
 ## Commands
 

@@ -1,10 +1,17 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { getStagesOverlayRegistry, resetStagesOverlayRegistry } from "./registry.js";
+import {
+  getAtlassianCommandRegistry,
+  getStagesOverlayRegistry,
+  resetAtlassianCommandRegistry,
+  resetStagesOverlayRegistry,
+} from "./registry.js";
 
-const REGISTRY_KEY = Symbol.for("forgeflow.stagesOverlay.registry");
+const STAGES_REGISTRY_KEY = Symbol.for("forgeflow.stagesOverlay.registry");
+const ATLASSIAN_REGISTRY_KEY = Symbol.for("forgeflow.atlassianCommand.registry");
 
 beforeEach(() => {
   resetStagesOverlayRegistry();
+  resetAtlassianCommandRegistry();
 });
 
 describe("stages-overlay registry", () => {
@@ -19,7 +26,7 @@ describe("stages-overlay registry", () => {
     // Reset deletes the slot on globalThis so the next access creates a new
     // instance with empty state.
     resetStagesOverlayRegistry();
-    expect((globalThis as Record<symbol, unknown>)[REGISTRY_KEY]).toBeUndefined();
+    expect((globalThis as Record<symbol, unknown>)[STAGES_REGISTRY_KEY]).toBeUndefined();
 
     const c = getStagesOverlayRegistry();
     expect(c).not.toBe(a);
@@ -27,6 +34,21 @@ describe("stages-overlay registry", () => {
     expect(c.registered).toBe(false);
 
     // The new instance is now stored on globalThis.
-    expect((globalThis as Record<symbol, unknown>)[REGISTRY_KEY]).toBe(c);
+    expect((globalThis as Record<symbol, unknown>)[STAGES_REGISTRY_KEY]).toBe(c);
+  });
+
+  it("keeps a separate process-wide registry for the shared Atlassian login command", () => {
+    const a = getAtlassianCommandRegistry();
+    const b = getAtlassianCommandRegistry();
+    expect(b).toBe(a);
+
+    a.registered = true;
+    resetAtlassianCommandRegistry();
+    expect((globalThis as Record<symbol, unknown>)[ATLASSIAN_REGISTRY_KEY]).toBeUndefined();
+
+    const c = getAtlassianCommandRegistry();
+    expect(c).not.toBe(a);
+    expect(c.registered).toBe(false);
+    expect((globalThis as Record<symbol, unknown>)[ATLASSIAN_REGISTRY_KEY]).toBe(c);
   });
 });

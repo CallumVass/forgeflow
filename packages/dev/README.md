@@ -17,6 +17,7 @@ npx pi install @callumvass/forgeflow-dev
 | `/review` | Code review: deterministic checks → reviewer → judge |
 | `/architecture` | Analyze codebase for architectural friction, create RFC issues |
 | `/discover-skills` | Find and install domain-specific plugins for your tech stack |
+| `/atlassian-login` | Authenticate forgeflow to Atlassian via OAuth |
 
 ## Agents
 
@@ -95,6 +96,10 @@ no run directory is created, nothing is written to disk, and fork-based
 context sharing is disabled. Use this for projects whose agents routinely
 read secrets or private source you do not want materialised in session
 files.
+
+## Atlassian OAuth
+
+Create an Atlassian OAuth app in https://developer.atlassian.com/console/myapps/, add the callback URL `http://127.0.0.1:33389/callback`, grant `offline_access`, `read:jira-work`, `write:jira-work`, and `read:confluence-content.all`, then export `ATLASSIAN_CLIENT_ID`, `ATLASSIAN_CLIENT_SECRET`, `ATLASSIAN_URL`, and `ATLASSIAN_REDIRECT_URI`. After that, run `/atlassian-login` and `/implement PROJ-123` will resolve Jira issues through Atlassian OAuth.
 
 ## Usage examples
 
