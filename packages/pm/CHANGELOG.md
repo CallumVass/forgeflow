@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.17.0...forgeflow-pm-v0.17.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* harden Atlassian login and Confluence reads ([#153](https://github.com/CallumVass/forgeflow/issues/153)) ([47bd505](https://github.com/CallumVass/forgeflow/commit/47bd5056e706594e1077fea833318d4c479437f0))
+
 ## [0.17.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.16.0...forgeflow-pm-v0.17.0) (2026-04-09)
 
 
