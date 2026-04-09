@@ -42,7 +42,7 @@ async function runCreateIssuesInner(pctx: PipelineContext) {
 
   await pctx.runAgentFn(
     "gh-issue-creator",
-    "Decompose PRD.md into vertical-slice GitHub issues. Read the issue-template skill for the standard format.",
+    "Decompose PRD.md into vertical-slice GitHub issues. Treat the chosen options in ## Technical Direction as binding for issue guidance. Treat ## Alternatives Considered as explanatory context only. Read the issue-template skill for the standard format.",
     opts,
   );
 

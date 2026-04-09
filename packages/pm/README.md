@@ -1,6 +1,7 @@
 # @callumvass/forgeflow-pm
 
-PM pipeline for [Pi](https://shittycodingagent.ai/) — PRD refinement, issue creation, and investigation.
+PRD and planning commands for [Pi](https://shittycodingagent.ai/).
+Use this package when you want to go from an idea to a solid PRD, then to implementation-ready GitHub or Jira issues.
 
 ## Install
 
@@ -8,104 +9,151 @@ PM pipeline for [Pi](https://shittycodingagent.ai/) — PRD refinement, issue cr
 npx pi install @callumvass/forgeflow-pm
 ```
 
+## Start here
+
+### Greenfield project
+
+```text
+/init
+/prd-qa
+# review/edit PRD.md
+/create-gh-issues
+```
+
+Use `/investigate` only if you want a deeper spike before locking a major decision such as framework, auth, persistence, or testing.
+
+### Existing project
+
+```text
+/continue "describe the next phase"
+```
+
+That updates `PRD.md` with `## Done` / `## Next`, QAs the next phase, then creates issues.
+
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `/init` | Draft an initial PRD.md interactively for a greenfield project |
-| `/prd-qa` | Draft PRD.md interactively if missing, then refine it via critic → architect → integrator loop |
-| `/continue` | Update PRD with Done/Next, QA, then create issues for next phase |
-| `/create-gh-issues` | Decompose PRD.md into vertical-slice GitHub issues |
-| `/create-gh-issue` | Create a single GitHub issue from a feature idea |
-| `/create-jira-issues` | Decompose Confluence PM docs into Jira issues |
-| `/investigate` | Spike or RFC: explore codebase + web, fill a Confluence template |
-| `/atlassian-login` | Authenticate forgeflow to Atlassian via OAuth |
-| `/atlassian-read` | Read a Jira issue or Confluence page by URL via Atlassian OAuth |
+| Command | What it does |
+|---|---|
+| `/init` | Draft a first `PRD.md` for a greenfield project |
+| `/prd-qa` | Refine `PRD.md` through critic → architect → integrator |
+| `/continue` | Update `PRD.md` for the next phase on an existing project |
+| `/create-gh-issues` | Turn `PRD.md` into vertical-slice GitHub issues |
+| `/create-gh-issue` | Create one GitHub issue from a feature idea |
+| `/investigate` | Research a topic, compare options, and write a spike/RFC markdown doc |
+| `/create-jira-issues` | Turn Confluence PM docs into Jira issues |
+| `/atlassian-login` | Authenticate to Jira/Confluence via OAuth |
+| `/atlassian-read` | Read a Jira issue or Confluence page by URL |
 
-## Agents
+## What a good greenfield PRD should contain
 
-- **prd-critic** — Reviews PRD.md, outputs questions or signals completion
-- **prd-architect** — Answers questions using PRD and codebase context
-- **prd-integrator** — Incorporates answers back into PRD.md
-- **gh-issue-creator** — Decomposes PRD into vertical-slice GitHub issues
-- **gh-single-issue-creator** — Interactive single issue creation from a feature idea
-- **jira-issue-planner** — Decomposes Confluence docs into Jira issue drafts for OAuth publishing
-- **investigator** — Spike/RFC research agent
+After `/prd-qa`, a greenfield PRD should usually include:
+- clear product goals and MVP flow
+- scope and non-goals
+- `## Technical Direction` with the chosen stack/framework/testing/auth/persistence decisions where they materially matter
+- `## Alternatives Considered` for major project-shaping decisions, kept brief
 
-## Skills
+This gives you an easy review point before issue creation:
+- "Use Vue, not React"
+- "Use Clerk, not Better Auth"
+- "Use ASP.NET Core Identity"
+- "Keep this framework-light for MVP"
 
-- **issue-template** — Standard format for GitHub issues, including the mandatory size budget (≤15 tests / ≤10 files / ≤1 integration site), the `## Structural Placement` section, the `## TDD Rehearsal` output section, and the post-draft skill-as-linter audit. Both `create-gh-issue` and `create-gh-issues` enforce these rules via pre-flight checks.
-- **prd-quality** — PRD completeness and quality criteria
-- **writing-style** — Consistent tone and formatting rules
-- **atlassian** — Jira/Confluence workflow guidance, including when to use `/atlassian-read`, `/investigate --template`, and `/create-jira-issues`
+`/create-gh-issues` treats the chosen option as binding and alternatives as context only.
 
-## Sub-agent sessions
+## `/investigate` in plain English
 
-PM pipelines run through the same `.forgeflow/run/<runId>/` lifecycle as the dev pipelines: each invocation of `init`, `create-gh-issues`, `create-gh-issue`, `prd-qa`, `continue`, `investigate`, and `create-jira-issues` is bracketed by `withRunLifecycle`, sub-agents persist their sessions to disk, and the run directory is archived on success or retained on failure for `pi --resume` inspection. See the dev package README for full lifecycle details and the `sessions.persist` opt-out.
+`/investigate` is a general research command, not just a Confluence feature.
+
+Use it when you want a deeper comparison before editing the PRD, for example:
+
+```text
+/investigate "Compare auth options for this app in the chosen ecosystem"
+/investigate "Compare suitable frontend/runtime choices for this project"
+/investigate "Assess whether the current auth and cookie approach is safe"
+```
+
+It:
+- explores the codebase
+- checks existing dependencies and patterns
+- can research the web
+- writes a markdown spike/RFC document in the repo
+
+Optional template support:
+
+```text
+/investigate "Compare auth options" --template <url>
+```
+
+If no template is provided, forgeflow uses a default structure.
+Confluence templates are supported, but not required.
+
+## How issue creation works
+
+`/create-gh-issues` creates **vertical slices** for autonomous implementation.
+Each issue:
+- delivers one user-observable flow
+- includes a trigger test
+- names one owning boundary and public entry point
+- carries forward the chosen technical direction from the PRD
+
+There is no separate bootstrap-only issue. If the first slice needs framework setup, deps, or test wiring to deliver the user flow, that work belongs inside the slice.
+
+## Jira and Confluence
+
+If you use Atlassian, configure OAuth once:
+
+```bash
+export ATLASSIAN_CLIENT_ID=...
+export ATLASSIAN_CLIENT_SECRET=...
+export ATLASSIAN_URL=https://yourcompany.atlassian.net
+export ATLASSIAN_REDIRECT_URI=http://127.0.0.1:33389/callback
+```
+
+Then run:
+
+```text
+/atlassian-login
+```
+
+Extra notes:
+- `/atlassian-read <url>` reads a Jira issue or Confluence page into chat
+- `/create-jira-issues` turns Confluence PM docs into Jira issues
+- `/investigate` can optionally use a Confluence template URL and prefetch Jira/Confluence links mentioned in the topic
+
+Set `ATLASSIAN_JIRA_PROJECT` unless you provide an example Jira ticket URL that lets forgeflow infer the project key.
 
 ## Configuration
 
-Forgeflow reads optional per-agent model and thinking-level overrides plus
-sub-agent session persistence settings from `.forgeflow.json` (nearest one
-walked up from the current directory) merged over `~/.pi/agent/forgeflow.json`
-(global). Both files are optional — with neither, every sub-agent inherits
-the parent pi session's model and thinking level and sessions persist with
-the default retention.
+Optional config lives in:
+- project: `.forgeflow.json`
+- global: `~/.pi/agent/forgeflow.json`
+
+Example:
 
 ```json
 {
   "agents": {
-    "prd-critic":           { "model": "claude-opus-4",   "thinkingLevel": "high" },
-    "prd-architect":        { "model": "claude-sonnet-4", "thinkingLevel": "medium" },
-    "gh-issue-creator":     { "thinkingLevel": "high" },
-    "investigator":         { "thinkingLevel": "high" }
+    "prd-critic": { "thinkingLevel": "high" },
+    "prd-architect": { "thinkingLevel": "medium" },
+    "gh-issue-creator": { "thinkingLevel": "high" },
+    "investigator": { "thinkingLevel": "high" }
   },
   "sessions": {
-    "persist":        true,
-    "archiveRuns":    20,
-    "archiveMaxAge":  30
+    "persist": true,
+    "archiveRuns": 20,
+    "archiveMaxAge": 30
   }
 }
 ```
 
-Valid `thinkingLevel` values: `off`, `minimal`, `low`, `medium`, `high`,
-`xhigh`. Invalid values and malformed JSON are reported via the pi
-notification UI and dropped; the pipeline still runs with inherited
-defaults.
+Valid `thinkingLevel` values: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`.
 
-## Boundary-aware issue generation
+## Sessions
 
-GitHub issue creation is now structure-aware. Every generated issue names exactly one owning boundary, its public entry point, the files in scope for that slice, and placements to avoid.
+PM pipelines keep resumable sub-agent sessions under `.forgeflow/run/<runId>/`.
+On success they are archived; on failure they are left in place so you can inspect or resume them.
 
-That means:
-- `create-gh-issues` prefers extending an existing feature or domain folder before creating a new one
-- `create-gh-issue` splits or narrows ideas that would otherwise span multiple owning boundaries
-- issue bodies steer implementors away from flat package roots and catch-all folders such as `utils/` or `helpers/`
+## See also
 
-This makes the generated issues much safer for greenfield codebases, where folder shape can drift quickly if slices do not name a clear home.
-
-## Atlassian OAuth
-
-Create an Atlassian OAuth app in https://developer.atlassian.com/console/myapps/, add the callback URL `http://127.0.0.1:33389/callback`, grant `offline_access`, `read:jira-work`, `write:jira-work`, `read:confluence-content.all`, `read:page:confluence`, `read:content.metadata:confluence`, `read:content-details:confluence`, and `read:space:confluence`, then export `ATLASSIAN_CLIENT_ID`, `ATLASSIAN_CLIENT_SECRET`, `ATLASSIAN_URL`, and `ATLASSIAN_REDIRECT_URI`. After that, run `/atlassian-login` and copy the OAuth URL shown in the widget or terminal into your browser. If you add scopes later, delete `~/.pi/agent/forgeflow-atlassian-oauth.json` and log in again.
-
-With OAuth configured:
-- `/investigate` and `/create-jira-issues` fetch Confluence pages through Atlassian OAuth, using the newer granular Confluence read scopes by default and a legacy Confluence REST fallback where needed
-- `/create-jira-issues` can also accept a Jira example ticket URL
-- `/atlassian-read <jira-or-confluence-url>` fetches and prints the linked Jira issue or Confluence page
-- `/investigate` now also prefetches extra Jira and Confluence URLs mentioned in the investigation description, beyond the explicit `--template` page
-- The bundled `atlassian` skill tells the agent how to route Jira/Confluence requests and how to handle extra reference links during investigations
-- forgeflow publishes Jira issues itself via OAuth
-
-Set `ATLASSIAN_JIRA_PROJECT` unless you provide a Jira example ticket URL that lets forgeflow infer the project key.
-
-## Greenfield bootstrap
-
-Run `/init` in an interactive session to draft a first-pass `PRD.md` for a greenfield project. It asks a short set of questions covering the product summary, users, MVP flow, success criteria, and high-level technical direction such as stack, framework/template preferences, persistence, auth, hosting, and constraints. The answers are written into `PRD.md`, including a dedicated `## Technical Direction` section.
-
-If you skip `/init` and run `/prd-qa` first, forgeflow still offers the same bootstrap flow when `PRD.md` does not exist yet, then continues into the normal QA loop.
-
-The generated PRD stays at the decision level: technology choices and delivery guardrails are included, but code blocks, file layouts, config blobs, and exact scaffold commands are still left out so `/prd-qa` can refine the document cleanly.
-
-## Usage examples
-
-See the [root README](../../README.md#commands) for detailed usage examples of each command.
+- Root README: `../../README.md`
+- Dev package: `../dev/README.md`
