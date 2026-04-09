@@ -12,7 +12,8 @@ npx pi install @callumvass/forgeflow-pm
 
 | Command | Description |
 |---------|-------------|
-| `/prd-qa` | Refine PRD.md via critic → architect → integrator loop |
+| `/init` | Draft an initial PRD.md interactively for a greenfield project |
+| `/prd-qa` | Draft PRD.md interactively if missing, then refine it via critic → architect → integrator loop |
 | `/continue` | Update PRD with Done/Next, QA, then create issues for next phase |
 | `/create-gh-issues` | Decompose PRD.md into vertical-slice GitHub issues |
 | `/create-gh-issue` | Create a single GitHub issue from a feature idea |
@@ -40,7 +41,7 @@ npx pi install @callumvass/forgeflow-pm
 
 ## Sub-agent sessions
 
-PM pipelines run through the same `.forgeflow/run/<runId>/` lifecycle as the dev pipelines: each invocation of `create-gh-issues`, `create-gh-issue`, `prd-qa`, `continue`, `investigate`, and `create-jira-issues` is bracketed by `withRunLifecycle`, sub-agents persist their sessions to disk, and the run directory is archived on success or retained on failure for `pi --resume` inspection. See the dev package README for full lifecycle details and the `sessions.persist` opt-out.
+PM pipelines run through the same `.forgeflow/run/<runId>/` lifecycle as the dev pipelines: each invocation of `init`, `create-gh-issues`, `create-gh-issue`, `prd-qa`, `continue`, `investigate`, and `create-jira-issues` is bracketed by `withRunLifecycle`, sub-agents persist their sessions to disk, and the run directory is archived on success or retained on failure for `pi --resume` inspection. See the dev package README for full lifecycle details and the `sessions.persist` opt-out.
 
 ## Configuration
 
@@ -96,6 +97,14 @@ With OAuth configured:
 - forgeflow publishes Jira issues itself via OAuth
 
 Set `ATLASSIAN_JIRA_PROJECT` unless you provide a Jira example ticket URL that lets forgeflow infer the project key.
+
+## Greenfield bootstrap
+
+Run `/init` in an interactive session to draft a first-pass `PRD.md` for a greenfield project. It asks a short set of questions covering the product summary, users, MVP flow, success criteria, and high-level technical direction such as stack, framework/template preferences, persistence, auth, hosting, and constraints. The answers are written into `PRD.md`, including a dedicated `## Technical Direction` section.
+
+If you skip `/init` and run `/prd-qa` first, forgeflow still offers the same bootstrap flow when `PRD.md` does not exist yet, then continues into the normal QA loop.
+
+The generated PRD stays at the decision level: technology choices and delivery guardrails are included, but code blocks, file layouts, config blobs, and exact scaffold commands are still left out so `/prd-qa` can refine the document cleanly.
 
 ## Usage examples
 

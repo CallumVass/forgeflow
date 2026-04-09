@@ -3,6 +3,11 @@ import type { CommandDefinition } from "@callumvass/forgeflow-shared/extension";
 
 export const commands: CommandDefinition[] = [
   {
+    name: "init",
+    description: "Draft an initial PRD.md for a greenfield project",
+    pipeline: "init",
+  },
+  {
     name: "continue",
     description:
       'Update PRD with Done/Next based on codebase state, QA the Next section, then create issues. Usage: /continue ["description of next phase"]',

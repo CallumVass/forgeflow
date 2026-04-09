@@ -1,4 +1,4 @@
-import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
+import { mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../prd/document.js", async (importOriginal) => {
@@ -13,13 +13,23 @@ vi.mock("../prd/qa-loop.js", () => ({
   runQaLoop: vi.fn(async () => ({ accepted: true })),
 }));
 
+vi.mock("../prd/bootstrap.js", () => ({
+  promptBootstrapPrd: vi.fn(async () => false),
+}));
+
+import { promptBootstrapPrd } from "../prd/bootstrap.js";
 import { prdExists } from "../prd/document.js";
 import { runQaLoop } from "../prd/qa-loop.js";
 import { runPrdQa } from "./prd-qa.js";
 
 describe("runPrdQa", () => {
   beforeEach(() => {
+    vi.mocked(prdExists).mockReset();
     vi.mocked(prdExists).mockReturnValue(true);
+    vi.mocked(promptBootstrapPrd).mockReset();
+    vi.mocked(promptBootstrapPrd).mockResolvedValue(false);
+    vi.mocked(runQaLoop).mockReset();
+    vi.mocked(runQaLoop).mockResolvedValue({ accepted: true });
   });
 
   it("delegates to runQaLoop and returns success when accepted", async () => {
@@ -52,7 +62,23 @@ describe("runPrdQa", () => {
     expect(result.content[0]?.text).toContain("Critic failed.");
   });
 
-  it("returns a PRD.md not found result and does not invoke runQaLoop when PRD is missing", async () => {
+  it("bootstraps an initial PRD interactively when PRD.md is missing", async () => {
+    vi.mocked(prdExists).mockReturnValueOnce(false).mockReturnValue(true);
+    vi.mocked(promptBootstrapPrd).mockResolvedValue(true);
+    const mockedRunQaLoop = vi.mocked(runQaLoop);
+    mockedRunQaLoop.mockResolvedValue({ accepted: true });
+
+    const pctx = mockPipelineContext({
+      ctx: mockForgeflowContext({ hasUI: true }),
+    });
+    const result = await runPrdQa(10, pctx);
+
+    expect(promptBootstrapPrd).toHaveBeenCalledOnce();
+    expect(mockedRunQaLoop).toHaveBeenCalledOnce();
+    expect(result.content[0]?.text).toContain("refinement complete");
+  });
+
+  it("returns a PRD.md not found result and does not invoke runQaLoop when bootstrap is unavailable", async () => {
     vi.mocked(prdExists).mockReturnValue(false);
     const mockedRunQaLoop = vi.mocked(runQaLoop);
     mockedRunQaLoop.mockClear();
@@ -61,6 +87,7 @@ describe("runPrdQa", () => {
     const result = await runPrdQa(10, pctx);
 
     expect(result.content[0]?.text).toContain("PRD.md not found.");
+    expect(promptBootstrapPrd).toHaveBeenCalledOnce();
     expect(mockedRunQaLoop).not.toHaveBeenCalled();
   });
 });

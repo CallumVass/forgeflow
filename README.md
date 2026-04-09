@@ -31,6 +31,15 @@ Write a `PRD.md` in your project root, then:
 /implement-all       # TDD through each issue, merge PRs
 ```
 
+If you are starting from a blank repo, you can skip the first step:
+
+```
+/init                # draft an initial PRD interactively
+/prd-qa              # refine it until complete
+```
+
+`/prd-qa` still offers the same bootstrap flow if `PRD.md` does not exist yet.
+
 ## Update
 
 ```bash
@@ -111,13 +120,21 @@ Forgeflow stores the OAuth refresh/access token under `~/.pi/agent/forgeflow-atl
 
 ### PM commands (`@callumvass/forgeflow-pm`)
 
+#### PRD initialisation
+
+```
+/init
+```
+
+Drafts an initial `PRD.md` for a greenfield project from a short interactive questionnaire. The generated PRD includes the product summary, MVP flow, and a `## Technical Direction` section covering decision-level choices such as stack, framework/template preference, persistence, auth, and hosting.
+
 #### PRD refinement
 
 ```
 /prd-qa [maxIterations]
 ```
 
-Runs a critic → architect → integrator loop on `PRD.md`. Each iteration:
+Runs a critic → architect → integrator loop on `PRD.md`. If `PRD.md` is missing and you are in interactive mode, forgeflow first offers the same bootstrap questionnaire used by `/init`. Each iteration:
 1. **Critic** reviews the PRD, creates `QUESTIONS.md` if incomplete
 2. **Architect** answers questions using codebase context
 3. **Integrator** merges answers back into `PRD.md`
