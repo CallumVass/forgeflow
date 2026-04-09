@@ -26,7 +26,7 @@ cd your-project
 ```text
 /init
 /prd-qa
-# review/edit PRD.md
+# final review/edit PRD.md
 /create-gh-issues
 /implement-all
 ```
@@ -40,7 +40,7 @@ cd your-project
 
 ## Recommended greenfield workflow
 
-After `/prd-qa`, review `PRD.md` before creating issues.
+After `/prd-qa`, do one final review of `PRD.md` before creating issues.
 A good greenfield PRD should usually include:
 - a clear MVP flow
 - scope and non-goals
