@@ -139,6 +139,7 @@ Implements a single issue (interactive, shows plan for approval):
 4. **Implementor** strict TDD (red-green-refactor), commits, pushes, creates PR
 5. **Refactorer** deduplication and pattern extraction
 6. **Code reviewer + Judge** if findings, implementor fixes them automatically
+7. **Stop at PR** the PR is left open for human review/approval/merge
 
 Uses the repo's pull request template (`.github/pull_request_template.md`) if one exists.
 

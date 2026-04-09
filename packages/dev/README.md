@@ -12,7 +12,7 @@ npx pi install @callumvass/forgeflow-dev
 
 | Command | Description |
 |---------|-------------|
-| `/implement` | Implement a single issue using TDD (plan → implement → refactor → review) |
+| `/implement` | Implement a single issue using TDD (plan → implement → refactor → review), then open/update a PR for human review |
 | `/implement-all` | Loop through all open `auto-generated` and `architecture` issues: implement, review, merge |
 | `/review` | Code review: deterministic checks → reviewer → judge |
 | `/architecture` | Analyze codebase for architectural friction, create RFC issues |
@@ -45,7 +45,9 @@ npx pi install @callumvass/forgeflow-dev
 
 Sub-agent sessions persist under `.forgeflow/run/<runId>/` (gitignored on first creation) so any phase is resumable via `pi --resume .forgeflow/run/<runId>/<nn>-<agent>.jsonl`. On success the directory is moved under `.forgeflow/run/archive/<timestamp>-<runId>-success/`; on failure or interruption it stays in place for inspection until the next run archives it. Archived runs are GC'd on pipeline entry: the newest 20 survive, anything older than 30 days is pruned.
 
-`/implement-all` also waits for CI to finish on each PR before merging. If any check fails, it fetches the failed-job logs via `gh run view --log-failed`, spawns the implementor to fix the failures, and re-waits. Capped at three fix attempts per PR; the cap means a genuinely broken PR cannot loop forever.
+`/implement` stops after pushing commits and opening or updating the PR so a human can review, approve, and merge in the normal team flow.
+
+`/implement-all` waits for CI to finish on each PR before merging. If any check fails, it fetches the failed-job logs via `gh run view --log-failed`, spawns the implementor to fix the failures, and re-waits. Capped at three fix attempts per PR; the cap means a genuinely broken PR cannot loop forever.
 
 ## Configuration
 

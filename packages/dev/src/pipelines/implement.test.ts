@@ -24,7 +24,7 @@ const ghIssueJson = JSON.stringify({ number: 42, title: "Test issue", body: "Iss
 
 /**
  * Build a scripted `execFn` covering every command `runImplement` drives in
- * an autonomous fresh run:
+ * a fresh run:
  *  - `gh issue view` (via execSafeFn)
  *  - `gh pr list --head ... ` for findPrNumber (resume-detection + post-ensurePr lookups)
  *  - `git rev-list main..<branch>` for setupBranch (0 → fresh path) AND
@@ -35,7 +35,8 @@ const ghIssueJson = JSON.stringify({ number: 42, title: "Test issue", body: "Iss
  *  - `git diff main...HEAD` for reviewAndFix (empty → skip)
  *  - `git status --porcelain` for the assertBranchHasCommits diagnostic (empty)
  *  - `git push -u origin` + `gh pr create` for ensurePr
- *  - `gh pr merge` + `git checkout main` + `git pull` for merge/returnToMain
+ *  - optionally `gh pr merge` + `git checkout main` + `git pull` when a caller
+ *    asks `finalisePr` to merge (plain `/implement` no longer does)
  *
  * Overrides let individual tests change specific responses (existing-PR returns
  * a PR number, etc.). `revList` overrides the default `["0", "3"]` sequence
@@ -72,7 +73,7 @@ function scriptedExec(
 }
 
 describe("runImplement orchestrator (integration)", () => {
-  it("fresh path runs planner → architecture-reviewer → implementor → refactorer, finalises PR, and stages ends with merge", async () => {
+  it("fresh path runs planner → architecture-reviewer → implementor → refactorer, creates a PR, and does not merge", async () => {
     // planner → architecture-reviewer → implementor → refactorer
     const runAgentFn = sequencedRunAgent([
       { output: "## Plan\n- Step 1" },
@@ -87,13 +88,13 @@ describe("runImplement orchestrator (integration)", () => {
     const result = await runImplement("42", pctx, { skipPlan: false, skipReview: true });
 
     expect(result.content[0]?.text).toContain("complete");
+    expect(result.content[0]?.text).toContain("PR #7 is ready for review");
     const stages = result.details?.stages ?? [];
     const names = stages.map((s) => s.name);
-    expect(names).toEqual(["planner", "architecture-reviewer", "implementor", "refactorer", "merge"]);
-    // finalisePr ran the merge sequence
+    expect(names).toEqual(["planner", "architecture-reviewer", "implementor", "refactorer"]);
     const calls = execFn.mock.calls.map((c) => c[0] as string);
     expect(calls.some((c) => c.includes("gh pr create"))).toBe(true);
-    expect(calls.some((c) => c.includes("gh pr merge 7"))).toBe(true);
+    expect(calls.some((c) => c.includes("gh pr merge 7"))).toBe(false);
   });
 
   it("resume-with-existing-PR: message contains 'PR #N already exists' and stages have no planner/implementor entries", async () => {
