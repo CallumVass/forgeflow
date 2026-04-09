@@ -13,6 +13,7 @@ import type { ExtensionConfig } from "./types.js";
 // `extension-schema`, `extension-registry`, `extension-tool`,
 // `extension-commands`) but none of those are published.
 
+export { registerAtlassianCommands } from "./atlassian.js";
 export { buildSendMessage } from "./message.js";
 export type { CommandDefinition, ExtensionConfig, ParamDef, PipelineDefinition } from "./types.js";
 

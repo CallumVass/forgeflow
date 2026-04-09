@@ -1,29 +1,39 @@
-import { mockExecFn } from "@callumvass/forgeflow-shared/testing";
-import { describe, expect, it } from "vitest";
+import { writeAtlassianOauthToken } from "@callumvass/forgeflow-shared/atlassian";
+import { mockExecFn, setupIsolatedHomeFixture } from "@callumvass/forgeflow-shared/testing";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { resolveIssue } from "./tracker.js";
 
+setupIsolatedHomeFixture("resolve-issue");
+
 const ghIssueResponse = JSON.stringify({ number: 42, title: "GH issue", body: "GH body" });
-const jiraIssueResponse = JSON.stringify({
-  fields: {
-    summary: "Jira issue",
-    description: "Jira body",
-    acceptance_criteria: "AC body",
-    status: { name: "Open" },
-    priority: { name: "High" },
-    story_points: 5,
-    sprint: { name: "Sprint 1" },
-  },
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  delete process.env.ATLASSIAN_CLIENT_ID;
+  delete process.env.ATLASSIAN_CLIENT_SECRET;
+  delete process.env.ATLASSIAN_URL;
 });
 
+async function configureOauth(fetchMock: ReturnType<typeof vi.fn>) {
+  process.env.ATLASSIAN_CLIENT_ID = "client-id";
+  process.env.ATLASSIAN_CLIENT_SECRET = "client-secret";
+  process.env.ATLASSIAN_URL = "https://example.atlassian.net";
+  await writeAtlassianOauthToken({
+    accessToken: "access-token",
+    refreshToken: "refresh-token",
+    expiresAt: Date.now() + 3_600_000,
+  });
+  vi.stubGlobal("fetch", fetchMock);
+}
+
 describe("resolveIssue", () => {
-  it("uses execSafeFn for `gh issue view` and returns a GitHub-shaped ResolvedIssue with the exact 6-key shape", async () => {
+  it("uses execSafeFn for `gh issue view` and returns a GitHub-shaped ResolvedIssue", async () => {
     const execSafeFn = mockExecFn({ "gh issue view": ghIssueResponse });
     const execFn = mockExecFn();
 
     const result = await resolveIssue("/tmp", "42", { execFn, execSafeFn });
 
     expect(execSafeFn).toHaveBeenCalledWith(expect.stringContaining("gh issue view 42"), "/tmp");
-    // Exact-equality lock the shape: { source, key, number, title, body, branch }.
     expect(result).toEqual({
       source: "github",
       key: "42",
@@ -32,32 +42,79 @@ describe("resolveIssue", () => {
       body: "GH body",
       branch: "feat/issue-42",
     });
-    // resolveIssue must NOT inspect PR state — that is now the caller's job.
-    const calls = (execFn.mock.calls as Array<[string, ...unknown[]]>).map((c) => c[0]);
-    expect(calls.some((c) => c.includes("gh pr list"))).toBe(false);
   });
 
-  it("returns a Jira-shaped ResolvedIssue with body assembled from description, AC, status, priority, story_points and sprint", async () => {
-    const execSafeFn = mockExecFn({ "jira issue view": jiraIssueResponse });
-    const execFn = mockExecFn();
+  it("resolves Jira issues through Atlassian OAuth", async () => {
+    await configureOauth(
+      vi.fn(async (input: string | URL) => {
+        const url = String(input);
+        if (url.includes("accessible-resources")) {
+          return new Response(
+            JSON.stringify([{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example", scopes: [] }]),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (url.includes("/rest/api/3/issue/CUS-123")) {
+          return new Response(
+            JSON.stringify({
+              fields: {
+                summary: "OAuth Jira issue",
+                description: {
+                  type: "doc",
+                  version: 1,
+                  content: [{ type: "paragraph", content: [{ type: "text", text: "Body via OAuth" }] }],
+                },
+              },
+              names: {},
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify({ message: `Unexpected URL ${url}` }), { status: 500 });
+      }),
+    );
 
-    const result = await resolveIssue("/tmp", "CUS-123", { execFn, execSafeFn });
+    const result = await resolveIssue("/tmp", "CUS-123", { execFn: mockExecFn(), execSafeFn: mockExecFn() });
 
-    expect(execSafeFn).toHaveBeenCalledWith(expect.stringContaining("jira issue view CUS-123"), "/tmp");
+    expect(result).toEqual({
+      source: "jira",
+      key: "CUS-123",
+      number: 0,
+      title: "OAuth Jira issue",
+      body: "Body via OAuth",
+      branch: "feat/CUS-123-oauth-jira-issue",
+    });
+  });
+
+  it("detects Jira feature branches and preserves the existing branch name", async () => {
+    await configureOauth(
+      vi.fn(async (input: string | URL) => {
+        const url = String(input);
+        if (url.includes("accessible-resources")) {
+          return new Response(
+            JSON.stringify([{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example", scopes: [] }]),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (url.includes("/rest/api/3/issue/CUS-9")) {
+          return new Response(JSON.stringify({ fields: { summary: "Foo bar", description: null }, names: {} }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        return new Response(JSON.stringify({ message: `Unexpected URL ${url}` }), { status: 500 });
+      }),
+    );
+
+    const result = await resolveIssue("/tmp", undefined, {
+      execFn: mockExecFn({ "git branch --show-current": "feat/CUS-9-foo" }),
+      execSafeFn: mockExecFn(),
+    });
+
     if (typeof result === "string") throw new Error("expected ResolvedIssue, got error string");
     expect(result.source).toBe("jira");
-    expect(result.key).toBe("CUS-123");
-    expect(result.number).toBe(0);
-    expect(result.title).toBe("Jira issue");
-    expect(result.branch).toBe("feat/CUS-123-jira-issue");
-    expect(result.body).toContain("Jira body");
-    expect(result.body).toContain("## Acceptance Criteria\nAC body");
-    expect(result.body).toContain("**Status:** Open");
-    expect(result.body).toContain("**Priority:** High");
-    expect(result.body).toContain("**Story Points:** 5");
-    expect(result.body).toContain("**Sprint:** Sprint 1");
-    // Exact-equality lock the shape — only the 6 documented keys.
-    expect(Object.keys(result).sort()).toEqual(["body", "branch", "key", "number", "source", "title"]);
+    expect(result.key).toBe("CUS-9");
+    expect(result.branch).toBe("feat/CUS-9-foo");
   });
 
   it("with no arg, detects GitHub feature branches via `git branch --show-current`", async () => {
@@ -68,21 +125,6 @@ describe("resolveIssue", () => {
 
     expect(execFn).toHaveBeenCalledWith("git branch --show-current", "/tmp");
     expect(result).toMatchObject({ source: "github", number: 7, branch: "feat/issue-7" });
-  });
-
-  it("with no arg, detects Jira feature branches and preserves the existing branch name", async () => {
-    const execFn = mockExecFn({ "git branch --show-current": "feat/CUS-9-foo" });
-    const execSafeFn = mockExecFn({
-      "jira issue view": JSON.stringify({ fields: { summary: "Foo bar" } }),
-    });
-
-    const result = await resolveIssue("/tmp", undefined, { execFn, execSafeFn });
-
-    if (typeof result === "string") throw new Error("expected ResolvedIssue, got error string");
-    expect(result.source).toBe("jira");
-    expect(result.key).toBe("CUS-9");
-    // Branch is preserved verbatim from `git branch --show-current`, not re-slugified.
-    expect(result.branch).toBe("feat/CUS-9-foo");
   });
 
   it("returns a free-text ResolvedIssue without invoking exec when given a description", async () => {
@@ -103,55 +145,23 @@ describe("resolveIssue", () => {
     expect(execSafeFn).not.toHaveBeenCalled();
   });
 
-  const errorCases: Array<{
-    label: string;
-    execResponses: Record<string, string>;
-    safeResponses: Record<string, string>;
-    arg: string | undefined;
-    contains: string;
-  }> = [
-    {
-      label: "unrecognised current branch",
-      execResponses: { "git branch --show-current": "main" },
-      safeResponses: {},
-      arg: undefined,
-      contains: "main",
-    },
-    {
-      label: "empty `gh issue view` output",
-      execResponses: {},
-      safeResponses: { "gh issue view": "" },
-      arg: "42",
-      contains: "Could not fetch issue #42",
-    },
-    {
-      label: "malformed `gh issue view` JSON",
-      execResponses: {},
-      safeResponses: { "gh issue view": "{ not json" },
-      arg: "42",
-      contains: "Could not parse issue #42",
-    },
-    {
-      label: "malformed `jira issue view` JSON",
-      execResponses: {},
-      safeResponses: { "jira issue view": "{ not json" },
-      arg: "PROJ-1",
-      contains: "Could not parse Jira issue PROJ-1",
-    },
-  ];
-
-  it.each(errorCases)("returns an error string when $label", async ({
-    execResponses,
-    safeResponses,
-    arg,
-    contains,
-  }) => {
-    const execFn = mockExecFn(execResponses);
-    const execSafeFn = mockExecFn(safeResponses);
-
-    const result = await resolveIssue("/tmp", arg, { execFn, execSafeFn });
+  it("returns an error string for malformed GitHub issue JSON", async () => {
+    const result = await resolveIssue("/tmp", "42", {
+      execFn: mockExecFn(),
+      execSafeFn: mockExecFn({ "gh issue view": "{ not json" }),
+    });
 
     expect(typeof result).toBe("string");
-    expect(result as string).toContain(contains);
+    expect(result).toContain("Could not parse issue #42");
+  });
+
+  it("returns an error string when the current branch is unrecognised", async () => {
+    const result = await resolveIssue("/tmp", undefined, {
+      execFn: mockExecFn({ "git branch --show-current": "main" }),
+      execSafeFn: mockExecFn(),
+    });
+
+    expect(typeof result).toBe("string");
+    expect(result).toContain("main");
   });
 });

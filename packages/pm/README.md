@@ -18,6 +18,7 @@ npx pi install @callumvass/forgeflow-pm
 | `/create-gh-issue` | Create a single GitHub issue from a feature idea |
 | `/create-jira-issues` | Decompose Confluence PM docs into Jira issues |
 | `/investigate` | Spike or RFC: explore codebase + web, fill a Confluence template |
+| `/atlassian-login` | Authenticate forgeflow to Atlassian via OAuth |
 
 ## Agents
 
@@ -26,7 +27,7 @@ npx pi install @callumvass/forgeflow-pm
 - **prd-integrator** — Incorporates answers back into PRD.md
 - **gh-issue-creator** — Decomposes PRD into vertical-slice GitHub issues
 - **gh-single-issue-creator** — Interactive single issue creation from a feature idea
-- **jira-issue-creator** — Decomposes Confluence docs into Jira issues
+- **jira-issue-planner** — Decomposes Confluence docs into Jira issue drafts for OAuth publishing
 - **investigator** — Spike/RFC research agent
 
 ## Skills
@@ -79,6 +80,17 @@ That means:
 - issue bodies steer implementors away from flat package roots and catch-all folders such as `utils/` or `helpers/`
 
 This makes the generated issues much safer for greenfield codebases, where folder shape can drift quickly if slices do not name a clear home.
+
+## Atlassian OAuth
+
+Set `ATLASSIAN_CLIENT_ID`, `ATLASSIAN_CLIENT_SECRET`, `ATLASSIAN_URL`, and a registered `ATLASSIAN_REDIRECT_URI`, then run `/atlassian-login`.
+
+With OAuth configured:
+- `/investigate` and `/create-jira-issues` fetch Confluence pages through Atlassian OAuth
+- `/create-jira-issues` can also accept a Jira example ticket URL
+- forgeflow publishes Jira issues itself via OAuth
+
+Set `ATLASSIAN_JIRA_PROJECT` unless you provide a Jira example ticket URL that lets forgeflow infer the project key.
 
 ## Usage examples
 

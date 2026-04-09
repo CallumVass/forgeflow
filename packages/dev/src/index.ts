@@ -1,4 +1,4 @@
-import { createForgeflowExtension } from "@callumvass/forgeflow-shared/extension";
+import { createForgeflowExtension, registerAtlassianCommands } from "@callumvass/forgeflow-shared/extension";
 import {
   type ForgeflowContext,
   type OnUpdate,
@@ -21,7 +21,7 @@ const pctx = (cwd: string, s: AbortSignal, u: OnUpdate, c: ForgeflowContext) =>
 // Ctrl+Shift+S shortcut across forgeflow extensions via a process-wide
 // registry, so this extension can coexist with `@callumvass/forgeflow-pm`
 // in the same pi session without triggering a shortcut conflict.
-export default createForgeflowExtension({
+const registerForgeflow = createForgeflowExtension({
   toolName: "forgeflow-dev",
   toolLabel: "Forgeflow Dev",
   description: [
@@ -75,3 +75,8 @@ export default createForgeflowExtension({
     return text;
   },
 });
+
+export default (pi: Parameters<typeof registerForgeflow>[0]) => {
+  registerForgeflow(pi);
+  registerAtlassianCommands(pi);
+};
