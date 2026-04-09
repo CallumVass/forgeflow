@@ -24,7 +24,15 @@ Treat the **chosen options** in `## Technical Direction` as binding for issue gu
 
 Treat `## Alternatives Considered` as explanatory context only. Do NOT reopen those decisions unless the PRD itself is contradictory.
 
-For greenfield projects, the first slices that touch a major concern must establish that concern using the chosen stack and libraries as part of a user-facing slice. Do NOT leave framework, auth, testing, or other project-shaping decisions for the implementor to improvise.
+For greenfield projects, create exactly one explicit initial scaffold/bootstrap issue first, then create the later feature slices after it.
+
+That initial scaffold/bootstrap issue must:
+- use `Scaffold` or `Bootstrap` in the title
+- establish the chosen app/runtime/deployment shape and baseline test harness
+- establish the first reusable owning boundary beneath the broad source root
+- stay small and observable, without absorbing the first substantial product feature
+
+Do NOT leave framework, auth, testing, or other project-shaping decisions for the implementor to improvise.
 
 Examples:
 - If the PRD chooses Phoenix LiveView, do not write issues that imply React or hand-built DOM rendering.
@@ -37,7 +45,9 @@ Examples:
 - Each issue must name exactly one owning boundary in `## Structural Placement`.
 - If no suitable boundary exists yet, the issue may create one boundary folder and its small public entry point (`index.ts`, `__init__.py`, `routes.rb`, or equivalent in the project's language).
 - Generic roots such as `src/`, `app/`, `server/`, `client/`, `test/`, and `tests/` are roots, not owning boundaries.
-- In greenfield or nearly empty repos, the first implementation issues must establish reusable feature/domain boundaries beneath the broad source root instead of normalising flat sibling files at the root.
+- In greenfield or nearly empty repos, the lowest-numbered issue must be an explicit scaffold/bootstrap slice.
+- That initial scaffold/bootstrap issue must establish a reusable feature/domain boundary beneath the broad source root instead of normalising flat sibling files at the root.
+- Later issues in that initial greenfield set should depend directly or transitively on the scaffold issue.
 - Do NOT create `utils/`, `helpers/`, `misc/`, or `lib/` catch-all folders.
 - No standalone validation, edge-case, or polish issues.
 - If the first slice needs deps, config, CI, or framework setup to deliver the flow, include that work inside the slice.

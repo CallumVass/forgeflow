@@ -24,6 +24,30 @@ everything the reader needs to know about how the system will look
 after the whole feature is built." Reduce scope until the issue says
 "do this one thing and observe that."
 
+## Greenfield scaffold-first rule
+
+If the repo is greenfield or nearly empty, create exactly one small
+initial scaffold issue before the first product feature slices.
+
+That scaffold issue must:
+- explicitly say `Scaffold` or `Bootstrap` in the title
+- establish the chosen app/runtime/deployment shape and baseline test
+  harness needed by later slices
+- establish the first reusable owning boundary beneath the broad source
+  root
+- stay within the normal issue budget and still ship a thin observable
+  skeleton (for example: the chosen entry route/screen loads, the app
+  boots, or the baseline request flow reaches its initial state)
+- be the only dependency-free issue in the generated set
+
+That scaffold issue must NOT:
+- absorb the first substantial product feature
+- reopen stack or provider choices already fixed in the PRD
+- sprawl across multiple owning boundaries just because it is "setup"
+
+Every later issue in that initial greenfield set should depend directly
+or transitively on the scaffold issue.
+
 ## Issue Template
 
 Every issue MUST follow this exact format:
@@ -152,7 +176,8 @@ exists to be used as a linter, not just as a template.
 - Every issue MUST name exactly one owning boundary in `## Structural Placement`.
 - If no suitable boundary exists, the issue may create one, but it must still name a single public entry point.
 - Generic roots such as `src/`, `app/`, `server/`, `client/`, `test/`, and `tests/` are roots, not owning boundaries.
-- In greenfield or nearly empty repos, the first slice must establish at least one reusable feature or domain boundary beneath the broad source root so later slices have somewhere to land.
+- In greenfield or nearly empty repos, start with exactly one explicit scaffold/bootstrap slice, then place later feature slices after it.
+- That initial scaffold/bootstrap slice must still establish at least one reusable feature or domain boundary beneath the broad source root so later slices have somewhere to land.
 - New production files belong under the owning boundary unless they are true application entry points.
 - New test files belong under the owning boundary's test area unless they are true test entry points or shared harness files.
 - Do NOT create `utils/`, `helpers/`, `misc/`, or `lib/` catch-all folders.

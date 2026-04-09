@@ -41,6 +41,8 @@ Examples:
 
 If a necessary project-shaping choice is still missing and the repo does not already establish one, write `BLOCKED.md` instead of making an arbitrary stack decision.
 
+If the issue is explicitly a scaffold/bootstrap slice, implement only the minimum baseline named by the issue: chosen runtime/app shape, baseline tests, and the first reusable boundary. Do NOT absorb later product flows into the scaffold just because the repo is still empty.
+
 Choose tools appropriate to the project's ecosystem. Do NOT assume a JavaScript stack in non-JS projects. In greenfield repos, do not let the first few flat files under a broad source root become the default architecture — deepen into a feature/domain boundary as soon as the slice has a clear owner.
 
 ## TDD workflow

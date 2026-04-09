@@ -96,7 +96,14 @@ Each issue:
 - names one owning boundary and public entry point
 - carries forward the chosen technical direction from the PRD
 
-There is no separate bootstrap-only issue. If the first slice needs framework setup, deps, or test wiring to deliver the user flow, that work belongs inside the slice.
+On greenfield repos, `/create-gh-issues` should usually create one small initial scaffold/bootstrap issue first, then the first product slice after it.
+
+That scaffold issue should:
+- establish the chosen app/runtime shape and baseline test harness
+- establish the first reusable boundary beneath the broad source root
+- stay small and observable rather than absorbing the first substantial product feature
+
+Later issues should depend directly or transitively on that scaffold issue.
 
 Generic roots such as `src/`, `app/`, `server/`, `client/`, `test/`, and `tests/` are treated as roots, not owning boundaries. On greenfield repos, the first slices must establish real feature/domain boundaries beneath those roots so later implementation does not drift into a flat source tree.
 
