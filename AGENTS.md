@@ -24,12 +24,9 @@ Defaults are wired at the extension boundary (`packages/dev/src/index.ts`,
 
 **The only files allowed to import from `@callumvass/forgeflow-shared/agent`
 or `@callumvass/forgeflow-shared/exec` are inside `packages/shared/src/`.**
-Anything in `packages/dev/src/pipelines`, `packages/pm/src/pipelines`, or
-`packages/dev/src/utils` that grabs `runAgent` / `exec` / `execSafe` directly
-should be migrated to read from `pctx` instead.
-
-The project `check` script runs a grep that fails CI on regressions — see
-`scripts/check-pipeline-seams.sh`.
+Anything in `packages/dev/src/` or `packages/pm/src/` that grabs
+`runAgent` / `exec` / `execSafe` directly should be migrated to read from
+`pctx` instead.
 
 New pipeline option types must NOT declare `runAgentFn?: RunAgentFn` or
 `execFn?: ExecFn` — the seam already lives on `PipelineContext`.
@@ -65,3 +62,27 @@ For a retroactive bump after a shared-only `feat:` has already merged,
 add a follow-up PR that documents the feature in the consumer README
 (this is what triggered the v0.14.0 release for the per-stage model
 overrides feature).
+
+## Feature folders and import boundaries
+
+Organise package source by feature or domain, not by file type and not in a
+flat package root. Prefer folders such as `pipelines/implement/`, `prd/`,
+`session/`, `git/`, or `issues/`. Do not add new `utils/`, `helpers/`,
+`misc/`, or `lib/` catch-all folders.
+
+Each feature folder should expose one small public entry point, usually
+`index.ts`. Other features may import from that entry point only. Do not reach
+into another feature's internal files when an entry point exists.
+
+Within a feature folder, sibling files may import each other directly. Across
+packages, import only through the published shared entry points such as
+`@callumvass/forgeflow-shared/pipeline` or
+`@callumvass/forgeflow-shared/extension`.
+
+## Validation command
+
+Use `npm run check` as the default validation command.
+
+Do not run `npm run typecheck`, `npm run lint`, `npm run test`, or `npm run
+knip` individually unless you are debugging a failing `npm run check` run or
+the user explicitly asked for a narrower command.

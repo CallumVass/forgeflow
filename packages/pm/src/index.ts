@@ -7,9 +7,9 @@ import {
 } from "@callumvass/forgeflow-shared/pipeline";
 import { commands } from "./commands.js";
 import { runContinue } from "./pipelines/continue.js";
-import { runCreateIssue, runCreateIssues } from "./pipelines/create-issues.js";
 import { runInvestigate } from "./pipelines/investigate.js";
-import { runJiraIssues } from "./pipelines/jira-issues.js";
+import { runCreateIssue, runCreateIssues } from "./pipelines/issue-creation/github.js";
+import { runJiraIssues } from "./pipelines/issue-creation/jira.js";
 import { runPrdQa } from "./pipelines/prd-qa.js";
 
 const AGENTS_DIR = resolveAgentsDir(import.meta.url);

@@ -26,6 +26,9 @@ If the PRD contains a `## Done` section, that describes work already completed. 
 ## Issue Structure Rules
 
 - Every issue is a **vertical slice**: a complete user-observable flow crossing all necessary layers. Each slice sets up whatever infrastructure it needs (deps, config, CI) as part of delivering its flow — no separate bootstrap issue.
+- Every issue must name exactly one owning boundary in `## Structural Placement`. If a draft naturally spans multiple boundaries, split it.
+- If no suitable boundary exists yet, the issue may create one new boundary folder and its public `index.ts`, but still only one boundary per issue.
+- Do NOT create `utils/`, `helpers/`, `misc/`, or `lib/` catch-all folders in issue guidance.
 - **No standalone validation/edge-case issues.** Input validation, error handling, and edge cases for a behavior MUST be included in the slice that introduces that behavior. Do NOT create separate issues like "Input validation and numeric clamping" or "Edge case handling" — these produce test-only PRs with near-zero implementation.
 - **No standalone polish issues.** Accessibility, responsive layout, and design system compliance belong in the slice that introduces the UI — not deferred to a cross-cutting issue at the end.
 - If the first slice needs CI, deps, or build config to work, it sets those up as part of its implementation. The test plan should include a smoke test proving the flow works end-to-end.
@@ -72,6 +75,15 @@ your head before writing them down:
 If cycle 14 still has uncovered criteria, the issue is too big.
 Split it. It is faster to split once than to watch the implementor
 hit its budget and stop with half the integration done.
+
+## Context Rules
+
+## Structural Placement Rules
+
+- Every issue body MUST include `## Structural Placement`.
+- Name one owning boundary folder, one public entry point, the files in scope for this slice, and out-of-scope placements to avoid.
+- Prefer extending an existing feature or domain folder. Create a new boundary only when no existing one is a clear owner.
+- If the issue would need code in two owning boundaries to land, split it before creating it.
 
 ## Context Rules
 

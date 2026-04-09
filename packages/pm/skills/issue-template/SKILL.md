@@ -49,6 +49,13 @@ Body:
 ## Implementation Hints
 <Concrete guidance: files to create/modify, key APIs, rough approach. Keep it actionable.>
 
+## Structural Placement
+<MANDATORY. Name exactly one owning boundary for this slice. If no suitable boundary exists yet, say this issue creates it.>
+- Owning boundary: `<path/to/feature-or-domain/>`
+- Public entry point: `<path/to/feature-or-domain/index.ts>`
+- Files in scope: `<files this slice may create or modify>`
+- Out of scope: `<placements or cross-boundary work this slice must avoid>`
+
 ## TDD Rehearsal
 <MANDATORY. Enumerate the red-green cycles the implementor will walk through. Count them. If the count exceeds the budget, STOP and split this issue.>
 
@@ -122,6 +129,8 @@ re-read this skill end to end and audit the draft against every rule.
 Specifically:
 
 - Is the altitude correct? (slicer mode, not architect mode)
+- Is the `## Structural Placement` section present, with exactly one
+  owning boundary and one public entry point?
 - Is the `## TDD Rehearsal` section present and populated with actual
   counted cycles?
 - Does every total fit the budget? (≤15 tests, ≤10 files, ≤1 integration site)
@@ -138,6 +147,10 @@ exists to be used as a linter, not just as a template.
 - The Context section is CRITICAL — the agent works from this alone. Include behavioural requirements, data model concepts, API contracts, and edge cases inline. Do NOT say "see PRD.md".
 - Acceptance criteria must describe user-observable behaviour, not code structure.
 - Each vertical slice must cross all necessary layers to deliver a working flow.
+- Every issue MUST name exactly one owning boundary in `## Structural Placement`.
+- If no suitable boundary exists, the issue may create one, but it must still name a single public entry point.
+- New production files belong under the owning boundary unless they are package entry points.
+- Do NOT create `utils/`, `helpers/`, `misc/`, or `lib/` catch-all folders.
 - **Trigger tests must name real production entry points.** "A minimal pipeline" or "a small harness" is not a trigger test. The sentence must literally reference the production function, route, or CLI command whose wiring the slice proves.
 - **Design is per-slice, not a final pass.** If DESIGN.md exists, every slice that touches UI must implement its screens using the design system.
 - **No standalone validation/edge-case issues.** Validation, error handling, and edge cases belong in the slice that introduces the behaviour.
