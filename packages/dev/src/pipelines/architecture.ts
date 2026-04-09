@@ -5,6 +5,7 @@ import {
   toAgentOpts,
   withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
+import { pickArchitectureCandidates } from "./architecture-candidate-picker.js";
 import { ARCHITECTURE_LABEL } from "./implement-all.js";
 
 /**
@@ -74,28 +75,49 @@ async function runArchitectureInner(pctx: PipelineContext) {
   const editedCandidates = parseCandidates(candidateContext);
   const displayCandidates = editedCandidates.length > 0 ? editedCandidates : candidates;
 
-  const selectOptions =
-    displayCandidates.length > 1
-      ? [...displayCandidates.map((c) => c.label), "All candidates", "Skip"]
-      : displayCandidates.length === 1
-        ? [(displayCandidates[0] as ArchitectureCandidate).label, "Skip"]
-        : ["Yes — generate RFC", "Skip"];
-
-  const action = await ctx.ui.select("Create RFC issues for which candidates?", selectOptions);
-
-  if (action === "Skip" || action == null) {
-    return pipelineResult("Architecture review complete. No RFC created.", "architecture", stages);
-  }
-
-  // Determine which candidates to create RFCs for
   let selectedCandidates: ArchitectureCandidate[];
-  if (action === "All candidates") {
-    selectedCandidates = displayCandidates;
-  } else if (action === "Yes — generate RFC") {
-    selectedCandidates = [{ label: "RFC", body: candidateContext }];
+
+  if (displayCandidates.length > 1) {
+    const pickedCandidates = await pickArchitectureCandidates(ctx, displayCandidates);
+    if (pickedCandidates === undefined) {
+      const action = await ctx.ui.select("Create RFC issues for which candidates?", [
+        ...displayCandidates.map((candidate) => candidate.label),
+        "All candidates",
+        "Skip",
+      ]);
+
+      if (action === "Skip" || action == null) {
+        return pipelineResult("Architecture review complete. No RFC created.", "architecture", stages);
+      }
+
+      if (action === "All candidates") {
+        selectedCandidates = displayCandidates;
+      } else {
+        const selectedCandidate = displayCandidates.find((candidate) => candidate.label === action);
+        selectedCandidates = selectedCandidate ? [selectedCandidate] : [{ label: "RFC", body: candidateContext }];
+      }
+    } else {
+      if (pickedCandidates == null || pickedCandidates.length === 0) {
+        return pipelineResult("Architecture review complete. No RFC created.", "architecture", stages);
+      }
+      selectedCandidates = pickedCandidates;
+    }
   } else {
-    const match = displayCandidates.find((c) => c.label === action);
-    selectedCandidates = match ? [match] : [{ label: "RFC", body: candidateContext }];
+    const onlyCandidate = displayCandidates[0];
+    const selectOptions = onlyCandidate ? [onlyCandidate.label, "Skip"] : ["Yes — generate RFC", "Skip"];
+
+    const action = await ctx.ui.select("Create RFC issues for which candidates?", selectOptions);
+
+    if (action === "Skip" || action == null) {
+      return pipelineResult("Architecture review complete. No RFC created.", "architecture", stages);
+    }
+
+    if (action === "Yes — generate RFC") {
+      selectedCandidates = [{ label: "RFC", body: candidateContext }];
+    } else {
+      const selectedCandidate = displayCandidates.find((candidate) => candidate.label === action);
+      selectedCandidates = selectedCandidate ? [selectedCandidate] : [{ label: "RFC", body: candidateContext }];
+    }
   }
 
   // Phase 2: Generate RFC and create GitHub issue for each selected candidate
