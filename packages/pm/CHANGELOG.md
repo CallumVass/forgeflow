@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.18.0...forgeflow-pm-v0.19.0) (2026-04-09)
+
+
+### Features
+
+* **pm:** strengthen greenfield PRD direction ([#161](https://github.com/CallumVass/forgeflow/issues/161)) ([d1e3dcd](https://github.com/CallumVass/forgeflow/commit/d1e3dcdc8741bfe09ca617e13963551fbcd0dc93))
+
 ## [0.18.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.17.3...forgeflow-pm-v0.18.0) (2026-04-09)
 
 
