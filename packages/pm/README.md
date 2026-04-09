@@ -83,7 +83,7 @@ This makes the generated issues much safer for greenfield codebases, where folde
 
 ## Atlassian OAuth
 
-Set `ATLASSIAN_CLIENT_ID`, `ATLASSIAN_CLIENT_SECRET`, `ATLASSIAN_URL`, and a registered `ATLASSIAN_REDIRECT_URI`, then run `/atlassian-login`.
+Create an Atlassian OAuth app in https://developer.atlassian.com/console/myapps/, add the callback URL `http://127.0.0.1:33389/callback`, grant `offline_access`, `read:jira-work`, `write:jira-work`, and `read:confluence-content.all`, then export `ATLASSIAN_CLIENT_ID`, `ATLASSIAN_CLIENT_SECRET`, `ATLASSIAN_URL`, and `ATLASSIAN_REDIRECT_URI`. After that, run `/atlassian-login`.
 
 With OAuth configured:
 - `/investigate` and `/create-jira-issues` fetch Confluence pages through Atlassian OAuth

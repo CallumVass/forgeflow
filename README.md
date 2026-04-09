@@ -54,6 +54,22 @@ pi update @callumvass/forgeflow-dev
 
 Forgeflow uses Atlassian OAuth for Jira and Confluence access.
 
+### Create an Atlassian OAuth app
+
+1. Open the Atlassian developer console:
+   - https://developer.atlassian.com/console/myapps/
+2. Create an OAuth 2.0 app.
+3. Add this callback URL:
+   - `http://127.0.0.1:33389/callback`
+4. Add these scopes:
+   - `offline_access`
+   - `read:jira-work`
+   - `write:jira-work`
+   - `read:confluence-content.all`
+5. Copy the app's **Client ID** and **Client secret**.
+
+Your organisation may require admin approval before the app can access your Jira / Confluence site.
+
 Set these environment variables (add to your shell profile):
 
 ```bash
