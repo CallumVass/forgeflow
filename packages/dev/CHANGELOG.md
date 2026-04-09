@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.15.3...forgeflow-dev-v0.16.0) (2026-04-09)
+
+
+### Features
+
+* document boundary-aware issue generation ([#145](https://github.com/CallumVass/forgeflow/issues/145)) ([d203de3](https://github.com/CallumVass/forgeflow/commit/d203de3b9310f2ab617c97b0d83f824cee2ca3b5))
+
 ## [0.15.3](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.15.2...forgeflow-dev-v0.15.3) (2026-04-09)
 
 
