@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.16.0...forgeflow-pm-v0.17.0) (2026-04-09)
+
+
+### Features
+
+* add Atlassian read flows and investigate references ([#151](https://github.com/CallumVass/forgeflow/issues/151)) ([e50a208](https://github.com/CallumVass/forgeflow/commit/e50a20842e871f3dfa9ffed9d9d9b137307a9da6))
+
 ## [0.16.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.15.0...forgeflow-pm-v0.16.0) (2026-04-09)
 
 
