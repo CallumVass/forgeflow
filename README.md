@@ -90,9 +90,9 @@ In interactive mode, you review/edit the PRD after each iteration and choose to 
 /create-gh-issue "Add user authentication"
 ```
 
-`/create-gh-issues` decomposes `PRD.md` into vertical-slice GitHub issues (each labelled `auto-generated`), ordered by dependencies.
+`/create-gh-issues` decomposes `PRD.md` into vertical-slice GitHub issues (each labelled `auto-generated`), ordered by dependencies. Each generated issue now includes a `## Structural Placement` section naming one owning boundary, its public entry point, and placements to avoid.
 
-`/create-gh-issue` creates a single issue from a feature idea.
+`/create-gh-issue` creates a single issue from a feature idea and applies the same single-boundary placement rules.
 
 #### Jira issue creation
 
@@ -126,7 +126,6 @@ Updates PRD with Done/Next based on codebase state, QAs the Next section, then c
 ```
 /implement 42                       # GitHub issue
 /implement PROJ-123                 # Jira issue
-/implement 42 "focus on error handling"  # with custom prompt
 /implement 42 --skip-plan
 /implement 42 --skip-review
 /implement                          # detects issue from branch name
@@ -150,7 +149,7 @@ Uses the repo's pull request template (`.github/pull_request_template.md`) if on
 /implement-all --skip-plan --skip-review
 ```
 
-Autonomous loop through all open `auto-generated` issues in dependency order.
+Autonomous loop through all open `auto-generated` and `architecture` issues in dependency order.
 
 #### Code review
 
@@ -158,7 +157,6 @@ Autonomous loop through all open `auto-generated` issues in dependency order.
 /review                                # review current branch vs main
 /review 42                             # review PR #42
 /review --branch feat/thing
-/review 42 "check for SQL injection"   # with custom prompt
 ```
 
 Runs code-reviewer → review-judge.
@@ -244,7 +242,7 @@ single warning and every stage runs with inherited defaults.
 npm install
 npm run build        # build both packages
 npm run typecheck    # typecheck all packages
-npm run check        # typecheck + lint
+npm run check        # typecheck + lint + knip + tests
 ```
 
 Releases are automated via [release-please](https://github.com/googleapis/release-please). Push to main with conventional commit messages (`feat:`, `fix:`) and a release PR is created automatically. Merging the release PR publishes to npm.
