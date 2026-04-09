@@ -36,6 +36,10 @@ This works best after the PM package has already produced good greenfield issues
 | `/discover-skills` | Find domain-specific plugins for the current tech stack |
 | `/atlassian-login` | Authenticate to Jira/Confluence via OAuth |
 | `/atlassian-read` | Read a Jira issue or Confluence page by URL |
+| `/datadog-login` | Authenticate to an OAuth-enabled Datadog MCP server |
+| `/datadog-status` | Show Datadog MCP auth status |
+| `/datadog-logout` | Remove stored Datadog MCP credentials |
+| `/datadog` | Resolve a Lambda from repo code and run a Datadog MCP investigation |
 
 ## What the dev pipeline expects
 
@@ -156,6 +160,32 @@ Then run:
 ```text
 /atlassian-login
 ```
+
+## Datadog MCP
+
+Forgeflow can route freeform runtime investigations through an OAuth-enabled Datadog MCP server.
+
+Environment variables:
+
+```bash
+export DATADOG_MCP_URL=https://your-datadog-mcp.example.com/mcp
+export DATADOG_MCP_REDIRECT_URI=http://127.0.0.1:33390/callback
+# Optional when your MCP server requires a pre-registered OAuth client
+export DATADOG_MCP_CLIENT_ID=...
+export DATADOG_MCP_CLIENT_SECRET=...
+# Optional OAuth scope override
+export DATADOG_MCP_SCOPE="metrics logs traces"
+```
+
+Then run:
+
+```text
+/datadog-login
+/datadog "investigate why the billing lambda is slow in prod"
+/datadog "give me p50 p95 and p99 for the billing lambda over the last 24h"
+```
+
+The first cut expects a Datadog MCP server that exposes `query-metrics`, `search-logs`, and optionally `search-spans`.
 
 ## See also
 
