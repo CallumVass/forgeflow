@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.19.0...forgeflow-pm-v0.20.0) (2026-04-09)
+
+
+### Features
+
+* **pm:** validate greenfield issue boundaries ([#163](https://github.com/CallumVass/forgeflow/issues/163)) ([64523ee](https://github.com/CallumVass/forgeflow/commit/64523ee2193ebabbf3d9e53008ee46acb9f17154))
+
 ## [0.19.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.18.0...forgeflow-pm-v0.19.0) (2026-04-09)
 
 
