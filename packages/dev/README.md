@@ -36,6 +36,16 @@ npx pi install @callumvass/forgeflow-dev
 - **stitch** — UI design reference integration
 - **plugins** — Domain-specific review plugin router
 
+## Boundary-aware implementation
+
+`/implement` and `/implement-all` now preserve feature-oriented structure more aggressively.
+
+Before writing code, the planner names one owning boundary for the slice, the public entry point for that boundary, likely files in scope, and placements to avoid. The implementor treats that boundary choice as a gate: it prefers extending an existing feature or domain folder, creates a small public `index.ts` when a new boundary is needed, and blocks when one issue would need multiple owning boundaries.
+
+The architecture reviewer now looks for flat-root sprawl, boundaryless growth, junk-drawer folders such as `utils/`, and cross-feature internal imports. The code reviewer also checks obvious boundary drift when reviewing a diff.
+
+This matters most on greenfield repos and in `/implement-all`, where a stream of small issues can otherwise turn into a flat source tree over time.
+
 ## Sub-agent sessions and the fork architecture
 
 `/implement` runs sub-agents in two chains joined by a hard boundary:

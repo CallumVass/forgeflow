@@ -31,7 +31,7 @@ npx pi install @callumvass/forgeflow-pm
 
 ## Skills
 
-- **issue-template** — Standard format for GitHub issues, including the mandatory size budget (≤15 tests / ≤10 files / ≤1 integration site), the `## TDD Rehearsal` output section, and the post-draft skill-as-linter audit. Both `create-gh-issue` and `create-gh-issues` enforce these rules via pre-flight checks.
+- **issue-template** — Standard format for GitHub issues, including the mandatory size budget (≤15 tests / ≤10 files / ≤1 integration site), the `## Structural Placement` section, the `## TDD Rehearsal` output section, and the post-draft skill-as-linter audit. Both `create-gh-issue` and `create-gh-issues` enforce these rules via pre-flight checks.
 - **prd-quality** — PRD completeness and quality criteria
 - **writing-style** — Consistent tone and formatting rules
 
@@ -68,6 +68,17 @@ Valid `thinkingLevel` values: `off`, `minimal`, `low`, `medium`, `high`,
 `xhigh`. Invalid values and malformed JSON are reported via the pi
 notification UI and dropped; the pipeline still runs with inherited
 defaults.
+
+## Boundary-aware issue generation
+
+GitHub issue creation is now structure-aware. Every generated issue names exactly one owning boundary, its public entry point, the files in scope for that slice, and placements to avoid.
+
+That means:
+- `create-gh-issues` prefers extending an existing feature or domain folder before creating a new one
+- `create-gh-issue` splits or narrows ideas that would otherwise span multiple owning boundaries
+- issue bodies steer implementors away from flat package roots and catch-all folders such as `utils/` or `helpers/`
+
+This makes the generated issues much safer for greenfield codebases, where folder shape can drift quickly if slices do not name a clear home.
 
 ## Usage examples
 
