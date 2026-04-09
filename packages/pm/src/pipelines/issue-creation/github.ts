@@ -55,7 +55,7 @@ async function runCreateIssuesInner(pctx: PipelineContext) {
 
   await pctx.runAgentFn(
     "gh-issue-creator",
-    "Decompose PRD.md into vertical-slice GitHub issues. Treat the chosen options in ## Technical Direction as binding for issue guidance. Treat ## Alternatives Considered as explanatory context only. Read the issue-template skill for the standard format. In greenfield repos, the first slices must establish real feature or domain boundaries rather than treating generic roots such as src/, app/, server/, client/, test/, or tests/ as owning boundaries.",
+    "Decompose PRD.md into vertical-slice GitHub issues. Treat the chosen options in ## Technical Direction as binding for issue guidance. Treat ## Alternatives Considered as explanatory context only. Read the issue-template skill for the standard format. In greenfield or nearly empty repos, create exactly one explicit initial scaffold/bootstrap issue first, make it the only dependency-free issue, and then create feature slices that depend directly or transitively on it. That scaffold issue must still establish a real feature or domain boundary rather than treating generic roots such as src/, app/, server/, client/, test/, or tests/ as owning boundaries.",
     opts,
   );
 

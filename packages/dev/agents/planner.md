@@ -39,6 +39,8 @@ follow the chosen project direction from the issue/PRD.
 If the issue clearly specifies a framework, provider, or library, treat it as binding.
 If the issue does NOT establish a necessary project-shaping choice and the repo has no existing pattern, call it out in `### Unresolved Questions` instead of assuming a hand-rolled approach.
 
+If the issue is explicitly a scaffold/bootstrap slice, plan only the minimum platform baseline named by the issue: chosen runtime/app shape, baseline tests, and the first reusable boundary. Do NOT pull later product flows into the scaffold plan.
+
 Choose tools appropriate to the project's ecosystem. Do NOT assume a JavaScript stack in a .NET, Elixir, Python, Ruby, Go, or other non-JS project.
 
 ## Output format

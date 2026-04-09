@@ -23,7 +23,7 @@ npx pi install @callumvass/forgeflow-dev
 /implement-all
 ```
 
-This works best after the PM package has already produced good greenfield issues with a clear technical direction.
+This works best after the PM package has already produced good greenfield issues with a clear technical direction — usually one explicit initial scaffold/bootstrap issue followed by dependent feature slices.
 
 ## Commands
 
@@ -69,6 +69,7 @@ At the end, forgeflow opens or updates a PR for human review.
 ## `/implement-all` in plain English
 
 `/implement-all` loops through all open `auto-generated` and `architecture` issues in dependency order.
+On greenfield repos, that usually means it should take an explicit scaffold/bootstrap issue first, then move onto the dependent feature slices.
 For each issue it:
 - plans
 - implements
