@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.17.0...forgeflow-dev-v0.17.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* improve review pipeline target checkout and findings flow ([#149](https://github.com/CallumVass/forgeflow/issues/149)) ([5b3651b](https://github.com/CallumVass/forgeflow/commit/5b3651b60df7522fcb3c6aca2b86571a4a49a704))
+
 ## [0.17.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.16.0...forgeflow-dev-v0.17.0) (2026-04-09)
 
 
