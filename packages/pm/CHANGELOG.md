@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.17.3...forgeflow-pm-v0.18.0) (2026-04-09)
+
+
+### Features
+
+* **pm:** add greenfield PRD init flow ([#159](https://github.com/CallumVass/forgeflow/issues/159)) ([5d4ee1f](https://github.com/CallumVass/forgeflow/commit/5d4ee1f8c53a0929717c25a5f5c642a8dcd94fec))
+
 ## [0.17.3](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.17.2...forgeflow-pm-v0.17.3) (2026-04-09)
 
 
