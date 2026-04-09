@@ -18,6 +18,52 @@ import { prdExists, promptEditPrd } from "../prd/document.js";
 import { runQaLoop } from "../prd/qa-loop.js";
 import { runContinue } from "./continue.js";
 
+const VALID_ISSUE_BODY = `## Context
+A small slice.
+
+## Acceptance Criteria
+- [ ] User sees the flow.
+
+## Test Plan
+- [ ] Trigger: GET /inventory returns the inventory screen.
+- [ ] Boundary: invalid input shows an inline message.
+
+## Implementation Hints
+Keep the route wiring small.
+
+## Structural Placement
+- Owning boundary: \`src/inventory/\`
+- Public entry point: \`src/inventory/index.js\`
+- Files in scope: \`src/inventory/index.js\`, \`test/inventory/inventory.spec.js\`
+- Out of scope: new unrelated files directly under \`src/\` or \`test/\`
+
+## TDD Rehearsal
+Planned red-green cycles:
+1. Inventory route renders screen → \`test/inventory/inventory.spec.js\`
+
+Totals:
+- Tests: 1 / 15
+- Files touched (estimate): 2 / 10
+- Integration sites: 1 / 1
+
+## Dependencies
+None.
+`;
+
+function execSafeFnForCreatedIssue(body: string, issueNumber = 101) {
+  let listCalls = 0;
+  return vi.fn(async (cmd: string) => {
+    if (cmd.includes("gh issue list")) {
+      listCalls += 1;
+      return JSON.stringify(listCalls === 1 ? [] : [{ number: issueNumber }]);
+    }
+    if (cmd.includes(`gh issue view ${issueNumber}`)) {
+      return JSON.stringify({ number: issueNumber, title: "Generated issue", body });
+    }
+    return "";
+  });
+}
+
 describe("runContinue", () => {
   beforeEach(() => {
     vi.mocked(prdExists).mockReturnValue(true);
@@ -30,7 +76,8 @@ describe("runContinue", () => {
     const mockedRunQaLoop = vi.mocked(runQaLoop);
     mockedRunQaLoop.mockResolvedValue({ accepted: true });
     const runAgentFn = mockRunAgent("done");
-    const pctx = mockPipelineContext({ runAgentFn });
+    const execSafeFn = execSafeFnForCreatedIssue(VALID_ISSUE_BODY);
+    const pctx = mockPipelineContext({ runAgentFn, execSafeFn });
 
     const result = await runContinue("focus on auth", 5, pctx);
 
@@ -66,7 +113,8 @@ describe("runContinue", () => {
     const select = vi.fn(async () => "Continue to QA");
     const ctx = mockForgeflowContext({ hasUI: true, ui: { select } });
     const runAgentFn = mockRunAgent("done");
-    const pctx = mockPipelineContext({ runAgentFn, ctx });
+    const execSafeFn = execSafeFnForCreatedIssue(VALID_ISSUE_BODY);
+    const pctx = mockPipelineContext({ runAgentFn, ctx, execSafeFn });
 
     await runContinue("focus", 5, pctx);
 

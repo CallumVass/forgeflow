@@ -98,6 +98,8 @@ Each issue:
 
 There is no separate bootstrap-only issue. If the first slice needs framework setup, deps, or test wiring to deliver the user flow, that work belongs inside the slice.
 
+Generic roots such as `src/`, `app/`, `server/`, `client/`, `test/`, and `tests/` are treated as roots, not owning boundaries. On greenfield repos, the first slices must establish real feature/domain boundaries beneath those roots so later implementation does not drift into a flat source tree.
+
 ## Jira and Confluence
 
 If you use Atlassian, configure OAuth once:

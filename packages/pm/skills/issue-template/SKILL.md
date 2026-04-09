@@ -52,7 +52,7 @@ Body:
 ## Structural Placement
 <MANDATORY. Name exactly one owning boundary for this slice. If no suitable boundary exists yet, say this issue creates it.>
 - Owning boundary: `<path/to/feature-or-domain/>`
-- Public entry point: `<path/to/feature-or-domain/index.ts>`
+- Public entry point: `<small public entry point for that boundary, e.g. path/to/feature-or-domain/index.ts, __init__.py, routes.rb, or equivalent in the project's language>`
 - Files in scope: `<files this slice may create or modify>`
 - Out of scope: `<placements or cross-boundary work this slice must avoid>`
 
@@ -131,6 +131,8 @@ Specifically:
 - Is the altitude correct? (slicer mode, not architect mode)
 - Is the `## Structural Placement` section present, with exactly one
   owning boundary and one public entry point?
+- Does the owning boundary avoid generic roots such as `src/`, `app/`,
+  `server/`, `client/`, `test/`, or `tests/`?
 - Is the `## TDD Rehearsal` section present and populated with actual
   counted cycles?
 - Does every total fit the budget? (≤15 tests, ≤10 files, ≤1 integration site)
@@ -149,7 +151,10 @@ exists to be used as a linter, not just as a template.
 - Each vertical slice must cross all necessary layers to deliver a working flow.
 - Every issue MUST name exactly one owning boundary in `## Structural Placement`.
 - If no suitable boundary exists, the issue may create one, but it must still name a single public entry point.
-- New production files belong under the owning boundary unless they are package entry points.
+- Generic roots such as `src/`, `app/`, `server/`, `client/`, `test/`, and `tests/` are roots, not owning boundaries.
+- In greenfield or nearly empty repos, the first slice must establish at least one reusable feature or domain boundary beneath the broad source root so later slices have somewhere to land.
+- New production files belong under the owning boundary unless they are true application entry points.
+- New test files belong under the owning boundary's test area unless they are true test entry points or shared harness files.
 - Do NOT create `utils/`, `helpers/`, `misc/`, or `lib/` catch-all folders.
 - **Trigger tests must name real production entry points.** "A minimal pipeline" or "a small harness" is not a trigger test. The sentence must literally reference the production function, route, or CLI command whose wiring the slice proves.
 - **Design is per-slice, not a final pass.** If DESIGN.md exists, every slice that touches UI must implement its screens using the design system.
