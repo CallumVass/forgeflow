@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.2](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.15.1...forgeflow-dev-v0.15.2) (2026-04-09)
+
+
+### Bug Fixes
+
+* **dev:** add multi-RFC toggle picker ([#140](https://github.com/CallumVass/forgeflow/issues/140)) ([4284f6b](https://github.com/CallumVass/forgeflow/commit/4284f6b657210e6190868b462dfe4f08670fac7a))
+
 ## [0.15.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.15.0...forgeflow-dev-v0.15.1) (2026-04-08)
 
 
