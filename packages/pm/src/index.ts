@@ -8,6 +8,7 @@ import {
 import { commands } from "./commands.js";
 import { runAtlassianRead } from "./pipelines/atlassian-read.js";
 import { runContinue } from "./pipelines/continue.js";
+import { runInit } from "./pipelines/init.js";
 import { runInvestigate } from "./pipelines/investigate.js";
 import { runCreateIssue, runCreateIssues } from "./pipelines/issue-creation/github.js";
 import { runJiraIssues } from "./pipelines/issue-creation/jira.js";
@@ -26,8 +27,9 @@ const registerForgeflow = createForgeflowExtension({
   toolName: "forgeflow-pm",
   toolLabel: "Forgeflow PM",
   description: [
-    "Run forgeflow PM pipelines: continue (update PRD Done/Next→QA→create issues for next phase),",
-    "prd-qa (refine PRD), create-gh-issues (decompose PRD into GitHub issues),",
+    "Run forgeflow PM pipelines: init (draft an initial PRD for greenfield projects),",
+    "continue (update PRD Done/Next→QA→create issues for next phase),",
+    "prd-qa (draft PRD if missing, then refine it), create-gh-issues (decompose PRD into GitHub issues),",
     "create-gh-issue (single issue from a feature idea),",
     "investigate (spike/RFC using codebase exploration + optional Confluence template),",
     "create-jira-issues (decompose Confluence PM docs into Jira issues),",
@@ -43,6 +45,7 @@ const registerForgeflow = createForgeflowExtension({
     example: { type: "string", description: "Confluence/Jira URL for an example ticket (jira-issues)" },
   },
   pipelines: [
+    { name: "init", execute: (cwd, _p, s, u, c) => runInit(pctx(cwd, s, u, c)) },
     {
       name: "continue",
       execute: (cwd, p, s, u, c) =>
