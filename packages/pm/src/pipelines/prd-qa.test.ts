@@ -45,9 +45,11 @@ describe("runPrdQa", () => {
         criticPrompt: expect.stringContaining("chosen high-level technical direction"),
         pipeline: "prd-qa",
         maxIterations: 10,
+        uiReviewMode: "final",
+        finalReviewTitle: "PRD refinement complete — Review PRD",
       }),
     );
-    expect(result.content[0]?.text).toContain("refinement complete");
+    expect(result.content[0]?.text).toContain("make any final adjustments");
     expect(result.isError).toBeUndefined();
   });
 

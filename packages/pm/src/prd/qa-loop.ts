@@ -15,6 +15,8 @@ export interface QaLoopOptions extends PipelineContext {
   maxIterations: number;
   criticPrompt: string;
   signalExistsFn?: SignalExistsFn;
+  uiReviewMode?: "per-iteration" | "final";
+  finalReviewTitle?: string;
 }
 
 interface QaLoopResult {
@@ -26,8 +28,12 @@ export async function runQaLoop(opts: QaLoopOptions): Promise<QaLoopResult> {
   const { cwd, stages, pipeline, ctx, maxIterations, criticPrompt, runAgentFn } = opts;
 
   const signalExistsFn = opts.signalExistsFn ?? (signalExists as SignalExistsFn);
+  const uiReviewMode = opts.uiReviewMode ?? "per-iteration";
+  const finalReviewTitle = opts.finalReviewTitle ?? "PRD refinement complete — Review PRD";
 
   const agentOpts = toAgentOpts(opts, { stages, pipeline });
+
+  let accepted = false;
 
   for (let i = 1; i <= maxIterations; i++) {
     stages.push(emptyStage("prd-critic"));
@@ -37,7 +43,8 @@ export async function runQaLoop(opts: QaLoopOptions): Promise<QaLoopResult> {
       if (criticResult.status === "failed") {
         return { accepted: false, error: { text: `Critic failed.\nStderr: ${criticResult.stderr.slice(0, 300)}` } };
       }
-      return { accepted: true };
+      accepted = true;
+      break;
     }
 
     stages.push(emptyStage("prd-architect"));
@@ -54,12 +61,16 @@ export async function runQaLoop(opts: QaLoopOptions): Promise<QaLoopResult> {
       agentOpts,
     );
 
-    if (ctx.hasUI) {
+    if (ctx.hasUI && uiReviewMode === "per-iteration") {
       await promptEditPrd(opts, `QA iteration ${i} — Review PRD`);
       const action = await ctx.ui.select("PRD updated. What next?", ["Continue refining", "Accept PRD"]);
       if (action === "Accept PRD" || action == null) return { accepted: true };
     }
   }
 
-  return { accepted: false };
+  if (accepted && ctx.hasUI && uiReviewMode === "final") {
+    await promptEditPrd(opts, finalReviewTitle);
+  }
+
+  return { accepted };
 }

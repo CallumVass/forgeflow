@@ -16,7 +16,7 @@ npx pi install @callumvass/forgeflow-pm
 ```text
 /init
 /prd-qa
-# review/edit PRD.md
+# final review/edit of PRD.md
 /create-gh-issues
 ```
 
@@ -35,7 +35,7 @@ That updates `PRD.md` with `## Done` / `## Next`, QAs the next phase, then creat
 | Command | What it does |
 |---|---|
 | `/init` | Draft a first `PRD.md` for a greenfield project |
-| `/prd-qa` | Refine `PRD.md` through critic → architect → integrator |
+| `/prd-qa` | Refine `PRD.md` through the full critic → architect → integrator loop, then prompt for one final review |
 | `/continue` | Update `PRD.md` for the next phase on an existing project |
 | `/create-gh-issues` | Turn `PRD.md` into vertical-slice GitHub issues |
 | `/create-gh-issue` | Create one GitHub issue from a feature idea |
