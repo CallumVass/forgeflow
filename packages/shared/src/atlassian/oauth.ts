@@ -45,7 +45,16 @@ interface LoginCallbacks {
 }
 
 const DEFAULT_REDIRECT_URI = "http://127.0.0.1:33389/callback";
-const DEFAULT_SCOPES = ["offline_access", "read:jira-work", "write:jira-work", "read:confluence-content.all"];
+const DEFAULT_SCOPES = [
+  "offline_access",
+  "read:jira-work",
+  "write:jira-work",
+  "read:confluence-content.all",
+  "read:page:confluence",
+  "read:content.metadata:confluence",
+  "read:content-details:confluence",
+  "read:space:confluence",
+];
 const EXPIRY_SKEW_MS = 60_000;
 
 function normaliseOrigin(input: string): string {

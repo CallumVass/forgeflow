@@ -62,15 +62,15 @@ Use:
 Rules:
 
 - The `--template` Confluence URL is fetched before the investigator runs.
-- Other Atlassian URLs mentioned casually in the description are **not** auto-fetched today.
-- If extra Jira or Confluence links matter to the investigation, fetch them first with `/atlassian-read`, then include the relevant content or summary in the investigation prompt.
+- Extra Jira and Confluence URLs mentioned in the investigation description are also auto-fetched as reference material.
+- If you want to inspect one of those links directly before the investigation, use `/atlassian-read`.
 
 Recommended flow for extra reference docs:
 
-1. Read each Jira or Confluence reference with `/atlassian-read`.
-2. Pull out the constraints, requirements, and terminology that matter.
-3. Start `/investigate` with those references summarised in the prompt.
-4. Use `--template` only for the document template page.
+1. Put the document template page in `--template`.
+2. Include any supporting Jira or Confluence URLs in the investigation description.
+3. Use `/atlassian-read` only when you want to inspect or summarise a reference separately before starting the investigation.
+4. Treat the fetched references as source material, but keep the output structure driven by the template page.
 
 ### Create Jira issues from Confluence docs
 
@@ -103,3 +103,4 @@ If Atlassian access does not work:
 2. Check `ATLASSIAN_URL` points at the correct site.
 3. If multiple Atlassian sites exist, tell the user to set `ATLASSIAN_URL`.
 4. If the user gives a bare Jira key for a read request, ask for the full Jira URL.
+5. If Confluence reads fail with scope errors, make sure the Atlassian app and login flow include `read:confluence-content.all`, `read:page:confluence`, `read:content.metadata:confluence`, `read:content-details:confluence`, and `read:space:confluence`, then re-run `/atlassian-login` after deleting `~/.pi/agent/forgeflow-atlassian-oauth.json`.

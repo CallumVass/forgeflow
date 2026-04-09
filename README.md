@@ -66,6 +66,10 @@ Forgeflow uses Atlassian OAuth for Jira and Confluence access.
    - `read:jira-work`
    - `write:jira-work`
    - `read:confluence-content.all`
+   - `read:page:confluence`
+   - `read:content.metadata:confluence`
+   - `read:content-details:confluence`
+   - `read:space:confluence`
 5. Copy the app's **Client ID** and **Client secret**.
 
 Your organisation may require admin approval before the app can access your Jira / Confluence site.
@@ -78,6 +82,8 @@ export ATLASSIAN_CLIENT_SECRET=your-oauth-client-secret
 export ATLASSIAN_URL=https://yourcompany.atlassian.net
 # Must match a redirect URI configured on your Atlassian OAuth app
 export ATLASSIAN_REDIRECT_URI=http://127.0.0.1:33389/callback
+# Optional: override the default requested scopes explicitly
+export ATLASSIAN_SCOPES="offline_access read:jira-work write:jira-work read:confluence-content.all read:page:confluence read:content.metadata:confluence read:content-details:confluence read:space:confluence"
 # Required for Jira issue creation unless you pass a Jira example ticket URL
 export ATLASSIAN_JIRA_PROJECT=PROJ
 # Optional, defaults to Story
@@ -90,7 +96,7 @@ Then run:
 /atlassian-login
 ```
 
-Forgeflow will print an Atlassian OAuth URL in the widget/terminal. Copy it into your browser to complete login.
+Forgeflow will print an Atlassian OAuth URL in the widget/terminal. Copy it into your browser to complete login. If you change Atlassian scopes later, delete `~/.pi/agent/forgeflow-atlassian-oauth.json` and re-run `/atlassian-login` so the refreshed consent flow picks them up.
 
 Once logged in, you can also read Jira issues or Confluence pages directly:
 

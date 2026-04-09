@@ -85,10 +85,10 @@ This makes the generated issues much safer for greenfield codebases, where folde
 
 ## Atlassian OAuth
 
-Create an Atlassian OAuth app in https://developer.atlassian.com/console/myapps/, add the callback URL `http://127.0.0.1:33389/callback`, grant `offline_access`, `read:jira-work`, `write:jira-work`, and `read:confluence-content.all`, then export `ATLASSIAN_CLIENT_ID`, `ATLASSIAN_CLIENT_SECRET`, `ATLASSIAN_URL`, and `ATLASSIAN_REDIRECT_URI`. After that, run `/atlassian-login` and copy the OAuth URL shown in the widget or terminal into your browser.
+Create an Atlassian OAuth app in https://developer.atlassian.com/console/myapps/, add the callback URL `http://127.0.0.1:33389/callback`, grant `offline_access`, `read:jira-work`, `write:jira-work`, `read:confluence-content.all`, `read:page:confluence`, `read:content.metadata:confluence`, `read:content-details:confluence`, and `read:space:confluence`, then export `ATLASSIAN_CLIENT_ID`, `ATLASSIAN_CLIENT_SECRET`, `ATLASSIAN_URL`, and `ATLASSIAN_REDIRECT_URI`. After that, run `/atlassian-login` and copy the OAuth URL shown in the widget or terminal into your browser. If you add scopes later, delete `~/.pi/agent/forgeflow-atlassian-oauth.json` and log in again.
 
 With OAuth configured:
-- `/investigate` and `/create-jira-issues` fetch Confluence pages through Atlassian OAuth, with a legacy Confluence REST fallback for sites where the newer v2 endpoint rejects classic OAuth scopes
+- `/investigate` and `/create-jira-issues` fetch Confluence pages through Atlassian OAuth, using the newer granular Confluence read scopes by default and a legacy Confluence REST fallback where needed
 - `/create-jira-issues` can also accept a Jira example ticket URL
 - `/atlassian-read <jira-or-confluence-url>` fetches and prints the linked Jira issue or Confluence page
 - `/investigate` now also prefetches extra Jira and Confluence URLs mentioned in the investigation description, beyond the explicit `--template` page
