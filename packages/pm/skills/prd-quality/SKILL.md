@@ -50,6 +50,7 @@ A PRD is ready only when it satisfies ALL of the following.
 - Requirements are phrased around user-observable flows, not technical layers
 - Features can be decomposed into end-to-end slices
 - No requirement depends on a fully built layer that does not yet exist
+- On greenfield repos, the chosen technical direction is concrete enough that issue creation can emit one small scaffold/bootstrap slice first, then follow with feature slices instead of combining setup and the first major product flow into one oversized issue
 
 ### 8. Implementation clarity
 - The PRD says WHAT to build and which technologies matter, not HOW to structure code

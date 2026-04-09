@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.21.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.20.1...forgeflow-pm-v0.21.0) (2026-04-09)
+
+
+### Features
+
+* **dev,pm:** enforce scaffold/bootstrap issue creation for greenfield projects ([#168](https://github.com/CallumVass/forgeflow/issues/168)) ([2be3666](https://github.com/CallumVass/forgeflow/commit/2be366627ba8a5e8a8b9cd8fbe07cd4c6fa20214))
+
+## [0.20.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.20.0...forgeflow-pm-v0.20.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* **pm:** review PRDs once after QA completes ([#166](https://github.com/CallumVass/forgeflow/issues/166)) ([7d70146](https://github.com/CallumVass/forgeflow/commit/7d70146ddcc4cda1d5f761fa62e5093a00067aab))
+
 ## [0.20.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.19.0...forgeflow-pm-v0.20.0) (2026-04-09)
 
 

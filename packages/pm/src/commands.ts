@@ -19,7 +19,7 @@ export const commands: CommandDefinition[] = [
   },
   {
     name: "prd-qa",
-    description: "Refine PRD.md via critic → architect → integrator loop",
+    description: "Refine PRD.md via the full critic → architect → integrator loop, then prompt for one final review",
     pipeline: "prd-qa",
     parseArgs: (args) => ({ params: { maxIterations: parseInt(args, 10) || 10 } }),
   },

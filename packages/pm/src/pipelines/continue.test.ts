@@ -6,7 +6,6 @@ vi.mock("../prd/document.js", async (importOriginal) => {
   return {
     ...actual,
     prdExists: vi.fn(() => true),
-    promptEditPrd: vi.fn(async () => null),
   };
 });
 
@@ -14,7 +13,7 @@ vi.mock("../prd/qa-loop.js", () => ({
   runQaLoop: vi.fn(async () => ({ accepted: true })),
 }));
 
-import { prdExists, promptEditPrd } from "../prd/document.js";
+import { prdExists } from "../prd/document.js";
 import { runQaLoop } from "../prd/qa-loop.js";
 import { runContinue } from "./continue.js";
 
@@ -67,7 +66,6 @@ function execSafeFnForCreatedIssue(body: string, issueNumber = 101) {
 describe("runContinue", () => {
   beforeEach(() => {
     vi.mocked(prdExists).mockReturnValue(true);
-    vi.mocked(promptEditPrd).mockResolvedValue(null);
     vi.mocked(runQaLoop).mockClear();
     vi.mocked(runQaLoop).mockResolvedValue({ accepted: true });
   });
@@ -86,6 +84,8 @@ describe("runContinue", () => {
       expect.objectContaining({
         criticPrompt: expect.stringContaining("focus on the ## Next section"),
         pipeline: "continue",
+        uiReviewMode: "final",
+        finalReviewTitle: "PRD refinement complete — Review updated PRD (Done/Next structure)",
       }),
     );
     // Phase 1 (prd-architect) and Phase 3 (gh-issue-creator) both flow through pctx.runAgentFn
@@ -108,9 +108,9 @@ describe("runContinue", () => {
     expect(vi.mocked(runQaLoop)).not.toHaveBeenCalled();
   });
 
-  it("invokes promptEditPrd once after Phase 1 when ctx.hasUI is true", async () => {
+  it("asks once at the end whether to create issues when ctx.hasUI is true", async () => {
     vi.mocked(runQaLoop).mockResolvedValue({ accepted: true });
-    const select = vi.fn(async () => "Continue to QA");
+    const select = vi.fn(async () => "Create issues");
     const ctx = mockForgeflowContext({ hasUI: true, ui: { select } });
     const runAgentFn = mockRunAgent("done");
     const execSafeFn = execSafeFnForCreatedIssue(VALID_ISSUE_BODY);
@@ -118,10 +118,7 @@ describe("runContinue", () => {
 
     await runContinue("focus", 5, pctx);
 
-    expect(vi.mocked(promptEditPrd)).toHaveBeenCalledOnce();
-    expect(vi.mocked(promptEditPrd)).toHaveBeenCalledWith(
-      expect.any(Object),
-      "Review updated PRD (Done/Next structure)",
-    );
+    expect(select).toHaveBeenCalledOnce();
+    expect(select).toHaveBeenCalledWith("PRD refinement complete. What next?", ["Create issues", "Stop here"]);
   });
 });
