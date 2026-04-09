@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.2](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.18.1...forgeflow-dev-v0.18.2) (2026-04-09)
+
+
+### Bug Fixes
+
+* request granular Confluence scopes by default ([#157](https://github.com/CallumVass/forgeflow/issues/157)) ([55495d3](https://github.com/CallumVass/forgeflow/commit/55495d3ecbaf09c0bb6a8ce6a81448d845ab5a6c))
+
 ## [0.18.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.18.0...forgeflow-dev-v0.18.1) (2026-04-09)
 
 
