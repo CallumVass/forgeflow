@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.18.0...forgeflow-dev-v0.18.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* pick Atlassian resources by product scope ([#155](https://github.com/CallumVass/forgeflow/issues/155)) ([02c43d8](https://github.com/CallumVass/forgeflow/commit/02c43d80db2d8b246fe3d684df4a8fd485a3ebe1))
+
 ## [0.18.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.17.1...forgeflow-dev-v0.18.0) (2026-04-09)
 
 
