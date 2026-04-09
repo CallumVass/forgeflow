@@ -15,6 +15,17 @@ If your session history already contains prior phase turns, you were forked from
 
 If your session history is empty (cold start — e.g. `--skip-plan`, resume paths, or a `fix-findings` invocation inheriting only the review chain), explore the codebase as normal before writing your first test.
 
+## Boundary gate
+
+Before writing the first test:
+
+1. Identify the owning boundary from the issue and plan.
+2. If the issue or plan does not name one, infer the smallest feature or domain folder that should own the slice.
+3. Prefer extending an existing boundary. If none exists, create one with a small public `index.ts`.
+4. Do NOT add new production files to a flat package root unless the file is a package entry point.
+5. Do NOT create `utils/`, `helpers/`, `misc/`, or `lib/` folders for slice-specific code.
+6. If the slice appears to need multiple owning boundaries, stop and write `BLOCKED.md` explaining that the issue should be split.
+
 ## TDD Workflow
 
 For each behavior to implement:
@@ -127,7 +138,8 @@ Use [Conventional Commits](https://www.conventionalcommits.org/). Read `git log 
 ## Before Committing
 
 - Re-run the reachability check from TDD step 4 as a final guard: `grep` every new symbol to confirm at least one production consumer exists. Dead code in the shared package is the most common failure mode — a release-please no-op on top of a 300-line unused module.
-- Run the full check suite (tests, lint, typecheck).
+- Verify every new production file lives under the owning boundary, and that any new boundary exposes a small public `index.ts`.
+- Run `npm run check`.
 - Fix any failures before committing.
 - Do NOT skip or disable failing tests.
 - If you encounter a blocker you cannot resolve, write BLOCKED.md with the reason and stop. The orchestrator checks for this file.

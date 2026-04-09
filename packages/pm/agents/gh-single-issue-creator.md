@@ -16,18 +16,20 @@ Your caller may have just been discussing architecture at a high level. You are 
 2. Read AGENTS.md, CLAUDE.md, or .pi/AGENTS.md to understand the project rules and conventions.
 3. Read the issue-template skill for the standard issue format **and all of its rules**. You will re-read it again in the pre-flight step below — do not treat it as a read-once template.
 4. Explore the codebase to understand the current architecture, relevant files, and patterns.
-5. Draft the issue body in memory following the issue-template skill format.
-6. Run the pre-flight checklist below against your draft.
-7. If every pre-flight check passes, create the issue with `gh issue create --label "auto-generated"`. If any check fails, fix the draft and re-run pre-flight.
+5. Identify the single owning boundary for this slice. If none exists yet, decide whether this issue should create it. Name the boundary folder and its public `index.ts`.
+6. Draft the issue body in memory following the issue-template skill format.
+7. Run the pre-flight checklist below against your draft.
+8. If every pre-flight check passes, create the issue with `gh issue create --label "auto-generated"`. If any check fails, fix the draft and re-run pre-flight.
 
 ## Pre-flight checklist (MANDATORY before gh issue create)
 
 1. **TDD rehearsal present.** The draft MUST include a `## TDD Rehearsal` section with counted red-green cycles and totals (tests / files / integration sites). If the section is missing, add it now — do not skip because "this one is small".
 2. **Budget audit.** If tests > 15 OR files > 10 OR integration sites > 1: STOP. Split into multiple issues. Create each with its own rehearsal. Do not submit over budget under any circumstances.
-3. **Integration-point count.** If the Implementation Hints mention more than one distinct production call site to wire: default to splitting. Only combine when there is a single user-observable flow that ships no value without all sites wired at once.
-4. **Trigger test check.** The trigger test sentence must literally name a production entry point (a function, route, or CLI command) — not "a minimal pipeline", not "a small harness", not "the new module". If it names a harness, rewrite it to name the real entry point instead.
-5. **Skill as linter.** Re-read the issue-template skill end to end, then audit your draft against every rule listed there. Fix any violations before submitting.
-6. **Grep sanity check.** For every function or file you name in the Implementation Hints or Test Plan, run a quick `grep` / `find` to confirm it exists at the path you claimed. Fix any stale references before submitting.
+3. **Single-boundary check.** The draft MUST include `## Structural Placement` with exactly one owning boundary and one public entry point. If the slice naturally spans multiple boundaries, split it.
+4. **Integration-point count.** If the Implementation Hints mention more than one distinct production call site to wire: default to splitting. Only combine when there is a single user-observable flow that ships no value without all sites wired at once.
+5. **Trigger test check.** The trigger test sentence must literally name a production entry point (a function, route, or CLI command) — not "a minimal pipeline", not "a small harness", not "the new module". If it names a harness, rewrite it to name the real entry point instead.
+6. **Skill as linter.** Re-read the issue-template skill end to end, then audit your draft against every rule listed there. Fix any violations before submitting.
+7. **Grep sanity check.** For every function or file you name in the Implementation Hints, Test Plan, or Structural Placement section, run a quick `grep` / `find` to confirm it exists at the path you claimed. Fix any stale references before submitting.
 
 Only after all six pre-flight checks pass may you call `gh issue create`.
 
@@ -36,5 +38,7 @@ Only after all six pre-flight checks pass may you call `gh issue create`.
 - Do NOT ask the user questions or wait for input. Make reasonable assumptions based on your codebase exploration. If an assumption is significant, note it in the issue context.
 - Follow the issue-template skill format exactly.
 - Populate the Implementation Hints section with specific files, functions, and patterns you discovered during codebase exploration.
+- Populate `## Structural Placement` with one owning boundary, one public entry point, and explicit out-of-scope placements.
+- If no suitable boundary exists, the issue may create one. Do not spread one slice across multiple new boundaries.
 - Create the issue with `gh issue create --label "auto-generated"`.
 - If the description sounds like a bug, frame the issue around investigating and fixing it — include reproduction steps and likely root cause from your exploration.

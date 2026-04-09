@@ -4,8 +4,7 @@ import {
   type StageResult,
   withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
-import { missingPrdResult, prdExists } from "../prd-document.js";
-import { runQaLoop } from "./qa-loop.js";
+import { missingPrdResult, prdExists, runQaLoop } from "../prd/index.js";
 
 export async function runPrdQa(maxIterations: number, pctx: PipelineContext) {
   return withRunLifecycle(pctx, "prd-qa", (innerPctx) => runPrdQaInner(maxIterations, innerPctx));

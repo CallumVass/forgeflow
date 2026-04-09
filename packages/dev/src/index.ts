@@ -6,11 +6,11 @@ import {
   toPipelineContext,
 } from "@callumvass/forgeflow-shared/pipeline";
 import { commands } from "./commands.js";
-import { runArchitecture } from "./pipelines/architecture.js";
+import { runArchitecture } from "./pipelines/architecture/index.js";
 import { runDiscoverSkills } from "./pipelines/discover-skills.js";
-import { runImplement } from "./pipelines/implement.js";
-import { runImplementAll } from "./pipelines/implement-all.js";
-import { runReview } from "./pipelines/review.js";
+import { runImplement } from "./pipelines/implement/index.js";
+import { runImplementAll } from "./pipelines/implement-all/index.js";
+import { runReview } from "./pipelines/review/index.js";
 
 const AGENTS_DIR = resolveAgentsDir(import.meta.url);
 

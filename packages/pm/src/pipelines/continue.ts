@@ -6,8 +6,7 @@ import {
   toAgentOpts,
   withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
-import { missingPrdResult, prdExists, promptEditPrd } from "../prd-document.js";
-import { runQaLoop } from "./qa-loop.js";
+import { missingPrdResult, prdExists, promptEditPrd, runQaLoop } from "../prd/index.js";
 
 function updatePrompt(description: string) {
   const focus = description ? ` The user wants the next phase to focus on: ${description}` : "";
