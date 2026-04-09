@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.3](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.15.2...forgeflow-dev-v0.15.3) (2026-04-09)
+
+
+### Bug Fixes
+
+* **dev:** stop /implement from auto-merging PRs ([#142](https://github.com/CallumVass/forgeflow/issues/142)) ([7f1e2d9](https://github.com/CallumVass/forgeflow/commit/7f1e2d9e6b1692380900f47f5d8a4255779dc1f2))
+
 ## [0.15.2](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.15.1...forgeflow-dev-v0.15.2) (2026-04-09)
 
 
