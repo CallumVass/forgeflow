@@ -18,6 +18,7 @@ npx pi install @callumvass/forgeflow-dev
 | `/architecture` | Analyze codebase for architectural friction, create RFC issues |
 | `/discover-skills` | Find and install domain-specific plugins for your tech stack |
 | `/atlassian-login` | Authenticate forgeflow to Atlassian via OAuth |
+| `/atlassian-read` | Read a Jira issue or Confluence page by URL via Atlassian OAuth |
 
 ## Agents
 
@@ -99,7 +100,7 @@ files.
 
 ## Atlassian OAuth
 
-Create an Atlassian OAuth app in https://developer.atlassian.com/console/myapps/, add the callback URL `http://127.0.0.1:33389/callback`, grant `offline_access`, `read:jira-work`, `write:jira-work`, and `read:confluence-content.all`, then export `ATLASSIAN_CLIENT_ID`, `ATLASSIAN_CLIENT_SECRET`, `ATLASSIAN_URL`, and `ATLASSIAN_REDIRECT_URI`. After that, run `/atlassian-login` and `/implement PROJ-123` will resolve Jira issues through Atlassian OAuth.
+Create an Atlassian OAuth app in https://developer.atlassian.com/console/myapps/, add the callback URL `http://127.0.0.1:33389/callback`, grant `offline_access`, `read:jira-work`, `write:jira-work`, and `read:confluence-content.all`, then export `ATLASSIAN_CLIENT_ID`, `ATLASSIAN_CLIENT_SECRET`, `ATLASSIAN_URL`, and `ATLASSIAN_REDIRECT_URI`. After that, run `/atlassian-login`. Atlassian OAuth then powers `/implement PROJ-123` for Jira-backed implementation and `/atlassian-read <jira-or-confluence-url>` for quick ticket/page reads.
 
 ## Usage examples
 

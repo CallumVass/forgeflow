@@ -1,3 +1,8 @@
+import {
+  extractJiraKey,
+  fetchAtlassianContentFromUrl,
+  formatAtlassianContent,
+} from "@callumvass/forgeflow-shared/atlassian";
 import { type ConfluencePage, fetchConfluencePage } from "@callumvass/forgeflow-shared/confluence";
 import {
   emptyStage,
@@ -7,8 +12,54 @@ import {
   withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
 
+const URL_RE = /https?:\/\/[^\s)>\]]+/g;
+
 export async function runInvestigate(description: string, templateUrl: string, pctx: PipelineContext) {
   return withRunLifecycle(pctx, "investigate", (innerPctx) => runInvestigateInner(description, templateUrl, innerPctx));
+}
+
+function trimTrailingUrlPunctuation(url: string): string {
+  return url.replace(/[.,;:!?]+$/, "");
+}
+
+function normaliseUrl(url: string): string {
+  try {
+    return new URL(url).toString();
+  } catch {
+    return url.trim();
+  }
+}
+
+function isAtlassianReferenceUrl(url: string): boolean {
+  return url.includes("/wiki/") || extractJiraKey(url) !== null;
+}
+
+function extractAtlassianUrls(text: string): string[] {
+  return Array.from(
+    new Set(
+      (text.match(URL_RE) ?? [])
+        .map((url) => trimTrailingUrlPunctuation(url))
+        .filter((url) => url.length > 0)
+        .filter((url) => isAtlassianReferenceUrl(url)),
+    ),
+  );
+}
+
+async function buildReferenceSection(description: string, templateUrl: string): Promise<string | { error: string }> {
+  const templateKey = templateUrl ? normaliseUrl(templateUrl) : "";
+  const urls = extractAtlassianUrls(description).filter((url) => normaliseUrl(url) !== templateKey);
+  if (urls.length === 0) return "";
+
+  const references: string[] = [];
+  for (const url of urls) {
+    const result = await fetchAtlassianContentFromUrl(url);
+    if (typeof result === "string") {
+      return { error: `Failed to fetch Atlassian reference ${url}: ${result}` };
+    }
+    references.push(formatAtlassianContent(result));
+  }
+
+  return `\n\nADDITIONAL ATLASSIAN REFERENCES:\n\n${references.join("\n\n---\n\n")}`;
 }
 
 async function runInvestigateInner(description: string, templateUrl: string, pctx: PipelineContext) {
@@ -42,14 +93,20 @@ async function runInvestigateInner(description: string, templateUrl: string, pct
     templateSection = `\n\nTEMPLATE (from Confluence page "${page.title}"):\n\n${page.body}`;
   }
 
+  const referenceSection = await buildReferenceSection(description, templateUrl);
+  if (typeof referenceSection !== "string") {
+    return pipelineResult(referenceSection.error, "investigate", [], true);
+  }
+
   const stages = [emptyStage("investigator")];
   const opts = toAgentOpts(pctx, { stages, pipeline: "investigate" });
 
   const task = `Investigate the following and produce a document using the template provided.
 
-TOPIC: ${description}${templateSection}
+TOPIC: ${description}${templateSection}${referenceSection}
 
 ${!templateUrl ? "No template was provided. Structure your output as: Problem, Context, Options (with comparison table), Recommendation, Next Steps." : ""}
+${referenceSection ? "\nAdditional Atlassian references were fetched above. Use them as source material. Only the section labelled TEMPLATE defines the output structure." : ""}
 
 Read the writing-style skill before writing.`;
 

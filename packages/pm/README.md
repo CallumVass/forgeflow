@@ -19,6 +19,7 @@ npx pi install @callumvass/forgeflow-pm
 | `/create-jira-issues` | Decompose Confluence PM docs into Jira issues |
 | `/investigate` | Spike or RFC: explore codebase + web, fill a Confluence template |
 | `/atlassian-login` | Authenticate forgeflow to Atlassian via OAuth |
+| `/atlassian-read` | Read a Jira issue or Confluence page by URL via Atlassian OAuth |
 
 ## Agents
 
@@ -35,6 +36,7 @@ npx pi install @callumvass/forgeflow-pm
 - **issue-template** — Standard format for GitHub issues, including the mandatory size budget (≤15 tests / ≤10 files / ≤1 integration site), the `## Structural Placement` section, the `## TDD Rehearsal` output section, and the post-draft skill-as-linter audit. Both `create-gh-issue` and `create-gh-issues` enforce these rules via pre-flight checks.
 - **prd-quality** — PRD completeness and quality criteria
 - **writing-style** — Consistent tone and formatting rules
+- **atlassian** — Jira/Confluence workflow guidance, including when to use `/atlassian-read`, `/investigate --template`, and `/create-jira-issues`
 
 ## Sub-agent sessions
 
@@ -88,6 +90,9 @@ Create an Atlassian OAuth app in https://developer.atlassian.com/console/myapps/
 With OAuth configured:
 - `/investigate` and `/create-jira-issues` fetch Confluence pages through Atlassian OAuth
 - `/create-jira-issues` can also accept a Jira example ticket URL
+- `/atlassian-read <jira-or-confluence-url>` fetches and prints the linked Jira issue or Confluence page
+- `/investigate` now also prefetches extra Jira and Confluence URLs mentioned in the investigation description, beyond the explicit `--template` page
+- The bundled `atlassian` skill tells the agent how to route Jira/Confluence requests and how to handle extra reference links during investigations
 - forgeflow publishes Jira issues itself via OAuth
 
 Set `ATLASSIAN_JIRA_PROJECT` unless you provide a Jira example ticket URL that lets forgeflow infer the project key.

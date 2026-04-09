@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setupIsolatedHomeFixture } from "../testing/test-utils.js";
 import {
+  fetchAtlassianContentFromUrl,
   fetchConfluencePageViaOauth,
   fetchJiraIssueViaOauth,
+  formatAtlassianContent,
   getAtlassianOauthTokenPath,
   writeAtlassianOauthToken,
 } from "./index.js";
@@ -112,5 +114,62 @@ describe("Atlassian OAuth client", () => {
       ].join("\n\n"),
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("dispatches Atlassian URLs to Jira or Confluence readers and formats the result", async () => {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.includes("accessible-resources")) {
+        return jsonResponse([{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example", scopes: [] }]);
+      }
+      if (url.includes("/rest/api/3/issue/PROJ-7")) {
+        return jsonResponse({
+          fields: {
+            summary: "OAuth Jira issue",
+            description: {
+              type: "doc",
+              version: 1,
+              content: [{ type: "paragraph", content: [{ type: "text", text: "Hello Jira" }] }],
+            },
+            issuetype: { name: "Task" },
+          },
+          names: {},
+        });
+      }
+      if (url.includes("/wiki/api/v2/pages/999")) {
+        return jsonResponse({
+          id: "999",
+          title: "OAuth Page",
+          body: { storage: { value: "<p>Hello <strong>OAuth</strong></p>" } },
+        });
+      }
+      return jsonResponse({ message: `Unexpected URL ${url}` }, 500);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const jira = await fetchAtlassianContentFromUrl("https://example.atlassian.net/browse/PROJ-7");
+    const confluence = await fetchAtlassianContentFromUrl("https://example.atlassian.net/wiki/spaces/X/pages/999/Page");
+
+    expect(jira).toEqual({
+      kind: "jira",
+      url: "https://example.atlassian.net/browse/PROJ-7",
+      key: "PROJ-7",
+      title: "OAuth Jira issue",
+      issueType: "Task",
+      body: "Hello Jira",
+    });
+    expect(confluence).toEqual({
+      kind: "confluence",
+      url: "https://example.atlassian.net/wiki/spaces/X/pages/999/Page",
+      id: "999",
+      title: "OAuth Page",
+      body: "Hello **OAuth**",
+    });
+    expect(formatAtlassianContent(jira as Exclude<typeof jira, string>)).toContain(
+      "# Jira PROJ-7 (Task): OAuth Jira issue",
+    );
+    expect(formatAtlassianContent(confluence as Exclude<typeof confluence, string>)).toContain(
+      "# Confluence: OAuth Page",
+    );
   });
 });

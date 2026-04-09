@@ -6,6 +6,7 @@ import {
   toPipelineContext,
 } from "@callumvass/forgeflow-shared/pipeline";
 import { commands } from "./commands.js";
+import { runAtlassianRead } from "./pipelines/atlassian-read.js";
 import { runContinue } from "./pipelines/continue.js";
 import { runInvestigate } from "./pipelines/investigate.js";
 import { runCreateIssue, runCreateIssues } from "./pipelines/issue-creation/github.js";
@@ -29,12 +30,14 @@ const registerForgeflow = createForgeflowExtension({
     "prd-qa (refine PRD), create-gh-issues (decompose PRD into GitHub issues),",
     "create-gh-issue (single issue from a feature idea),",
     "investigate (spike/RFC using codebase exploration + optional Confluence template),",
-    "create-jira-issues (decompose Confluence PM docs into Jira issues).",
+    "create-jira-issues (decompose Confluence PM docs into Jira issues),",
+    "atlassian-read (read a Jira issue or Confluence page by URL).",
     "Each pipeline spawns specialized sub-agents with isolated context.",
   ].join(" "),
   params: {
     maxIterations: { type: "number", description: "Max iterations for prd-qa (default 10)" },
     issue: { type: "string", description: "Feature idea for create-gh-issue, description for continue/investigate" },
+    url: { type: "string", description: "Atlassian URL for the atlassian-read pipeline" },
     template: { type: "string", description: "Confluence URL for a template (investigate)" },
     docs: { type: "string", description: "Comma-separated Confluence URLs for PM documents (jira-issues)" },
     example: { type: "string", description: "Confluence/Jira URL for an example ticket (jira-issues)" },
@@ -66,11 +69,16 @@ const registerForgeflow = createForgeflowExtension({
         return runJiraIssues(docUrls, (p.example as string) ?? "", pctx(cwd, s, u, c));
       },
     },
+    {
+      name: "atlassian-read",
+      execute: (cwd, p, s, u, c) => runAtlassianRead((p.url as string) ?? "", pctx(cwd, s, u, c)),
+    },
   ],
   commands,
   renderCallExtra: (args, theme) => {
     let text = "";
     if (args.issue) text += theme.fg("dim", ` "${args.issue}"`);
+    if (args.url) text += theme.fg("dim", ` ${args.url}`);
     if (args.maxIterations) text += theme.fg("muted", ` (max ${args.maxIterations})`);
     return text;
   },
@@ -78,5 +86,5 @@ const registerForgeflow = createForgeflowExtension({
 
 export default (pi: Parameters<typeof registerForgeflow>[0]) => {
   registerForgeflow(pi);
-  registerAtlassianCommands(pi);
+  registerAtlassianCommands(pi, { toolName: "forgeflow-pm" });
 };
