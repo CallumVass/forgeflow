@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.21.0...forgeflow-dev-v0.22.0) (2026-04-09)
+
+
+### Features
+
+* add Datadog MCP investigation flow ([#165](https://github.com/CallumVass/forgeflow/issues/165)) ([c40dfc2](https://github.com/CallumVass/forgeflow/commit/c40dfc22afffbf1562a24e54c713443e08196f15))
+
 ## [0.21.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.20.0...forgeflow-dev-v0.21.0) (2026-04-09)
 
 
