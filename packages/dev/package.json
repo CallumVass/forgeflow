@@ -1,6 +1,6 @@
 {
   "name": "@callumvass/forgeflow-dev",
-  "version": "0.15.2",
+  "version": "0.15.3",
   "type": "module",
   "description": "Dev pipeline for Pi — TDD implementation, code review, architecture, and skill discovery.",
   "keywords": [
