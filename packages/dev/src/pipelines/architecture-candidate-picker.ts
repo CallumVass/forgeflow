@@ -7,13 +7,11 @@ import type {
 import { Key, matchesKey, truncateToWidth } from "@mariozechner/pi-tui";
 import type { ArchitectureCandidate } from "./architecture.js";
 
-const CANDIDATE_PICKER_MIN_WIDTH = 80;
-
 export async function pickArchitectureCandidates(
   ctx: ForgeflowContext,
   candidates: ArchitectureCandidate[],
-): Promise<ArchitectureCandidate[] | undefined> {
-  return ctx.ui.custom<ArchitectureCandidate[] | undefined>(
+): Promise<ArchitectureCandidate[] | null | undefined> {
+  return ctx.ui.custom<ArchitectureCandidate[] | null | undefined>(
     (tui, theme, _keybindings, done) => createArchitectureCandidatePicker(candidates, tui, theme, done),
     {
       overlay: true,
@@ -21,7 +19,6 @@ export async function pickArchitectureCandidates(
         anchor: "center",
         width: "80%",
         maxHeight: "80%",
-        visible: (width: number) => width >= CANDIDATE_PICKER_MIN_WIDTH,
       },
     },
   );
@@ -31,7 +28,7 @@ function createArchitectureCandidatePicker(
   candidates: ArchitectureCandidate[],
   tui: ForgeflowTui,
   theme: ForgeflowTheme,
-  done: (result: ArchitectureCandidate[] | undefined) => void,
+  done: (result: ArchitectureCandidate[] | null | undefined) => void,
 ): ForgeflowCustomComponent {
   let selectedIndex = 0;
   const enabled = new Set<number>();
@@ -89,7 +86,7 @@ function createArchitectureCandidatePicker(
         return;
       }
       if (matchesKey(data, Key.escape) || matchesKey(data, Key.esc) || matchesKey(data, Key.ctrl("c"))) {
-        done(undefined);
+        done(null);
       }
     },
   };

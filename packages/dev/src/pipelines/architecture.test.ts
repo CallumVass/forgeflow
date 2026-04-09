@@ -9,7 +9,7 @@ import {
 import { describe, expect, it, vi } from "vitest";
 import { type ArchitectureCandidate, parseCandidates, runArchitecture } from "./architecture.js";
 
-type PickerResult = ArchitectureCandidate[] | undefined;
+type PickerResult = ArchitectureCandidate[] | null | undefined;
 
 type PickerComponent = {
   render: (width: number) => string[];
@@ -112,6 +112,37 @@ describe("runArchitecture", () => {
     expect(runAgentFn.mock.calls[2]?.[1]).toContain("Circular dependency in utils");
   });
 
+  it("does not hide the multi-candidate picker behind a terminal width gate", async () => {
+    const { custom, captures } = makeCustomUiMock<PickerResult>();
+    const runAgentFn = sequencedRunAgent([{ output: THREE_CANDIDATES }]);
+    const ctx = mockForgeflowContext({
+      hasUI: true,
+      ui: {
+        editor: async (_title: string, content: string) => content,
+        custom: custom as never,
+      },
+    });
+
+    const resultPromise = runArchitecture(mockPipelineContext({ runAgentFn, ctx }));
+
+    await vi.waitFor(() => expect(custom).toHaveBeenCalledOnce());
+    const capture = firstCustomCapture(captures);
+
+    expect(capture.options).toMatchObject({
+      overlay: true,
+      overlayOptions: {
+        anchor: "center",
+        width: "80%",
+        maxHeight: "80%",
+      },
+    });
+    expect(capture.options?.overlayOptions?.visible).toBeUndefined();
+
+    capture.done(null);
+    const result = await resultPromise;
+    expect(result.content[0].text).toBe("Architecture review complete. No RFC created.");
+  });
+
   it("shows the re-parsed edited candidates in the toggle picker", async () => {
     const editedCandidates = [
       "### 1. Extract shared CLI formatter",
@@ -203,6 +234,37 @@ describe("runArchitecture", () => {
 
     expect(result.content[0].text).toBe("Architecture review complete. No RFC created.");
     expect(runAgentFn).toHaveBeenCalledOnce();
+  });
+
+  it("falls back to select when custom UI is unsupported for multiple candidates", async () => {
+    const selectFn = vi.fn(async () => "2. Missing error boundaries");
+    const customFn = vi.fn(async () => undefined);
+    const runAgentFn = sequencedRunAgent([
+      { output: THREE_CANDIDATES },
+      { output: "Created https://github.com/acme/repo/issues/102" },
+    ]);
+    const ctx = mockForgeflowContext({
+      hasUI: true,
+      ui: {
+        editor: async (_title: string, content: string) => content,
+        select: selectFn,
+        custom: customFn as never,
+      },
+    });
+
+    const result = await runArchitecture(mockPipelineContext({ runAgentFn, ctx }));
+
+    expect(customFn).toHaveBeenCalledOnce();
+    expect(selectFn).toHaveBeenCalledWith("Create RFC issues for which candidates?", [
+      "1. High coupling in auth module",
+      "2. Missing error boundaries",
+      "3. Circular dependency in utils",
+      "All candidates",
+      "Skip",
+    ]);
+    expect(result.content[0].text).toContain("https://github.com/acme/repo/issues/102");
+    expect(runAgentFn).toHaveBeenCalledTimes(2);
+    expect(runAgentFn.mock.calls[1]?.[1]).toContain("Missing error boundaries");
   });
 
   it("keeps the existing select path for single-candidate and no-candidate interactive runs", async () => {

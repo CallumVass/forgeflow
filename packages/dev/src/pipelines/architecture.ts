@@ -79,10 +79,29 @@ async function runArchitectureInner(pctx: PipelineContext) {
 
   if (displayCandidates.length > 1) {
     const pickedCandidates = await pickArchitectureCandidates(ctx, displayCandidates);
-    if (pickedCandidates == null || pickedCandidates.length === 0) {
-      return pipelineResult("Architecture review complete. No RFC created.", "architecture", stages);
+    if (pickedCandidates === undefined) {
+      const action = await ctx.ui.select("Create RFC issues for which candidates?", [
+        ...displayCandidates.map((candidate) => candidate.label),
+        "All candidates",
+        "Skip",
+      ]);
+
+      if (action === "Skip" || action == null) {
+        return pipelineResult("Architecture review complete. No RFC created.", "architecture", stages);
+      }
+
+      if (action === "All candidates") {
+        selectedCandidates = displayCandidates;
+      } else {
+        const selectedCandidate = displayCandidates.find((candidate) => candidate.label === action);
+        selectedCandidates = selectedCandidate ? [selectedCandidate] : [{ label: "RFC", body: candidateContext }];
+      }
+    } else {
+      if (pickedCandidates == null || pickedCandidates.length === 0) {
+        return pipelineResult("Architecture review complete. No RFC created.", "architecture", stages);
+      }
+      selectedCandidates = pickedCandidates;
     }
-    selectedCandidates = pickedCandidates;
   } else {
     const onlyCandidate = displayCandidates[0];
     const selectOptions = onlyCandidate ? [onlyCandidate.label, "Skip"] : ["Yes — generate RFC", "Skip"];
