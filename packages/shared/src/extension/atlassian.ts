@@ -1,9 +1,11 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { loginWithAtlassianOauth } from "../atlassian/index.js";
+import { buildSendMessage } from "./message.js";
 import { getAtlassianCommandRegistry } from "./registry.js";
 
 interface AtlassianCommandDeps {
   loginFn?: typeof loginWithAtlassianOauth;
+  toolName?: string;
 }
 
 export function registerAtlassianCommands(pi: ExtensionAPI, deps: AtlassianCommandDeps = {}): void {
@@ -39,6 +41,23 @@ export function registerAtlassianCommands(pi: ExtensionAPI, deps: AtlassianComma
       const sites = result.resources.map((resource) => resource.name).filter(Boolean);
       const summary = sites.length > 0 ? sites.join(", ") : "your Atlassian site";
       ctx.ui.notify(`Atlassian login complete: ${summary}`, "info");
+    },
+  });
+
+  pi.registerCommand("atlassian-read", {
+    description: "Read a Jira issue or Confluence page by URL via Atlassian OAuth",
+    handler: async (args, ctx) => {
+      let url = args.trim();
+      if (!url) {
+        const input = await ctx.ui.input("Atlassian URL?", "Paste Jira or Confluence URL");
+        url = input?.trim() ?? "";
+      }
+      if (!url) {
+        ctx.ui.notify("No Atlassian URL provided.", "error");
+        return;
+      }
+
+      pi.sendUserMessage(buildSendMessage(deps.toolName ?? "forgeflow-dev", "atlassian-read", { url }));
     },
   });
 }

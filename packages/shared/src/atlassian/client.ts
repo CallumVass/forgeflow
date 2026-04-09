@@ -31,6 +31,10 @@ export interface JiraCreatedIssue {
   url: string;
 }
 
+export type AtlassianContent =
+  | ({ kind: "jira"; url: string } & JiraIssue)
+  | ({ kind: "confluence"; url: string } & ConfluencePage);
+
 interface AtlassianClientDeps {
   fetchImpl?: typeof fetch;
   signal?: AbortSignal;
@@ -265,6 +269,47 @@ export async function fetchJiraIssueFromUrl(issueUrl: string, deps?: AtlassianCl
   const jiraKey = extractJiraKey(issueUrl);
   if (!jiraKey) return `Could not extract Jira issue key from URL: ${issueUrl}`;
   return fetchJiraIssueViaOauth(jiraKey, { ...deps, siteUrl: issueUrl });
+}
+
+export async function fetchAtlassianContentFromUrl(
+  inputUrl: string,
+  deps?: AtlassianClientDeps,
+): Promise<AtlassianContent | string> {
+  try {
+    new URL(inputUrl);
+  } catch {
+    return `Invalid Atlassian URL: ${inputUrl}`;
+  }
+
+  if (extractPageId(inputUrl)) {
+    const page = await fetchConfluencePageViaOauth(inputUrl, deps);
+    if (typeof page === "string") return page;
+    return { kind: "confluence", url: inputUrl, ...page };
+  }
+
+  const jiraKey = extractJiraKey(inputUrl);
+  if (jiraKey) {
+    const issue = await fetchJiraIssueFromUrl(inputUrl, deps);
+    if (typeof issue === "string") return issue;
+    return { kind: "jira", url: inputUrl, ...issue };
+  }
+
+  return `Unsupported Atlassian URL: ${inputUrl}. Pass a Jira issue URL or Confluence page URL.`;
+}
+
+export function formatAtlassianContent(content: AtlassianContent): string {
+  const body =
+    content.body.trim() ||
+    (content.kind === "jira"
+      ? "No Jira description was found on this issue."
+      : "No Confluence body was found on this page.");
+
+  if (content.kind === "jira") {
+    const issueType = content.issueType ? ` (${content.issueType})` : "";
+    return `# Jira ${content.key}${issueType}: ${content.title}\n\nSource: ${content.url}\n\n${body}`;
+  }
+
+  return `# Confluence: ${content.title}\n\nSource: ${content.url}\n\n${body}`;
 }
 
 export async function createJiraIssueViaOauth(

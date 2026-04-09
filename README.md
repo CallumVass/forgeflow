@@ -50,7 +50,7 @@ pi update @callumvass/forgeflow-dev
 - [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`)
 - A GitHub repo with issues enabled
 
-### Atlassian OAuth (`/atlassian-login`, `/create-jira-issues`, `/investigate`, `/implement PROJ-123`)
+### Atlassian OAuth (`/atlassian-login`, `/atlassian-read`, `/create-jira-issues`, `/investigate`, `/implement PROJ-123`)
 
 Forgeflow uses Atlassian OAuth for Jira and Confluence access.
 
@@ -90,6 +90,13 @@ Then run:
 /atlassian-login
 ```
 
+Once logged in, you can also read Jira issues or Confluence pages directly:
+
+```bash
+/atlassian-read https://yourcompany.atlassian.net/browse/PROJ-123
+/atlassian-read https://yourcompany.atlassian.net/wiki/spaces/ENG/pages/123456/Design
+```
+
 Forgeflow stores the OAuth refresh/access token under `~/.pi/agent/forgeflow-atlassian-oauth.json`.
 
 ## Commands
@@ -124,9 +131,12 @@ In interactive mode, you review/edit the PRD after each iteration and choose to 
 
 ```
 /create-jira-issues <confluence-url> [confluence-url...] [--example <confluence-url>]
+/atlassian-read <jira-or-confluence-url>
 ```
 
 Decomposes one or more Confluence PM documents into vertical-slice Jira issues. Optionally provide an example ticket link so the agent matches your team's format.
+
+`/atlassian-read` fetches a Jira issue or Confluence page by URL and prints the contents into the chat.
 
 #### Investigation (spikes and RFCs)
 
@@ -135,7 +145,7 @@ Decomposes one or more Confluence PM documents into vertical-slice Jira issues. 
 /investigate "evaluate caching strategies"
 ```
 
-Explores the codebase and web, then fills in a Confluence template (spike, RFC, or similar). Without `--template`, uses a default structure: Problem, Context, Options, Recommendation, Next Steps.
+Explores the codebase and web, then fills in a Confluence template (spike, RFC, or similar). Without `--template`, uses a default structure: Problem, Context, Options, Recommendation, Next Steps. Extra Jira and Confluence URLs mentioned in the investigation description are also prefetched as reference material. The PM package also ships an `atlassian` skill that teaches the agent when to use `/atlassian-read`, how Jira and Confluence inputs differ, and how to handle Atlassian reference links during investigations.
 
 #### Continue
 
