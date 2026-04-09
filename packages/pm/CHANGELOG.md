@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.15.0...forgeflow-pm-v0.16.0) (2026-04-09)
+
+
+### Features
+
+* make Atlassian integration OAuth-only ([#147](https://github.com/CallumVass/forgeflow/issues/147)) ([1101466](https://github.com/CallumVass/forgeflow/commit/1101466f86bacc4db9708cb0bb0c6e72f5398671))
+
 ## [0.15.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.14.0...forgeflow-pm-v0.15.0) (2026-04-09)
 
 

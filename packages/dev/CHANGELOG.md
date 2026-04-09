@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.16.0...forgeflow-dev-v0.17.0) (2026-04-09)
+
+
+### Features
+
+* make Atlassian integration OAuth-only ([#147](https://github.com/CallumVass/forgeflow/issues/147)) ([1101466](https://github.com/CallumVass/forgeflow/commit/1101466f86bacc4db9708cb0bb0c6e72f5398671))
+
 ## [0.16.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.15.3...forgeflow-dev-v0.16.0) (2026-04-09)
 
 
