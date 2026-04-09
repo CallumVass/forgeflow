@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import * as fs from "node:fs/promises";
 import * as http from "node:http";
@@ -38,7 +37,6 @@ interface AtlassianOauthDeps {
   fetchImpl?: typeof fetch;
   now?: () => number;
   randomBytesFn?: (size: number) => Buffer;
-  openExternalUrl?: (url: string) => Promise<boolean>;
 }
 
 interface LoginCallbacks {
@@ -369,46 +367,6 @@ function waitForOauthCallback(redirectUri: string, expectedState: string): Promi
   });
 }
 
-async function tryOpen(command: string, args: string[]): Promise<boolean> {
-  return await new Promise((resolve) => {
-    const proc = spawn(command, args, { stdio: "ignore" });
-    proc.on("error", () => resolve(false));
-    proc.on("close", (code) => resolve(code === 0));
-  });
-}
-
-function quoteForCmdStart(url: string): string {
-  return `"${url.replaceAll('"', '""')}"`;
-}
-
-export function buildOpenExternalUrlAttempts(
-  url: string,
-  platform: NodeJS.Platform = process.platform,
-  env: NodeJS.ProcessEnv = process.env,
-): Array<[string, string[]]> {
-  const isWsl = platform === "linux" && Boolean(env.WSL_DISTRO_NAME || env.WSL_INTEROP);
-  const attempts: Array<[string, string[]]> = [];
-
-  if (platform === "darwin") attempts.push(["open", [url]]);
-  else if (platform === "win32") attempts.push(["cmd", ["/c", "start", "", quoteForCmdStart(url)]]);
-  else {
-    if (isWsl) {
-      attempts.push(["wslview", [url]]);
-      attempts.push(["cmd.exe", ["/c", "start", "", quoteForCmdStart(url)]]);
-    }
-    attempts.push(["xdg-open", [url]]);
-  }
-
-  return attempts;
-}
-
-export async function openExternalUrl(url: string): Promise<boolean> {
-  for (const [command, args] of buildOpenExternalUrlAttempts(url)) {
-    if (await tryOpen(command, args)) return true;
-  }
-  return false;
-}
-
 export async function loginWithAtlassianOauth(
   callbacks: LoginCallbacks = {},
   deps?: AtlassianOauthDeps,
@@ -420,12 +378,7 @@ export async function loginWithAtlassianOauth(
   const state = (deps?.randomBytesFn ?? randomBytes)(16).toString("hex");
   const authUrl = buildAtlassianAuthUrl(config, state);
   callbacks.onAuthUrl?.(authUrl);
-
-  const openFn = deps?.openExternalUrl ?? openExternalUrl;
-  const opened = await openFn(authUrl);
-  callbacks.onStatus?.(
-    opened ? "Browser opened — complete the Atlassian sign-in flow." : "Open the Atlassian URL shown in the widget.",
-  );
+  callbacks.onStatus?.("Copy the Atlassian URL shown in the widget or terminal into your browser.");
 
   let code: string;
   try {

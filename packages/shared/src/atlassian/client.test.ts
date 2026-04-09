@@ -42,7 +42,14 @@ describe("Atlassian OAuth client", () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input);
       if (url.includes("accessible-resources")) {
-        return jsonResponse([{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example", scopes: [] }]);
+        return jsonResponse([
+          {
+            id: "cloud-1",
+            url: "https://example.atlassian.net",
+            name: "Example",
+            scopes: ["read:confluence-content.all", "read:jira-work", "write:jira-work"],
+          },
+        ]);
       }
       if (url.includes("/wiki/api/v2/pages/999")) {
         return jsonResponse({
@@ -65,7 +72,14 @@ describe("Atlassian OAuth client", () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input);
       if (url.includes("accessible-resources")) {
-        return jsonResponse([{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example", scopes: [] }]);
+        return jsonResponse([
+          {
+            id: "cloud-1",
+            url: "https://example.atlassian.net",
+            name: "Example",
+            scopes: ["read:confluence-content.all", "read:jira-work", "write:jira-work"],
+          },
+        ]);
       }
       if (url.includes("/wiki/api/v2/pages/999")) {
         return jsonResponse({ message: "Unauthorized; scope does not match" }, 401);
@@ -91,7 +105,14 @@ describe("Atlassian OAuth client", () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input);
       if (url.includes("accessible-resources")) {
-        return jsonResponse([{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example", scopes: [] }]);
+        return jsonResponse([
+          {
+            id: "cloud-1",
+            url: "https://example.atlassian.net",
+            name: "Example",
+            scopes: ["read:confluence-content.all", "read:jira-work", "write:jira-work"],
+          },
+        ]);
       }
       if (url.includes("/rest/api/3/issue/PROJ-7")) {
         return jsonResponse({
@@ -146,7 +167,14 @@ describe("Atlassian OAuth client", () => {
     const fetchMock = vi.fn(async (input: string | URL) => {
       const url = String(input);
       if (url.includes("accessible-resources")) {
-        return jsonResponse([{ id: "cloud-1", url: "https://example.atlassian.net", name: "Example", scopes: [] }]);
+        return jsonResponse([
+          {
+            id: "cloud-1",
+            url: "https://example.atlassian.net",
+            name: "Example",
+            scopes: ["read:confluence-content.all", "read:jira-work", "write:jira-work"],
+          },
+        ]);
       }
       if (url.includes("/rest/api/3/issue/PROJ-7")) {
         return jsonResponse({
@@ -197,5 +225,61 @@ describe("Atlassian OAuth client", () => {
     expect(formatAtlassianContent(confluence as Exclude<typeof confluence, string>)).toContain(
       "# Confluence: OAuth Page",
     );
+  });
+
+  it("picks the resource whose scopes match the target product when the same site has multiple resources", async () => {
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.includes("accessible-resources")) {
+        return jsonResponse([
+          {
+            id: "cloud-jira",
+            url: "https://example.atlassian.net",
+            name: "Example",
+            scopes: ["read:jira-work", "write:jira-work"],
+          },
+          {
+            id: "cloud-confluence",
+            url: "https://example.atlassian.net",
+            name: "Example",
+            scopes: ["read:confluence-content.all"],
+          },
+        ]);
+      }
+      if (url.includes("/ex/jira/cloud-jira/rest/api/3/issue/PROJ-7")) {
+        return jsonResponse({
+          fields: {
+            summary: "OAuth Jira issue",
+            description: {
+              type: "doc",
+              version: 1,
+              content: [{ type: "paragraph", content: [{ type: "text", text: "Hello Jira" }] }],
+            },
+            issuetype: { name: "Task" },
+          },
+          names: {},
+        });
+      }
+      if (url.includes("/ex/confluence/cloud-confluence/wiki/api/v2/pages/999")) {
+        return jsonResponse({
+          id: "999",
+          title: "OAuth Page",
+          body: { storage: { value: "<p>Hello <strong>OAuth</strong></p>" } },
+        });
+      }
+      return jsonResponse({ message: `Unexpected URL ${url}` }, 500);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const jira = await fetchJiraIssueViaOauth("PROJ-7");
+    const confluence = await fetchConfluencePageViaOauth("https://example.atlassian.net/wiki/spaces/X/pages/999/Page");
+
+    expect(jira).toEqual({
+      key: "PROJ-7",
+      title: "OAuth Jira issue",
+      issueType: "Task",
+      body: "Hello Jira",
+    });
+    expect(confluence).toEqual({ id: "999", title: "OAuth Page", body: "Hello **OAuth**" });
   });
 });

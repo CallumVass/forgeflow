@@ -53,6 +53,18 @@ function normaliseOrigin(input: string): string {
   return new URL(input).origin;
 }
 
+function matchScopeCount(resource: AtlassianAccessibleResource, patterns: RegExp[]): number {
+  return resource.scopes.filter((scope) => patterns.some((pattern) => pattern.test(scope))).length;
+}
+
+function describeResourceScopes(resources: AtlassianAccessibleResource[]): string {
+  const summaries = resources.map((resource) => {
+    const scopes = resource.scopes.length > 0 ? resource.scopes.join(", ") : "(none reported)";
+    return `${resource.id}: ${scopes}`;
+  });
+  return summaries.join("; ");
+}
+
 function extractPageId(url: string): string | null {
   const pathMatch = url.match(/\/pages\/(\d+)/);
   if (pathMatch?.[1]) return pathMatch[1];
@@ -87,25 +99,41 @@ async function ensureOauthContext(
 function resolveResource(
   resources: AtlassianAccessibleResource[],
   preferredSiteUrl?: string,
+  options?: { product?: "jira" | "confluence"; scopePatterns?: RegExp[] },
 ): AtlassianAccessibleResource | string {
+  let candidates = resources;
+  let originLabel = "the selected Atlassian site";
+
   if (preferredSiteUrl) {
     const preferredOrigin = normaliseOrigin(preferredSiteUrl);
-    const match = resources.find((resource) => {
+    originLabel = preferredOrigin;
+    candidates = resources.filter((resource) => {
       try {
         return normaliseOrigin(resource.url) === preferredOrigin;
       } catch {
         return false;
       }
     });
-    if (match) return match;
-    return `No Atlassian OAuth resource matched ${preferredOrigin}.`;
+    if (candidates.length === 0) return `No Atlassian OAuth resource matched ${preferredOrigin}.`;
+  } else {
+    const origins = Array.from(new Set(resources.map((resource) => normaliseOrigin(resource.url))));
+    if (origins.length !== 1) return "Multiple Atlassian sites are available. Set ATLASSIAN_URL to choose one.";
+    originLabel = origins[0] ?? originLabel;
   }
 
-  const uniqueOrigins = Array.from(
-    new Map(resources.map((resource) => [normaliseOrigin(resource.url), resource])).values(),
-  );
-  if (uniqueOrigins.length === 1) return uniqueOrigins[0] as AtlassianAccessibleResource;
-  return "Multiple Atlassian sites are available. Set ATLASSIAN_URL to choose one.";
+  const scopePatterns = options?.scopePatterns ?? [];
+  if (scopePatterns.length > 0) {
+    const scopedCandidates = candidates
+      .map((resource) => ({ resource, score: matchScopeCount(resource, scopePatterns) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score);
+    if (scopedCandidates.length > 0) return scopedCandidates[0]?.resource as AtlassianAccessibleResource;
+
+    const productLabel = options?.product ?? "requested";
+    return `No Atlassian OAuth resource for ${originLabel} had ${productLabel} scopes. Available scopes: ${describeResourceScopes(candidates)}. Re-run /atlassian-login after granting the required ${productLabel} scopes.`;
+  }
+
+  return candidates[0] as AtlassianAccessibleResource;
 }
 
 async function requestJson(
@@ -212,7 +240,10 @@ export async function fetchConfluencePageViaOauth(
   const auth = await ensureOauthContext(deps);
   if (typeof auth === "string") return auth;
 
-  const resource = resolveResource(auth.resources, pageUrl);
+  const resource = resolveResource(auth.resources, pageUrl, {
+    product: "confluence",
+    scopePatterns: [/^read:confluence-content\./, /^write:confluence-content\./],
+  });
   if (typeof resource === "string") return resource;
 
   const apiUrl = `https://api.atlassian.com/ex/confluence/${resource.id}/wiki/api/v2/pages/${pageId}?body-format=storage`;
@@ -237,7 +268,10 @@ export async function fetchJiraIssueViaOauth(
 
   const config = getAtlassianOauthConfig();
   const siteUrl = deps?.siteUrl ?? (typeof config === "string" ? undefined : config.siteUrl);
-  const resource = resolveResource(auth.resources, siteUrl);
+  const resource = resolveResource(auth.resources, siteUrl, {
+    product: "jira",
+    scopePatterns: [/^read:jira-work$/, /^write:jira-work$/],
+  });
   if (typeof resource === "string") return resource;
 
   const apiUrl = `https://api.atlassian.com/ex/jira/${resource.id}/rest/api/3/issue/${jiraKey}?expand=names`;
@@ -332,7 +366,10 @@ export async function createJiraIssueViaOauth(
 
   const config = getAtlassianOauthConfig();
   const siteUrl = deps?.siteUrl ?? (typeof config === "string" ? undefined : config.siteUrl);
-  const resource = resolveResource(auth.resources, siteUrl);
+  const resource = resolveResource(auth.resources, siteUrl, {
+    product: "jira",
+    scopePatterns: [/^read:jira-work$/, /^write:jira-work$/],
+  });
   if (typeof resource === "string") return resource;
 
   const apiUrl = `https://api.atlassian.com/ex/jira/${resource.id}/rest/api/3/issue`;

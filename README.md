@@ -90,6 +90,8 @@ Then run:
 /atlassian-login
 ```
 
+Forgeflow will print an Atlassian OAuth URL in the widget/terminal. Copy it into your browser to complete login.
+
 Once logged in, you can also read Jira issues or Confluence pages directly:
 
 ```bash
