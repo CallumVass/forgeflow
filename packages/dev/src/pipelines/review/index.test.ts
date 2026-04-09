@@ -2,7 +2,7 @@ import { mockExecFn, mockForgeflowContext, mockPipelineContext } from "@callumva
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./diff.js", () => ({
-  resolveDiffTarget: vi.fn(async () => ({ diffCmd: "gh pr diff 5", prNumber: "5" })),
+  resolveDiffTarget: vi.fn(async () => ({ diffCmd: "gh pr diff 5", prNumber: "5", setupCmds: ["gh pr checkout 5"] })),
 }));
 
 vi.mock("./orchestrator.js", () => ({
@@ -19,8 +19,12 @@ import { runReview } from "./index.js";
 import { runReviewPipeline } from "./orchestrator.js";
 
 describe("runReview composition root", () => {
-  it("wires diff → orchestrator → comments and returns findings with isError on failure", async () => {
-    const execFn = mockExecFn({ "gh pr diff 5": "diff output here", "gh repo view": "owner/repo" });
+  it("wires checkout → diff → orchestrator → comments and returns findings with isError on failure", async () => {
+    const execFn = mockExecFn({
+      "gh pr checkout 5": "",
+      "gh pr diff 5": "diff output here",
+      "gh repo view": "owner/repo",
+    });
     const pctx = mockPipelineContext({
       cwd: "/tmp",
       execFn,
@@ -30,6 +34,7 @@ describe("runReview composition root", () => {
     const result = await runReview("5", pctx);
 
     expect(resolveDiffTarget).toHaveBeenCalledWith("/tmp", "5", pctx.execSafeFn);
+    expect(execFn).toHaveBeenCalledWith("gh pr checkout 5", "/tmp");
     expect(execFn).toHaveBeenCalledWith("gh pr diff 5", "/tmp");
     expect(runReviewPipeline).toHaveBeenCalledWith("diff output here", expect.objectContaining({ cwd: "/tmp" }));
     expect(proposeAndPostComments).toHaveBeenCalledWith(
@@ -42,7 +47,7 @@ describe("runReview composition root", () => {
   });
 
   it("returns early with no-changes message when diff is empty", async () => {
-    const execFn = mockExecFn({});
+    const execFn = mockExecFn({ "gh pr checkout 5": "" });
     const pctx = mockPipelineContext({ cwd: "/tmp", execFn });
     vi.mocked(runReviewPipeline).mockClear();
 
@@ -54,7 +59,7 @@ describe("runReview composition root", () => {
 
   it("returns passed message when review pipeline passes", async () => {
     vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: true });
-    const execFn = mockExecFn({ "gh pr diff 5": "some diff" });
+    const execFn = mockExecFn({ "gh pr checkout 5": "", "gh pr diff 5": "some diff" });
     const pctx = mockPipelineContext({ cwd: "/tmp", execFn });
 
     const result = await runReview("5", pctx);
@@ -68,7 +73,7 @@ describe("runReview composition root", () => {
     vi.mocked(runReviewPipeline).mockClear();
     vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: true });
 
-    const execFn = mockExecFn({ "gh pr diff 5": "some diff" });
+    const execFn = mockExecFn({ "gh pr checkout 5": "", "gh pr diff 5": "some diff" });
     const pctx = mockPipelineContext({
       cwd: "/tmp",
       execFn,
@@ -88,7 +93,7 @@ describe("runReview composition root", () => {
     vi.mocked(runReviewPipeline).mockClear();
     vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: true });
 
-    const execFn = mockExecFn({ "gh pr diff 5": "some diff" });
+    const execFn = mockExecFn({ "gh pr checkout 5": "", "gh pr diff 5": "some diff" });
     const pctx = mockPipelineContext({
       cwd: "/tmp",
       execFn,

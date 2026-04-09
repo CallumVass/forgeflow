@@ -72,7 +72,6 @@ async function runFixFindings(
     pctx,
     { pipeline: "implement", stages, initialForkFrom: reviewChainTail },
   );
-  cleanSignal(pctx.cwd, "findings");
 }
 
 export interface RunInput {
@@ -96,9 +95,9 @@ export type RunOutcome =
  * independence from the build chain's reasoning.
  *
  * Dynamic fix-findings handling lives here rather than in `runChain`:
- * after the review chain returns, check FINDINGS.md and, if present,
- * kick off a single-phase follow-up chain forking from the review
- * chain's tail.
+ * after the review chain returns, inspect the judge's validated
+ * findings output and, if any survive, kick off a single-phase
+ * follow-up chain forking from the review chain's tail.
  */
 export async function runImplementation(input: RunInput, pctx: PipelineContext): Promise<RunOutcome> {
   const { issueContext, resolved, customPrompt, flags } = input;

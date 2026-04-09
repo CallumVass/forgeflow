@@ -14,7 +14,7 @@ npx pi install @callumvass/forgeflow-dev
 |---------|-------------|
 | `/implement` | Implement a single issue using TDD (plan → implement → refactor → review), then open/update a PR for human review |
 | `/implement-all` | Loop through all open `auto-generated` and `architecture` issues: implement, review, merge |
-| `/review` | Code review: deterministic checks → reviewer → judge |
+| `/review` | Code review: deterministic checks → reviewer → judge; PR targets are checked out before review |
 | `/architecture` | Analyze codebase for architectural friction, create RFC issues |
 | `/discover-skills` | Find and install domain-specific plugins for your tech stack |
 | `/atlassian-login` | Authenticate forgeflow to Atlassian via OAuth |
@@ -52,7 +52,7 @@ This matters most on greenfield repos and in `/implement-all`, where a stream of
 `/implement` runs sub-agents in two chains joined by a hard boundary:
 
 - **Build chain** — `planner` → `architecture-reviewer` → `implementor` → `refactorer`. Every phase is forked from the previous one via `pi --fork`, so the implementor inherits the planner's file reads, the architecture-reviewer's critique, and everything else as real conversation history. No re-exploration, no prompt blobs.
-- **Review chain** — `code-reviewer` → `review-judge` → `fix-findings`. The reviewer cold-starts to preserve adversarial independence from the build chain; the judge and fix-findings then fork within the review chain so they inherit the reviewer's cold-eye reads plus findings without picking up the implementor's reasoning.
+- **Review chain** — `code-reviewer` → `review-judge` → `fix-findings`. The reviewer cold-starts to preserve adversarial independence from the build chain; the judge and fix-findings then fork within the review chain so they inherit the reviewer's cold-eye reads plus findings without picking up the implementor's reasoning. Findings now stay in agent output and forked session history rather than being written to `FINDINGS.md`.
 
 Sub-agent sessions persist under `.forgeflow/run/<runId>/` (gitignored on first creation) so any phase is resumable via `pi --resume .forgeflow/run/<runId>/<nn>-<agent>.jsonl`. On success the directory is moved under `.forgeflow/run/archive/<timestamp>-<runId>-success/`; on failure or interruption it stays in place for inspection until the next run archives it. Archived runs are GC'd on pipeline entry: the newest 20 survive, anything older than 30 days is pruned.
 

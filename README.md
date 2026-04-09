@@ -181,7 +181,7 @@ Autonomous loop through all open `auto-generated` and `architecture` issues in d
 
 ```
 /review                                # review current branch vs main
-/review 42                             # review PR #42
+/review 42                             # check out and review PR #42
 /review --branch feat/thing
 ```
 

@@ -3,32 +3,38 @@ import { describe, expect, it } from "vitest";
 import { resolveDiffTarget } from "./diff.js";
 
 describe("resolveDiffTarget", () => {
-  it("returns PR diff command and PR number when target is a numeric string", async () => {
+  it("returns PR checkout + diff commands and PR number when target is a numeric string", async () => {
     const execFn = mockExecFn();
     const result = await resolveDiffTarget("/tmp", "42", execFn);
 
-    expect(result).toEqual({ diffCmd: "gh pr diff 42", prNumber: "42" });
+    expect(result).toEqual({ diffCmd: "gh pr diff 42", prNumber: "42", setupCmds: ["gh pr checkout 42"] });
   });
 
-  it("returns branch diff command when target starts with --branch", async () => {
+  it("returns branch checkout + diff commands when target starts with --branch", async () => {
     const execFn = mockExecFn();
     const result = await resolveDiffTarget("/tmp", "--branch feat/foo", execFn);
 
-    expect(result).toEqual({ diffCmd: "git diff main...feat/foo", prNumber: undefined });
+    expect(result).toEqual({
+      diffCmd: "git diff main...HEAD",
+      setupCmds: [
+        'git fetch origin "feat/foo" 2>/dev/null || true',
+        'git checkout "feat/foo" 2>/dev/null || git checkout -b "feat/foo" --track "origin/feat/foo"',
+      ],
+    });
   });
 
   it("defaults to HEAD when --branch has no branch name", async () => {
     const execFn = mockExecFn();
     const result = await resolveDiffTarget("/tmp", "--branch", execFn);
 
-    expect(result).toEqual({ diffCmd: "git diff main...HEAD", prNumber: undefined });
+    expect(result).toEqual({ diffCmd: "git diff main...HEAD", setupCmds: [] });
   });
 
   it("auto-detects PR number from current branch when target is empty", async () => {
     const execFn = mockExecFn({ "gh pr view": "99" });
     const result = await resolveDiffTarget("/tmp", "", execFn);
 
-    expect(result).toEqual({ diffCmd: "git diff main...HEAD", prNumber: "99" });
+    expect(result).toEqual({ diffCmd: "git diff main...HEAD", prNumber: "99", setupCmds: [] });
     expect(execFn).toHaveBeenCalledWith("gh pr view --json number --jq .number", "/tmp");
   });
 
@@ -36,6 +42,6 @@ describe("resolveDiffTarget", () => {
     const execFn = mockExecFn({});
     const result = await resolveDiffTarget("/tmp", "", execFn);
 
-    expect(result).toEqual({ diffCmd: "git diff main...HEAD", prNumber: undefined });
+    expect(result).toEqual({ diffCmd: "git diff main...HEAD", prNumber: undefined, setupCmds: [] });
   });
 });

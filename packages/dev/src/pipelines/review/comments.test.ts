@@ -3,12 +3,12 @@ import { mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow
 import { describe, expect, it, vi } from "vitest";
 import { buildCommentProposalPrompt, extractGhCommands, proposeAndPostComments } from "./comments.js";
 
-/** Create a mock agent that injects `stageOutput` into the "propose-comments" stage. */
+/** Create a mock agent that injects `stageOutput` into the requested stage. */
 function mockCommentAgent(stageOutput: string) {
-  return vi.fn(async (_agent: string, _prompt: string, opts: { stages: StageResult[] }) => {
-    const stage = opts.stages.find((s) => s.name === "propose-comments");
+  return vi.fn(async (_agent: string, _prompt: string, opts: { stageName?: string; stages: StageResult[] }) => {
+    const stage = opts.stages.find((s) => s.name === (opts.stageName ?? "propose-comments"));
     if (stage) stage.output = stageOutput;
-    return { ...emptyStage("mock"), output: "", status: "done" as const };
+    return { ...emptyStage(opts.stageName ?? "mock"), output: "", status: "done" as const };
   });
 }
 
@@ -87,6 +87,11 @@ describe("proposeAndPostComments", () => {
       { ...pctx, stages: [], runAgentFn, execFn },
     );
 
+    expect(runAgentFn).toHaveBeenCalledWith(
+      "review-judge",
+      expect.any(String),
+      expect.objectContaining({ stageName: "propose-comments" }),
+    );
     expect(execFn).toHaveBeenCalledWith("gh api repos/o/r/pulls/1/comments --method POST", "/tmp");
   });
 
