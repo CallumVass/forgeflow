@@ -42,7 +42,7 @@ describe("runPrdQa", () => {
     expect(mockedRunQaLoop).toHaveBeenCalledOnce();
     expect(mockedRunQaLoop).toHaveBeenCalledWith(
       expect.objectContaining({
-        criticPrompt: expect.stringContaining("Review PRD.md for completeness"),
+        criticPrompt: expect.stringContaining("chosen high-level technical direction"),
         pipeline: "prd-qa",
         maxIterations: 10,
       }),

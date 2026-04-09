@@ -8,11 +8,14 @@ interface InitialPrdAnswers {
   mainFlow: string;
   successCriteria: string;
   outOfScope: string;
+  projectType: string;
   stack: string;
   frameworkPreferences: string;
   persistence: string;
   auth: string;
+  testingBaseline: string;
   hosting: string;
+  libraryPreferences: string;
   integrationsAndConstraints: string;
 }
 
@@ -54,14 +57,19 @@ const QUESTIONS: BootstrapQuestion[] = [
     placeholder: "Leave blank if undecided",
   },
   {
+    key: "projectType",
+    title: "What kind of project is this?",
+    placeholder: "e.g. Full-stack web app, API service, CLI tool, worker, or leave blank",
+  },
+  {
     key: "stack",
     title: "Preferred stack or ecosystem?",
-    placeholder: "e.g. TypeScript/Node.js, Phoenix/Elixir, Python, or leave blank",
+    placeholder: "e.g. TypeScript/Node.js, .NET, Elixir/Phoenix, Python, or leave blank",
   },
   {
     key: "frameworkPreferences",
-    title: "Preferred framework, starter/template, or styling approach?",
-    placeholder: "e.g. React + Tailwind, Phoenix LiveView, Hono on Cloudflare, or leave blank",
+    title: "Preferred app/runtime framework, starter, or delivery approach?",
+    placeholder: "e.g. Next.js, ASP.NET Core MVC, Phoenix LiveView, Hono on Cloudflare, or leave blank",
   },
   {
     key: "persistence",
@@ -74,9 +82,19 @@ const QUESTIONS: BootstrapQuestion[] = [
     placeholder: "e.g. None for MVP, email login, OAuth, admin-only, or leave blank",
   },
   {
+    key: "testingBaseline",
+    title: "Preferred testing baseline?",
+    placeholder: "e.g. Vitest + Playwright, xUnit + Playwright, ExUnit + Phoenix tests, or leave blank",
+  },
+  {
     key: "hosting",
     title: "Hosting or deployment target?",
-    placeholder: "e.g. Cloudflare, Vercel, Fly, Railway, VPS, or leave blank",
+    placeholder: "e.g. Cloudflare, Vercel, Fly, Railway, Azure, Render, VPS, or leave blank",
+  },
+  {
+    key: "libraryPreferences",
+    title: "Any preferred libraries/providers to use or avoid?",
+    placeholder: "e.g. Use Clerk, prefer Vue, avoid Firebase, or leave blank",
   },
   {
     key: "integrationsAndConstraints",
@@ -107,14 +125,20 @@ function buildOpenQuestions(answers: InitialPrdAnswers): string[] {
     questions.push("Name the primary users and the pain point the product should solve first.");
   if (!clean(answers.mainFlow)) questions.push("Describe the end-to-end MVP user journey from trigger to outcome.");
   if (!clean(answers.successCriteria)) questions.push("Define measurable success criteria for the MVP.");
+  if (!clean(answers.projectType)) questions.push("Confirm the project type or application shape for the MVP.");
   if (!clean(answers.stack)) questions.push("Confirm the preferred stack or ecosystem for implementation.");
   if (!clean(answers.frameworkPreferences)) {
-    questions.push("Confirm whether the project should use a standard framework/template/styling setup.");
+    questions.push("Confirm the preferred app/runtime framework, starter, or delivery approach for the MVP.");
   }
   if (!clean(answers.persistence))
     questions.push("Confirm whether the MVP needs durable persistence, and if so what kind.");
   if (!clean(answers.auth)) questions.push("Confirm whether the MVP needs authentication or can launch anonymously.");
+  if (!clean(answers.testingBaseline))
+    questions.push("Confirm the baseline testing approach the project should standardise on.");
   if (!clean(answers.hosting)) questions.push("Confirm the intended hosting or deployment target.");
+  if (!clean(answers.libraryPreferences)) {
+    questions.push("List any preferred providers or libraries to use or avoid for project-shaping concerns.");
+  }
   if (!clean(answers.integrationsAndConstraints))
     questions.push("List any required integrations or hard delivery constraints.");
 
@@ -175,13 +199,19 @@ export function buildInitialPrd(answers: InitialPrdAnswers): string {
     ...functionalRequirements.map((item) => `- ${item}`),
     "",
     "## Technical Direction",
+    `- Project type: ${answerOrFallback(answers.projectType, "Undecided — confirm during PRD QA.")}`,
     `- Preferred stack/ecosystem: ${answerOrFallback(answers.stack, "Undecided — choose during PRD QA.")}`,
-    `- Framework/template/styling: ${answerOrFallback(answers.frameworkPreferences, "Undecided — prefer a standard framework starter or template rather than bespoke setup.")}`,
+    `- App/runtime framework or delivery approach: ${answerOrFallback(answers.frameworkPreferences, "Undecided — prefer a standard framework, starter, or platform convention rather than bespoke setup.")}`,
     `- Persistence: ${answerOrFallback(answers.persistence, "Undecided — confirm during PRD QA.")}`,
-    `- Authentication: ${answerOrFallback(answers.auth, "Undecided — confirm during PRD QA.")}`,
+    `- Authentication/access model: ${answerOrFallback(answers.auth, "Undecided — confirm during PRD QA.")}`,
+    `- Testing baseline: ${answerOrFallback(answers.testingBaseline, "Undecided — confirm during PRD QA.")}`,
+    `- Preferred libraries/providers to use or avoid: ${answerOrFallback(answers.libraryPreferences, "None stated yet — capture project-shaping preferences during PRD QA.")}`,
     `- Hosting/deployment target: ${answerOrFallback(answers.hosting, "Undecided — confirm during PRD QA.")}`,
     `- Integrations/constraints: ${answerOrFallback(answers.integrationsAndConstraints, "None identified yet.")}`,
-    "- Delivery guardrails: Prefer mainstream libraries and framework conventions over bespoke plumbing unless the product requirements explicitly demand otherwise.",
+    "- Delivery guardrails: Prefer mainstream libraries and framework conventions from the chosen ecosystem over bespoke plumbing unless the product requirements explicitly demand otherwise.",
+    "",
+    "## Alternatives Considered",
+    "- None captured yet. Use /prd-qa to record the chosen option plus brief alternatives for project-shaping decisions such as framework/runtime, auth, persistence, or testing when those choices materially affect implementation.",
     "",
     "## Open Questions",
     ...(openQuestions.length > 0

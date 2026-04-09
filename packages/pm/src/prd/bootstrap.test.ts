@@ -15,17 +15,26 @@ describe("buildInitialPrd", () => {
       mainFlow: "A user lands on the app, enters a URL, customises the QR code, previews it, and downloads it.",
       successCriteria: "A new user can generate and download a QR code in under one minute.",
       outOfScope: "Analytics dashboards and team collaboration.",
+      projectType: "Full-stack web app",
       stack: "TypeScript/Node.js",
       frameworkPreferences: "React with Tailwind using a standard starter template.",
       persistence: "",
       auth: "None for MVP.",
+      testingBaseline: "Vitest and Playwright.",
       hosting: "Cloudflare",
+      libraryPreferences: "Prefer Clerk if auth is later introduced.",
       integrationsAndConstraints: "Keep the initial release lightweight and low-cost.",
     });
 
     expect(prd).toContain("## Technical Direction");
+    expect(prd).toContain("Project type: Full-stack web app");
     expect(prd).toContain("Preferred stack/ecosystem: TypeScript/Node.js");
-    expect(prd).toContain("Framework/template/styling: React with Tailwind using a standard starter template.");
+    expect(prd).toContain(
+      "App/runtime framework or delivery approach: React with Tailwind using a standard starter template.",
+    );
+    expect(prd).toContain("Testing baseline: Vitest and Playwright.");
+    expect(prd).toContain("Preferred libraries/providers to use or avoid: Prefer Clerk if auth is later introduced.");
+    expect(prd).toContain("## Alternatives Considered");
     expect(prd).toContain("Hosting/deployment target: Cloudflare");
     expect(prd).toContain("## Open Questions");
     expect(prd).toContain("Confirm whether the MVP needs durable persistence");
@@ -50,11 +59,14 @@ describe("promptBootstrapPrd", () => {
       .mockResolvedValueOnce("A user enters a URL, previews the QR code, and downloads it.")
       .mockResolvedValueOnce("A user can create and download a QR code in under a minute.")
       .mockResolvedValueOnce("No user accounts or analytics in MVP.")
+      .mockResolvedValueOnce("Full-stack web app")
       .mockResolvedValueOnce("TypeScript")
       .mockResolvedValueOnce("React with Tailwind using a standard starter template.")
       .mockResolvedValueOnce("None for MVP.")
       .mockResolvedValueOnce("None for MVP.")
+      .mockResolvedValueOnce("Vitest and Playwright")
       .mockResolvedValueOnce("Cloudflare")
+      .mockResolvedValueOnce("Prefer Clerk if auth is added later")
       .mockResolvedValueOnce("Keep costs low and use mainstream libraries.");
     const editor = vi.fn(async (_title: string, content: string) => content);
     const ctx = mockForgeflowContext({ hasUI: true, ui: { select, input, editor } });
@@ -66,8 +78,11 @@ describe("promptBootstrapPrd", () => {
     expect(prdExists(tmpDir)).toBe(true);
     expect(readPrd(tmpDir)).toContain("# PRD: QR Forge");
     expect(readPrd(tmpDir)).toContain("## Technical Direction");
+    expect(readPrd(tmpDir)).toContain("Project type: Full-stack web app");
     expect(readPrd(tmpDir)).toContain("Preferred stack/ecosystem: TypeScript");
-    expect(readPrd(tmpDir)).toContain("Authentication: None for MVP.");
+    expect(readPrd(tmpDir)).toContain("Authentication/access model: None for MVP.");
+    expect(readPrd(tmpDir)).toContain("Testing baseline: Vitest and Playwright");
+    expect(readPrd(tmpDir)).toContain("## Alternatives Considered");
     expect(editor).toHaveBeenCalledOnce();
   });
 

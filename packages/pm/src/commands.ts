@@ -40,7 +40,7 @@ export const commands: CommandDefinition[] = [
   {
     name: "investigate",
     description:
-      "Spike or RFC: explore codebase + web, fill a Confluence template. Usage: /investigate [description] [--template <confluence-url>]",
+      "Research topic or RFC: explore codebase + web, optional template. Usage: /investigate [description] [--template <url>]",
     pipeline: "investigate",
     parseArgs: (args) => {
       const { flags, rest } = extractFlags(args, { value: ["--template"] });

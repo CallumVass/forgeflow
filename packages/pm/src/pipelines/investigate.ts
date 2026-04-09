@@ -77,7 +77,10 @@ async function runInvestigateInner(description: string, templateUrl: string, pct
 
   // Ask for optional template URL interactively if not provided
   if (!templateUrl && interactive) {
-    const input = await ctx.ui.input("Confluence template URL?", "Skip");
+    const input = await ctx.ui.input(
+      "Template URL? (optional — Confluence supported)",
+      "Leave blank to use the default investigation structure",
+    );
     if (input != null && input.trim() !== "") {
       templateUrl = input.trim();
     }
@@ -101,11 +104,11 @@ async function runInvestigateInner(description: string, templateUrl: string, pct
   const stages = [emptyStage("investigator")];
   const opts = toAgentOpts(pctx, { stages, pipeline: "investigate" });
 
-  const task = `Investigate the following and produce a document using the template provided.
+  const task = `Investigate the following topic and produce a structured markdown document.
 
 TOPIC: ${description}${templateSection}${referenceSection}
 
-${!templateUrl ? "No template was provided. Structure your output as: Problem, Context, Options (with comparison table), Recommendation, Next Steps." : ""}
+${!templateUrl ? "No template was provided. Structure your output as: Problem, Context, Options (with comparison table), Recommendation, Next Steps." : "Use the provided template structure exactly."}
 ${referenceSection ? "\nAdditional Atlassian references were fetched above. Use them as source material. Only the section labelled TEMPLATE defines the output structure." : ""}
 
 Read the writing-style skill before writing.`;

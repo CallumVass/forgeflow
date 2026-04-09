@@ -23,7 +23,7 @@ async function runPrdQaInner(maxIterations: number, pctx: PipelineContext) {
     pipeline: "prd-qa",
     maxIterations,
     criticPrompt:
-      "Review PRD.md for completeness. For greenfield projects, ensure the PRD captures the intended product shape plus any high-level technical direction that materially affects implementation, such as stack, framework/template preference, persistence, auth, and hosting. If it needs refinement, create QUESTIONS.md. If it's complete, do NOT create QUESTIONS.md.",
+      "Review PRD.md for completeness. For greenfield projects, ensure the PRD captures the intended product shape plus the chosen high-level technical direction that materially affects implementation, such as stack/ecosystem, app or runtime framework, testing baseline, persistence, auth, hosting, and any user-stated provider or library preferences. For project-shaping decisions, the PRD should name the chosen option and may include brief alternatives considered. If it needs refinement, create QUESTIONS.md. If it's complete, do NOT create QUESTIONS.md.",
   });
 
   if (qaResult.error) return pipelineResult(qaResult.error.text, "prd-qa", stages, true);
