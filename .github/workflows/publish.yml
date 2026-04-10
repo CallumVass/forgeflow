@@ -24,6 +24,7 @@ jobs:
           # events, which would otherwise leave the release PR un-mergeable
           # under branch protection.
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          skip-labeling: true
 
   publish:
     needs: release-please
