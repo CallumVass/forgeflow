@@ -14,6 +14,7 @@ import type {
   OAuthClientMetadata,
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 
 export interface DatadogMcpConfig {
   serverUrl: string;
@@ -32,8 +33,19 @@ export interface DatadogMcpAuthState {
   discoveryState?: OAuthDiscoveryState;
 }
 
+interface DatadogMcpClientLike {
+  connect(transport: Transport): Promise<void>;
+  listTools(): Promise<{ tools: Array<{ name: string }> }>;
+}
+
+interface DatadogMcpTransportLike extends Transport {
+  finishAuth(code: string): Promise<void>;
+}
+
 interface DatadogMcpOauthDeps {
-  now?: () => number;
+  createClientFn?: () => DatadogMcpClientLike;
+  createTransportFn?: (config: DatadogMcpConfig, provider: StoredDatadogMcpOAuthProvider) => DatadogMcpTransportLike;
+  waitForOauthCallbackFn?: (redirectUri: string) => Promise<string>;
 }
 
 interface LoginCallbacks {
@@ -302,18 +314,28 @@ async function waitForOauthCallback(redirectUri: string): Promise<string> {
   });
 }
 
-async function fetchToolNames(client: Client): Promise<string[]> {
+async function fetchToolNames(client: DatadogMcpClientLike): Promise<string[]> {
   const tools = await client.listTools();
   return tools.tools.map((tool: { name: string }) => tool.name).sort();
 }
 
-async function connectClient(client: Client, transport: StreamableHTTPClientTransport): Promise<void> {
-  await client.connect(transport);
+function createLoginSession(
+  config: DatadogMcpConfig,
+  provider: StoredDatadogMcpOAuthProvider,
+  deps?: DatadogMcpOauthDeps,
+): { client: DatadogMcpClientLike; transport: DatadogMcpTransportLike } {
+  const client = deps?.createClientFn
+    ? deps.createClientFn()
+    : new Client({ name: "forgeflow-datadog-login", version: "1.0.0" }, { capabilities: {} });
+  const transport = deps?.createTransportFn
+    ? deps.createTransportFn(config, provider)
+    : new StreamableHTTPClientTransport(new URL(config.serverUrl), { authProvider: provider });
+  return { client, transport };
 }
 
 export async function loginWithDatadogMcpOauth(
   callbacks: LoginCallbacks = {},
-  _deps?: DatadogMcpOauthDeps,
+  deps?: DatadogMcpOauthDeps,
 ): Promise<DatadogMcpLoginResult | string> {
   const config = getDatadogMcpConfig();
   if (typeof config === "string") return config;
@@ -322,46 +344,49 @@ export async function loginWithDatadogMcpOauth(
   const provider = new StoredDatadogMcpOAuthProvider(config, initialState, (url) =>
     callbacks.onAuthUrl?.(url.toString()),
   );
-  const client = new Client({ name: "forgeflow-datadog-login", version: "1.0.0" }, { capabilities: {} });
-  const transport = new StreamableHTTPClientTransport(new URL(config.serverUrl), { authProvider: provider });
+  const waitForCallback = deps?.waitForOauthCallbackFn ?? waitForOauthCallback;
+
+  let session = createLoginSession(config, provider, deps);
 
   callbacks.onStatus?.("Connecting to Datadog MCP...");
   try {
-    await connectClient(client, transport);
+    await session.client.connect(session.transport);
   } catch (err) {
     if (!(err instanceof UnauthorizedError)) {
-      await transport.close().catch(() => undefined);
+      await session.transport.close().catch(() => undefined);
       return `Datadog MCP login failed: ${(err as Error).message}`;
     }
 
     callbacks.onStatus?.("Waiting for Datadog MCP authorisation...");
-    const codePromise = waitForOauthCallback(config.redirectUri);
     let code: string;
     try {
-      code = await codePromise;
+      code = await waitForCallback(config.redirectUri);
     } catch (callbackErr) {
-      await transport.close().catch(() => undefined);
+      await session.transport.close().catch(() => undefined);
       return `Datadog MCP login failed: ${(callbackErr as Error).message}`;
     }
 
     callbacks.onStatus?.("Exchanging Datadog MCP authorisation code...");
     try {
-      await transport.finishAuth(code);
-      await connectClient(client, transport);
+      await session.transport.finishAuth(code);
+      await session.transport.close().catch(() => undefined);
+      session = createLoginSession(config, provider, deps);
+      callbacks.onStatus?.("Reconnecting to Datadog MCP...");
+      await session.client.connect(session.transport);
     } catch (finishErr) {
-      await transport.close().catch(() => undefined);
+      await session.transport.close().catch(() => undefined);
       return `Datadog MCP login failed: ${(finishErr as Error).message}`;
     }
   }
 
   callbacks.onStatus?.("Loading Datadog MCP tools...");
   try {
-    const toolNames = await fetchToolNames(client);
-    await transport.close().catch(() => undefined);
+    const toolNames = await fetchToolNames(session.client);
+    await session.transport.close().catch(() => undefined);
     callbacks.onStatus?.("Datadog MCP login complete.");
     return { serverUrl: config.serverUrl, toolNames };
   } catch (err) {
-    await transport.close().catch(() => undefined);
+    await session.transport.close().catch(() => undefined);
     return `Datadog MCP login failed: ${(err as Error).message}`;
   }
 }
