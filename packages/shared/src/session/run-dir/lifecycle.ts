@@ -1,8 +1,8 @@
-import type { PipelineContext } from "../runtime/context.js";
-import type { RunAgentFn } from "../runtime/stages.js";
+import type { PipelineContext } from "../../runtime/context.js";
+import type { RunAgentFn } from "../../runtime/stages.js";
 import { archiveRunDir, gcArchive } from "./archive.js";
 import { createRunDir } from "./create.js";
-import { ensureGitignore } from "./fs.js";
+import { ensureGitignore } from "./gitignore.js";
 
 /** Minimal pipeline result shape inspected by `withRunLifecycle`. */
 interface LifecycleResult {
