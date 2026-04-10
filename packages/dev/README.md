@@ -34,7 +34,9 @@ This works best after the PM package has already produced good greenfield issues
 | `/review` | Run deterministic checks, structured review, and review judge |
 | `/architecture` | Analyse the repo for structural friction and create RFC issues |
 | `/discover-skills` | Find domain-specific plugins for the current tech stack |
-| `/atlassian-login` | Authenticate to Jira/Confluence via OAuth |
+| `/atlassian-login` | Authenticate to an OAuth-enabled Atlassian MCP server |
+| `/atlassian-status` | Show Atlassian MCP auth status |
+| `/atlassian-logout` | Remove stored Atlassian MCP credentials |
 | `/atlassian-read` | Read a Jira issue or Confluence page by URL |
 | `/datadog-login` | Authenticate to an OAuth-enabled Datadog MCP server |
 | `/datadog-status` | Show Datadog MCP auth status |
@@ -141,25 +143,33 @@ Set `sessions.persist` to `false` for sensitive projects where you do not want s
 Sub-agent sessions are stored under `.forgeflow/run/<runId>/` so runs are resumable.
 Successful runs are archived; failed runs are left in place for inspection.
 
-## Atlassian
+## Atlassian MCP
 
-With Atlassian OAuth configured, you can:
+With Atlassian MCP configured, you can:
 - implement a Jira issue directly: `/implement PROJ-123`
 - read a Jira issue or Confluence page: `/atlassian-read <url>`
+- check auth state: `/atlassian-status`
+- clear stored auth: `/atlassian-logout`
 
 Environment variables:
 
 ```bash
-export ATLASSIAN_CLIENT_ID=...
-export ATLASSIAN_CLIENT_SECRET=...
+export ATLASSIAN_MCP_URL=https://your-atlassian-mcp.example.com/mcp
+export ATLASSIAN_MCP_REDIRECT_URI=http://127.0.0.1:33389/callback
+# Optional when your MCP server requires a pre-registered OAuth client
+export ATLASSIAN_MCP_CLIENT_ID=...
+export ATLASSIAN_MCP_CLIENT_SECRET=...
+# Optional OAuth scope override
+export ATLASSIAN_MCP_SCOPE="read:jira-work read:confluence-content.all"
+# Optional site hint for Jira URL generation and multi-site setups
 export ATLASSIAN_URL=https://yourcompany.atlassian.net
-export ATLASSIAN_REDIRECT_URI=http://127.0.0.1:33389/callback
 ```
 
 Then run:
 
 ```text
 /atlassian-login
+/atlassian-status
 ```
 
 ## Datadog MCP

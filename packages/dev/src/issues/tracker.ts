@@ -35,7 +35,7 @@ const JIRA_BRANCH_RE = /feat\/([A-Z]+-\d+)/;
 
 /**
  * Resolve which issue to implement:
- * 1. Jira key (CUS-123) → fetch via Atlassian OAuth
+ * 1. Jira key (CUS-123) → fetch via Atlassian MCP
  * 2. Numeric GitHub issue → fetch from gh
  * 3. On a feature branch → extract from branch name
  *

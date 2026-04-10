@@ -1,33 +1,25 @@
-import { writeAtlassianOauthToken } from "@callumvass/forgeflow-shared/atlassian";
 import { mockExecFn, setupIsolatedHomeFixture } from "@callumvass/forgeflow-shared/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resolveIssue } from "./tracker.js";
 
 setupIsolatedHomeFixture("resolve-issue");
 
 const ghIssueResponse = JSON.stringify({ number: 42, title: "GH issue", body: "GH body" });
 
 afterEach(() => {
-  vi.unstubAllGlobals();
-  delete process.env.ATLASSIAN_CLIENT_ID;
-  delete process.env.ATLASSIAN_CLIENT_SECRET;
-  delete process.env.ATLASSIAN_URL;
+  vi.resetModules();
+  vi.restoreAllMocks();
 });
 
-async function configureOauth(fetchMock: ReturnType<typeof vi.fn>) {
-  process.env.ATLASSIAN_CLIENT_ID = "client-id";
-  process.env.ATLASSIAN_CLIENT_SECRET = "client-secret";
-  process.env.ATLASSIAN_URL = "https://example.atlassian.net";
-  await writeAtlassianOauthToken({
-    accessToken: "access-token",
-    refreshToken: "refresh-token",
-    expiresAt: Date.now() + 3_600_000,
-  });
-  vi.stubGlobal("fetch", fetchMock);
+async function importTrackerWithJiraResult(result: unknown) {
+  vi.doMock("@callumvass/forgeflow-shared/atlassian", () => ({
+    fetchJiraIssueViaOauth: vi.fn(async () => result),
+  }));
+  return import("./tracker.js");
 }
 
 describe("resolveIssue", () => {
   it("uses execSafeFn for `gh issue view` and returns a GitHub-shaped ResolvedIssue", async () => {
+    const { resolveIssue } = await import("./tracker.js");
     const execSafeFn = mockExecFn({ "gh issue view": ghIssueResponse });
     const execFn = mockExecFn();
 
@@ -44,42 +36,12 @@ describe("resolveIssue", () => {
     });
   });
 
-  it("resolves Jira issues through Atlassian OAuth", async () => {
-    await configureOauth(
-      vi.fn(async (input: string | URL) => {
-        const url = String(input);
-        if (url.includes("accessible-resources")) {
-          return new Response(
-            JSON.stringify([
-              {
-                id: "cloud-1",
-                url: "https://example.atlassian.net",
-                name: "Example",
-                scopes: ["read:jira-work", "write:jira-work"],
-              },
-            ]),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          );
-        }
-        if (url.includes("/rest/api/3/issue/CUS-123")) {
-          return new Response(
-            JSON.stringify({
-              fields: {
-                summary: "OAuth Jira issue",
-                description: {
-                  type: "doc",
-                  version: 1,
-                  content: [{ type: "paragraph", content: [{ type: "text", text: "Body via OAuth" }] }],
-                },
-              },
-              names: {},
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          );
-        }
-        return new Response(JSON.stringify({ message: `Unexpected URL ${url}` }), { status: 500 });
-      }),
-    );
+  it("resolves Jira issues through Atlassian MCP", async () => {
+    const { resolveIssue } = await importTrackerWithJiraResult({
+      key: "CUS-123",
+      title: "MCP Jira issue",
+      body: "Body via MCP",
+    });
 
     const result = await resolveIssue("/tmp", "CUS-123", { execFn: mockExecFn(), execSafeFn: mockExecFn() });
 
@@ -87,38 +49,18 @@ describe("resolveIssue", () => {
       source: "jira",
       key: "CUS-123",
       number: 0,
-      title: "OAuth Jira issue",
-      body: "Body via OAuth",
-      branch: "feat/CUS-123-oauth-jira-issue",
+      title: "MCP Jira issue",
+      body: "Body via MCP",
+      branch: "feat/CUS-123-mcp-jira-issue",
     });
   });
 
   it("detects Jira feature branches and preserves the existing branch name", async () => {
-    await configureOauth(
-      vi.fn(async (input: string | URL) => {
-        const url = String(input);
-        if (url.includes("accessible-resources")) {
-          return new Response(
-            JSON.stringify([
-              {
-                id: "cloud-1",
-                url: "https://example.atlassian.net",
-                name: "Example",
-                scopes: ["read:jira-work", "write:jira-work"],
-              },
-            ]),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          );
-        }
-        if (url.includes("/rest/api/3/issue/CUS-9")) {
-          return new Response(JSON.stringify({ fields: { summary: "Foo bar", description: null }, names: {} }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          });
-        }
-        return new Response(JSON.stringify({ message: `Unexpected URL ${url}` }), { status: 500 });
-      }),
-    );
+    const { resolveIssue } = await importTrackerWithJiraResult({
+      key: "CUS-9",
+      title: "Foo bar",
+      body: "",
+    });
 
     const result = await resolveIssue("/tmp", undefined, {
       execFn: mockExecFn({ "git branch --show-current": "feat/CUS-9-foo" }),
@@ -132,6 +74,7 @@ describe("resolveIssue", () => {
   });
 
   it("with no arg, detects GitHub feature branches via `git branch --show-current`", async () => {
+    const { resolveIssue } = await import("./tracker.js");
     const execFn = mockExecFn({ "git branch --show-current": "feat/issue-7" });
     const execSafeFn = mockExecFn({ "gh issue view": JSON.stringify({ number: 7, title: "Auto", body: "B" }) });
 
@@ -142,6 +85,7 @@ describe("resolveIssue", () => {
   });
 
   it("returns a free-text ResolvedIssue without invoking exec when given a description", async () => {
+    const { resolveIssue } = await import("./tracker.js");
     const execFn = mockExecFn();
     const execSafeFn = mockExecFn();
 
@@ -160,6 +104,7 @@ describe("resolveIssue", () => {
   });
 
   it("returns an error string for malformed GitHub issue JSON", async () => {
+    const { resolveIssue } = await import("./tracker.js");
     const result = await resolveIssue("/tmp", "42", {
       execFn: mockExecFn(),
       execSafeFn: mockExecFn({ "gh issue view": "{ not json" }),
@@ -170,6 +115,7 @@ describe("resolveIssue", () => {
   });
 
   it("returns an error string when the current branch is unrecognised", async () => {
+    const { resolveIssue } = await import("./tracker.js");
     const result = await resolveIssue("/tmp", undefined, {
       execFn: mockExecFn({ "git branch --show-current": "main" }),
       execSafeFn: mockExecFn(),

@@ -1,10 +1,10 @@
 import { adfToPlainText, normalisePlainText, plainTextToAdf } from "./adf.js";
 import {
-  type AtlassianAccessibleResource,
-  fetchAtlassianAccessibleResources,
-  getAtlassianAccessToken,
-  getAtlassianOauthConfig,
-} from "./oauth.js";
+  callAtlassianMcpTool,
+  getAtlassianMcpConfig,
+  resolveAtlassianMcpTool,
+  withAtlassianMcpSession,
+} from "./mcp.js";
 
 export interface ConfluencePage {
   id: string;
@@ -36,33 +36,17 @@ export type AtlassianContent =
   | ({ kind: "confluence"; url: string } & ConfluencePage);
 
 interface AtlassianClientDeps {
-  fetchImpl?: typeof fetch;
   signal?: AbortSignal;
-  now?: () => number;
+  withMcpSessionFn?: typeof withAtlassianMcpSession;
+  callMcpToolFn?: typeof callAtlassianMcpTool;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function getFetch(fetchImpl?: typeof fetch): typeof fetch {
-  return fetchImpl ?? fetch;
-}
-
 function normaliseOrigin(input: string): string {
   return new URL(input).origin;
-}
-
-function matchScopeCount(resource: AtlassianAccessibleResource, patterns: RegExp[]): number {
-  return resource.scopes.filter((scope) => patterns.some((pattern) => pattern.test(scope))).length;
-}
-
-function describeResourceScopes(resources: AtlassianAccessibleResource[]): string {
-  const summaries = resources.map((resource) => {
-    const scopes = resource.scopes.length > 0 ? resource.scopes.join(", ") : "(none reported)";
-    return `${resource.id}: ${scopes}`;
-  });
-  return summaries.join("; ");
 }
 
 function extractPageId(url: string): string | null {
@@ -82,95 +66,6 @@ function extractTextField(fields: Record<string, unknown>, names: Record<string,
     if (text) return text;
   }
   return "";
-}
-
-async function ensureOauthContext(
-  deps?: AtlassianClientDeps,
-): Promise<{ accessToken: string; resources: AtlassianAccessibleResource[] } | string> {
-  const access = await getAtlassianAccessToken(deps);
-  if (typeof access === "string") return access;
-
-  const resources = await fetchAtlassianAccessibleResources(access.accessToken, deps);
-  if (typeof resources === "string") return resources;
-
-  return { accessToken: access.accessToken, resources };
-}
-
-function resolveResource(
-  resources: AtlassianAccessibleResource[],
-  preferredSiteUrl?: string,
-  options?: { product?: "jira" | "confluence"; scopePatterns?: RegExp[] },
-): AtlassianAccessibleResource | string {
-  let candidates = resources;
-  let originLabel = "the selected Atlassian site";
-
-  if (preferredSiteUrl) {
-    const preferredOrigin = normaliseOrigin(preferredSiteUrl);
-    originLabel = preferredOrigin;
-    candidates = resources.filter((resource) => {
-      try {
-        return normaliseOrigin(resource.url) === preferredOrigin;
-      } catch {
-        return false;
-      }
-    });
-    if (candidates.length === 0) return `No Atlassian OAuth resource matched ${preferredOrigin}.`;
-  } else {
-    const origins = Array.from(new Set(resources.map((resource) => normaliseOrigin(resource.url))));
-    if (origins.length !== 1) return "Multiple Atlassian sites are available. Set ATLASSIAN_URL to choose one.";
-    originLabel = origins[0] ?? originLabel;
-  }
-
-  const scopePatterns = options?.scopePatterns ?? [];
-  if (scopePatterns.length > 0) {
-    const scopedCandidates = candidates
-      .map((resource) => ({ resource, score: matchScopeCount(resource, scopePatterns) }))
-      .filter((entry) => entry.score > 0)
-      .sort((a, b) => b.score - a.score);
-    if (scopedCandidates.length > 0) return scopedCandidates[0]?.resource as AtlassianAccessibleResource;
-
-    const productLabel = options?.product ?? "requested";
-    return `No Atlassian OAuth resource for ${originLabel} had ${productLabel} scopes. Available scopes: ${describeResourceScopes(candidates)}. Re-run /atlassian-login after granting the required ${productLabel} scopes.`;
-  }
-
-  return candidates[0] as AtlassianAccessibleResource;
-}
-
-async function requestJson(
-  url: string,
-  accessToken: string,
-  deps?: AtlassianClientDeps,
-  init?: RequestInit,
-): Promise<unknown | string> {
-  const response = await getFetch(deps?.fetchImpl)(url, {
-    ...init,
-    signal: deps?.signal,
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...(init?.headers ?? {}),
-    },
-  });
-
-  let data: unknown;
-  try {
-    data = (await response.json()) as unknown;
-  } catch {
-    return `Could not parse Atlassian response from ${url} (HTTP ${response.status}).`;
-  }
-
-  if (!response.ok) {
-    if (isRecord(data)) {
-      const message = [data.message, data.errorMessages]
-        .flat()
-        .find((value): value is string => typeof value === "string");
-      if (message) return `Atlassian request failed (HTTP ${response.status}): ${message}`;
-    }
-    return `Atlassian request failed (HTTP ${response.status}) for ${url}.`;
-  }
-
-  return data;
 }
 
 function htmlToPlainText(html: string): string {
@@ -200,16 +95,146 @@ function htmlToPlainText(html: string): string {
 function parseConfluencePageResponse(data: unknown, pageId: string): ConfluencePage | string {
   if (!isRecord(data)) return `Unexpected Confluence response for page ${pageId}.`;
 
-  const title = typeof data.title === "string" ? data.title : "Untitled";
-  const bodyRecord = isRecord(data.body) ? data.body : undefined;
+  const nested = isRecord(data.page) ? data.page : isRecord(data.result) ? data.result : data;
+  if (typeof nested.body === "string") {
+    return {
+      id: typeof nested.id === "string" ? nested.id : pageId,
+      title: typeof nested.title === "string" ? nested.title : "Untitled",
+      body: normalisePlainText(nested.body),
+    };
+  }
+
+  const title = typeof nested.title === "string" ? nested.title : "Untitled";
+  const bodyRecord = isRecord(nested.body) ? nested.body : undefined;
   const storageRecord = bodyRecord && isRecord(bodyRecord.storage) ? bodyRecord.storage : undefined;
   const html = typeof storageRecord?.value === "string" ? storageRecord.value : "";
 
   return {
-    id: typeof data.id === "string" ? data.id : pageId,
+    id: typeof nested.id === "string" ? nested.id : pageId,
     title,
     body: normalisePlainText(htmlToPlainText(html)),
   };
+}
+
+function parseJiraIssueResponse(data: unknown, jiraKey: string): JiraIssue | string {
+  if (!isRecord(data)) return `Unexpected Jira response for issue ${jiraKey}.`;
+
+  const nested = isRecord(data.issue) ? data.issue : isRecord(data.result) ? data.result : data;
+  if (typeof nested.body === "string" || typeof nested.description === "string") {
+    return {
+      key: typeof nested.key === "string" ? nested.key : jiraKey,
+      title:
+        typeof nested.title === "string" ? nested.title : typeof nested.summary === "string" ? nested.summary : jiraKey,
+      body: normalisePlainText(String(nested.body ?? nested.description ?? "")),
+      issueType:
+        typeof nested.issueType === "string"
+          ? nested.issueType
+          : typeof nested.type === "string"
+            ? nested.type
+            : undefined,
+    };
+  }
+
+  const fields = isRecord(nested.fields) ? nested.fields : {};
+  const names = isRecord(nested.names)
+    ? Object.fromEntries(
+        Object.entries(nested.names).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+      )
+    : {};
+  const title = typeof fields.summary === "string" ? fields.summary : jiraKey;
+  const description = typeof fields.description === "string" ? fields.description : adfToPlainText(fields.description);
+  const acceptanceCriteria = extractTextField(fields, names, [/acceptance criteria/i]);
+  const storyPoints = extractTextField(fields, names, [/story points?/i, /story point estimate/i]);
+  const sprint = extractTextField(fields, names, [/sprint/i]);
+  const issueType =
+    isRecord(fields.issuetype) && typeof fields.issuetype.name === "string" ? fields.issuetype.name : undefined;
+
+  const bodyParts = [description];
+  if (acceptanceCriteria) bodyParts.push(`## Acceptance Criteria\n${acceptanceCriteria}`);
+  if (isRecord(fields.status) && typeof fields.status.name === "string")
+    bodyParts.push(`**Status:** ${fields.status.name}`);
+  if (isRecord(fields.priority) && typeof fields.priority.name === "string")
+    bodyParts.push(`**Priority:** ${fields.priority.name}`);
+  if (storyPoints) bodyParts.push(`**Story Points:** ${storyPoints}`);
+  if (sprint) bodyParts.push(`**Sprint:** ${sprint}`);
+
+  return {
+    key: typeof nested.key === "string" ? nested.key : jiraKey,
+    title,
+    body: normalisePlainText(bodyParts.filter(Boolean).join("\n\n")),
+    issueType,
+  };
+}
+
+function parseJiraCreateResponse(data: unknown, summary: string, siteUrl?: string): JiraCreatedIssue | string {
+  if (!isRecord(data)) return `Unexpected Jira create response for ${summary}.`;
+
+  const nested = isRecord(data.issue) ? data.issue : isRecord(data.createdIssue) ? data.createdIssue : data;
+  const key = typeof nested.key === "string" ? nested.key : "";
+  const id = typeof nested.id === "string" ? nested.id : "";
+  const url =
+    typeof nested.url === "string" ? nested.url : key && siteUrl ? `${normaliseOrigin(siteUrl)}/browse/${key}` : key;
+  if (!key || !id) return `Jira create response for ${summary} did not include id/key.`;
+
+  return { id, key, url };
+}
+
+function availableToolsLabel(toolNames: string[]): string {
+  return toolNames.length > 0 ? toolNames.join(", ") : "(none reported)";
+}
+
+function shouldRetryWithNextArgs(message: string): boolean {
+  return /(missing|required|argument|parameter|schema|invalid input|invalid arguments)/i.test(message);
+}
+
+function buildIssueUrl(jiraKey: string, siteUrl?: string): string | undefined {
+  if (!siteUrl) return undefined;
+  return `${normaliseOrigin(siteUrl)}/browse/${jiraKey}`;
+}
+
+async function callToolWithVariants(
+  session: Parameters<typeof callAtlassianMcpTool>[0],
+  toolName: string,
+  argVariants: Array<Record<string, unknown>>,
+  deps?: AtlassianClientDeps,
+): Promise<unknown | string> {
+  const callToolFn = deps?.callMcpToolFn ?? callAtlassianMcpTool;
+  let lastError = "Atlassian MCP returned no usable result.";
+
+  for (const args of argVariants) {
+    const raw = await callToolFn(session, toolName, args);
+    if (typeof raw === "string") {
+      lastError = raw;
+      if (!shouldRetryWithNextArgs(raw)) return raw;
+      continue;
+    }
+
+    if (!isRecord(raw)) return raw;
+    if (raw.isError === true) {
+      const content = Array.isArray(raw.content) ? raw.content : [];
+      const entry = content.find((item) => isRecord(item) && item.type === "text" && typeof item.text === "string");
+      const message =
+        isRecord(entry) && typeof entry.text === "string" ? entry.text : "Atlassian MCP returned an error.";
+      lastError = message;
+      if (!shouldRetryWithNextArgs(message)) return message;
+      continue;
+    }
+
+    const textEntry = Array.isArray(raw.content)
+      ? raw.content.find((item) => isRecord(item) && item.type === "text" && typeof item.text === "string")
+      : undefined;
+    if (!isRecord(textEntry) || typeof textEntry.text !== "string") {
+      return "Atlassian MCP returned no text content.";
+    }
+
+    try {
+      return JSON.parse(textEntry.text) as unknown;
+    } catch {
+      return textEntry.text;
+    }
+  }
+
+  return lastError;
 }
 
 export function extractJiraKey(input: string): string | null {
@@ -234,80 +259,52 @@ export async function fetchConfluencePageViaOauth(
   pageUrl: string,
   deps?: AtlassianClientDeps,
 ): Promise<ConfluencePage | string> {
+  const config = getAtlassianMcpConfig();
+  if (typeof config === "string") return config;
+
   const pageId = extractPageId(pageUrl);
   if (!pageId) return `Could not extract page ID from URL: ${pageUrl}`;
 
-  const auth = await ensureOauthContext(deps);
-  if (typeof auth === "string") return auth;
+  const withSessionFn = deps?.withMcpSessionFn ?? withAtlassianMcpSession;
+  const result = await withSessionFn(async (session) => {
+    const tool = resolveAtlassianMcpTool(session, "confluenceGetPage");
+    if (!tool) {
+      return `The current Atlassian MCP server does not expose a Confluence page reader forgeflow can use. Available tools: ${availableToolsLabel(session.toolNames)}`;
+    }
 
-  const resource = resolveResource(auth.resources, pageUrl, {
-    product: "confluence",
-    scopePatterns: [/^read:confluence-content\./, /^write:confluence-content\./],
+    return callToolWithVariants(session, tool, [{ url: pageUrl }, { pageUrl }, { pageId }, { id: pageId }], deps);
   });
-  if (typeof resource === "string") return resource;
+  if (typeof result === "string") return result;
 
-  const apiUrl = `https://api.atlassian.com/ex/confluence/${resource.id}/wiki/api/v2/pages/${pageId}?body-format=storage`;
-  const data = await requestJson(apiUrl, auth.accessToken, deps);
-  if (typeof data !== "string") return parseConfluencePageResponse(data, pageId);
-
-  if (!/HTTP (401|403)/.test(data)) return data;
-
-  const legacyApiUrl = `https://api.atlassian.com/ex/confluence/${resource.id}/wiki/rest/api/content/${pageId}?expand=body.storage`;
-  const legacyData = await requestJson(legacyApiUrl, auth.accessToken, deps);
-  if (typeof legacyData === "string") return legacyData;
-
-  return parseConfluencePageResponse(legacyData, pageId);
+  return parseConfluencePageResponse(result, pageId);
 }
 
 export async function fetchJiraIssueViaOauth(
   jiraKey: string,
   deps?: AtlassianClientDeps & { siteUrl?: string },
 ): Promise<JiraIssue | string> {
-  const auth = await ensureOauthContext(deps);
-  if (typeof auth === "string") return auth;
+  const config = getAtlassianMcpConfig();
+  if (typeof config === "string") return config;
 
-  const config = getAtlassianOauthConfig();
-  const siteUrl = deps?.siteUrl ?? (typeof config === "string" ? undefined : config.siteUrl);
-  const resource = resolveResource(auth.resources, siteUrl, {
-    product: "jira",
-    scopePatterns: [/^read:jira-work$/, /^write:jira-work$/],
+  const siteUrl = deps?.siteUrl ?? config.siteUrl;
+  const issueUrl = buildIssueUrl(jiraKey, siteUrl);
+  const withSessionFn = deps?.withMcpSessionFn ?? withAtlassianMcpSession;
+  const result = await withSessionFn(async (session) => {
+    const tool = resolveAtlassianMcpTool(session, "jiraGetIssue");
+    if (!tool) {
+      return `The current Atlassian MCP server does not expose a Jira issue reader forgeflow can use. Available tools: ${availableToolsLabel(session.toolNames)}`;
+    }
+
+    return callToolWithVariants(
+      session,
+      tool,
+      [{ issueKey: jiraKey }, { key: jiraKey }, { jiraKey }, ...(issueUrl ? [{ url: issueUrl }, { issueUrl }] : [])],
+      deps,
+    );
   });
-  if (typeof resource === "string") return resource;
+  if (typeof result === "string") return result;
 
-  const apiUrl = `https://api.atlassian.com/ex/jira/${resource.id}/rest/api/3/issue/${jiraKey}?expand=names`;
-  const data = await requestJson(apiUrl, auth.accessToken, deps);
-  if (typeof data === "string") return data;
-  if (!isRecord(data)) return `Unexpected Jira response for issue ${jiraKey}.`;
-
-  const fields = isRecord(data.fields) ? data.fields : {};
-  const names = isRecord(data.names)
-    ? Object.fromEntries(
-        Object.entries(data.names).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
-      )
-    : {};
-  const title = typeof fields.summary === "string" ? fields.summary : jiraKey;
-  const description = typeof fields.description === "string" ? fields.description : adfToPlainText(fields.description);
-  const acceptanceCriteria = extractTextField(fields, names, [/acceptance criteria/i]);
-  const storyPoints = extractTextField(fields, names, [/story points?/i, /story point estimate/i]);
-  const sprint = extractTextField(fields, names, [/sprint/i]);
-  const issueType =
-    isRecord(fields.issuetype) && typeof fields.issuetype.name === "string" ? fields.issuetype.name : undefined;
-
-  const bodyParts = [description];
-  if (acceptanceCriteria) bodyParts.push(`## Acceptance Criteria\n${acceptanceCriteria}`);
-  if (isRecord(fields.status) && typeof fields.status.name === "string")
-    bodyParts.push(`**Status:** ${fields.status.name}`);
-  if (isRecord(fields.priority) && typeof fields.priority.name === "string")
-    bodyParts.push(`**Priority:** ${fields.priority.name}`);
-  if (storyPoints) bodyParts.push(`**Story Points:** ${storyPoints}`);
-  if (sprint) bodyParts.push(`**Sprint:** ${sprint}`);
-
-  return {
-    key: jiraKey,
-    title,
-    body: normalisePlainText(bodyParts.filter(Boolean).join("\n\n")),
-    issueType,
-  };
+  return parseJiraIssueResponse(result, jiraKey);
 }
 
 export async function fetchJiraIssueFromUrl(issueUrl: string, deps?: AtlassianClientDeps): Promise<JiraIssue | string> {
@@ -361,42 +358,48 @@ export async function createJiraIssueViaOauth(
   issue: JiraIssueDraft & { projectKey: string },
   deps?: AtlassianClientDeps & { siteUrl?: string },
 ): Promise<JiraCreatedIssue | string> {
-  const auth = await ensureOauthContext(deps);
-  if (typeof auth === "string") return auth;
+  const config = getAtlassianMcpConfig();
+  if (typeof config === "string") return config;
 
-  const config = getAtlassianOauthConfig();
-  const siteUrl = deps?.siteUrl ?? (typeof config === "string" ? undefined : config.siteUrl);
-  const resource = resolveResource(auth.resources, siteUrl, {
-    product: "jira",
-    scopePatterns: [/^read:jira-work$/, /^write:jira-work$/],
+  const siteUrl = deps?.siteUrl ?? config.siteUrl;
+  const withSessionFn = deps?.withMcpSessionFn ?? withAtlassianMcpSession;
+  const result = await withSessionFn(async (session) => {
+    const tool = resolveAtlassianMcpTool(session, "jiraCreateIssue");
+    if (!tool) {
+      return `The current Atlassian MCP server does not expose a Jira issue creation tool forgeflow can use. Available tools: ${availableToolsLabel(session.toolNames)}`;
+    }
+
+    return callToolWithVariants(
+      session,
+      tool,
+      [
+        {
+          projectKey: issue.projectKey,
+          summary: issue.summary,
+          description: issue.description,
+          issueType: issue.issueType ?? "Story",
+        },
+        {
+          issue: {
+            projectKey: issue.projectKey,
+            summary: issue.summary,
+            description: issue.description,
+            issueType: issue.issueType ?? "Story",
+          },
+        },
+        {
+          fields: {
+            project: { key: issue.projectKey },
+            summary: issue.summary,
+            issuetype: { name: issue.issueType ?? "Story" },
+            ...(issue.description.trim() ? { description: plainTextToAdf(issue.description) } : {}),
+          },
+        },
+      ],
+      deps,
+    );
   });
-  if (typeof resource === "string") return resource;
+  if (typeof result === "string") return result;
 
-  const apiUrl = `https://api.atlassian.com/ex/jira/${resource.id}/rest/api/3/issue`;
-  const payload: Record<string, unknown> = {
-    fields: {
-      project: { key: issue.projectKey },
-      summary: issue.summary,
-      issuetype: { name: issue.issueType ?? "Story" },
-      ...(issue.description.trim() ? { description: plainTextToAdf(issue.description) } : {}),
-    },
-  };
-
-  const data = await requestJson(apiUrl, auth.accessToken, deps, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  if (typeof data === "string") return data;
-  if (!isRecord(data)) return `Unexpected Jira create response for ${issue.summary}.`;
-
-  const key = typeof data.key === "string" ? data.key : "";
-  const id = typeof data.id === "string" ? data.id : "";
-  const baseUrl = normaliseOrigin(resource.url);
-  if (!key || !id) return `Jira create response for ${issue.summary} did not include id/key.`;
-
-  return {
-    id,
-    key,
-    url: `${baseUrl}/browse/${key}`,
-  };
+  return parseJiraCreateResponse(result, issue.summary, siteUrl);
 }
