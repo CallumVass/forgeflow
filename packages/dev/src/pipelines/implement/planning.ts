@@ -69,7 +69,7 @@ async function appendUserTurnToSession(sessionPath: string, message: string, pct
   // side effect is the on-disk session file, not the return value.
   const quoted = message.replace(/'/g, `'\\''`);
   try {
-    await pctx.execFn(`pi --session "${sessionPath}" -p --no-exit --mode json '${quoted}'`, pctx.cwd);
+    await pctx.execFn(`pi --session "${sessionPath}" -p --mode json '${quoted}'`, pctx.cwd);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     pctx.ctx.ui.notify(
