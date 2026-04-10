@@ -196,7 +196,7 @@ Then run:
 /datadog "give me p50 p95 and p99 for the billing lambda over the last 24h"
 ```
 
-The first cut expects a Datadog MCP server that exposes `query-metrics`, `search-logs`, and optionally `search-spans`.
+Forgeflow works best with a Datadog MCP server that exposes metric query, metric search/context, and log search tools. The `/datadog` pipeline now discovers likely metric names and tag keys before reporting `no data`, rather than assuming only AWS Lambda runtime metric shapes.
 
 ## See also
 
