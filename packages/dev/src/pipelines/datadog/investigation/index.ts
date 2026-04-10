@@ -20,13 +20,26 @@ interface RunDatadogInvestigationInput {
   pctx: PipelineContext;
 }
 
-export async function runDatadogInvestigation({ prompt, request, candidate, pctx }: RunDatadogInvestigationInput) {
+interface DatadogInvestigationResult {
+  report: string;
+  isError?: true;
+}
+
+export async function runDatadogInvestigation({
+  prompt,
+  request,
+  candidate,
+  pctx,
+}: RunDatadogInvestigationInput): Promise<DatadogInvestigationResult> {
   const result = await withDatadogMcpSession(async (session) => {
     const metricsQueryTool = resolveDatadogMcpTool(session, "metricsQuery");
     const logsSearchTool = resolveDatadogMcpTool(session, "logsSearch");
     const spansSearchTool = resolveDatadogMcpTool(session, "spansSearch");
     if (!metricsQueryTool) {
-      return `The current Datadog MCP server does not expose a metric-query tool forgeflow can use. Available tools: ${session.toolNames.join(", ")}`;
+      return {
+        report: `The current Datadog MCP server does not expose a metric-query tool forgeflow can use. Available tools: ${session.toolNames.join(", ")}`,
+        isError: true as const,
+      };
     }
 
     const plans = await discoverDatadogQueryPlans(session, candidate, request.env, pctx);
@@ -40,33 +53,35 @@ export async function runDatadogInvestigation({ prompt, request, candidate, pctx
             request.windowMs,
           )
         : undefined;
+    const logFilters =
+      summary?.plan.filters ?? plans[0]?.filters ?? (request.env ? [{ key: "env", value: request.env }] : []);
     const logs =
       request.intent === "investigate" && logsSearchTool
         ? await fetchErrorLogs(
             session,
             logsSearchTool,
-            buildLogQuery(
-              summary?.plan.filters ?? (request.env ? [{ key: "env", value: request.env }] : []),
-              candidate.functionName ?? candidate.constructId ?? candidate.file,
-            ),
+            buildLogQuery(logFilters, candidate.functionName ?? candidate.constructId ?? candidate.file),
             request.windowMs,
           )
         : request.intent === "investigate"
           ? "No Datadog log-search tool is available on the current MCP server."
           : undefined;
 
-    return formatReport({
-      prompt,
-      candidate,
-      env: request.env,
-      windowMs: request.windowMs,
-      summary,
-      spanSummary,
-      logs,
-      attemptedPlans: plans,
-    });
+    return {
+      report: formatReport({
+        prompt,
+        candidate,
+        env: request.env,
+        windowMs: request.windowMs,
+        summary,
+        spanSummary,
+        logs,
+        attemptedPlans: plans,
+      }),
+    };
   });
 
+  if (typeof result === "string") return { report: result, isError: true as const };
   return result;
 }
 

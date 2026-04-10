@@ -44,6 +44,6 @@ async function runDatadogInner(prompt: string, pctx: PipelineContext) {
     return pipelineResult("No Lambda candidate was selected for the Datadog investigation.", "datadog", stages, true);
   }
 
-  const report = await runDatadogInvestigation({ prompt, request, candidate: selected, pctx });
-  return pipelineResult(report, "datadog", stages);
+  const investigation = await runDatadogInvestigation({ prompt, request, candidate: selected, pctx });
+  return pipelineResult(investigation.report, "datadog", stages, investigation.isError);
 }

@@ -33,7 +33,7 @@ describe("runDatadog", () => {
       candidates: [],
       ambiguous: false,
     });
-    mocks.runDatadogInvestigation.mockResolvedValue("Investigation report");
+    mocks.runDatadogInvestigation.mockResolvedValue({ report: "Investigation report" });
 
     const pctx = mockPipelineContext({
       ctx: {
@@ -76,6 +76,29 @@ describe("runDatadog", () => {
       pctx: expect.objectContaining({ cwd: "/tmp/test" }),
     });
     expect(result.content[0]?.text).toBe("Investigation report");
+  });
+
+  it("propagates investigation failures as pipeline errors", async () => {
+    mocks.exploreLambdaWithAgent.mockResolvedValue({
+      selected: {
+        file: "infra/lambda.ts",
+        line: 42,
+        constructId: "ProfileFetch",
+        score: 1,
+        reasons: [],
+      },
+      candidates: [],
+      ambiguous: false,
+    });
+    mocks.runDatadogInvestigation.mockResolvedValue({
+      report: "Datadog metric querying is unavailable.",
+      isError: true,
+    });
+
+    const result = await runDatadog("investigate profile", mockPipelineContext());
+
+    expect(result.content[0]?.text).toBe("Datadog metric querying is unavailable.");
+    expect(result.isError).toBe(true);
   });
 
   it("returns the existing prompt and lambda guard messages without delegating", async () => {

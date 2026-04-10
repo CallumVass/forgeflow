@@ -96,18 +96,77 @@ describe("runDatadogInvestigation", () => {
       execSafeFn: vi.fn(async () => ["galaxy_console.profile.duration", "galaxy_console.profile.count"].join("\n")),
     });
 
-    const text = await runDatadogInvestigation({
+    const result = await runDatadogInvestigation({
       prompt: "tell me how the profile fetch lambda is performing in prod",
       request: parseDatadogRequest("tell me how the profile fetch lambda is performing in prod"),
       candidate,
       pctx,
     });
 
-    expect(text).toContain("Metric used: galaxy_console.profile.duration");
-    expect(text).toContain("Filters used: env:prod, lambda_function:profilefetch");
-    expect(text).toContain("Request count: 12");
-    expect(text).toContain("Failure count: 2 (16.7%)");
-    expect(text).toContain("- p95: 7.90 s");
+    expect(result.report).toContain("Metric used: galaxy_console.profile.duration");
+    expect(result.report).toContain("Filters used: env:prod, lambda_function:profilefetch");
+    expect(result.report).toContain("Request count: 12");
+    expect(result.report).toContain("Failure count: 2 (16.7%)");
+    expect(result.report).toContain("- p95: 7.90 s");
+    expect(result.isError).toBeUndefined();
+  });
+
+  it("uses the best discovered Lambda filters for log search when metrics are sparse", async () => {
+    const session = {
+      toolNames: ["get_datadog_metric", "get_datadog_metric_context", "search_datadog_logs"],
+      tools: [
+        { name: "get_datadog_metric", description: "Get Datadog metric timeseries" },
+        { name: "get_datadog_metric_context", description: "Get metric context including indexed tags" },
+        { name: "search_datadog_logs", description: "Search Datadog logs" },
+      ],
+    } as Pick<DatadogMcpSession, "toolNames" | "tools"> as DatadogMcpSession;
+    const candidate: LambdaCandidate = {
+      file: "infra/lambda.ts",
+      line: 42,
+      constructId: "ProfileFetch",
+      score: 1,
+      reasons: [],
+    };
+
+    mocks.withDatadogMcpSession.mockImplementation(async (fn: (sessionArg: DatadogMcpSession) => Promise<unknown>) =>
+      fn(session),
+    );
+    mocks.callDatadogMcpTool.mockImplementation(
+      async (_session: unknown, tool: string, args: Record<string, unknown>) => {
+        if (tool === "get_datadog_metric") return mcpJson([]);
+        if (tool === "get_datadog_metric_context") {
+          return mcpJson({
+            metric_name: String(args.metric_name),
+            tags_data: {
+              indexed_tags: {
+                env: ["prod"],
+                functionname: ["prod-galaxy-profilefetch-a1b2c3"],
+              },
+            },
+          });
+        }
+        if (tool === "search_datadog_logs") {
+          expect(String(args.query)).toContain("functionname:prod-galaxy-profilefetch-a1b2c3");
+          expect(String(args.query)).toContain("status:error");
+          return mcpJson({ logs: [] });
+        }
+        return mcpJson({});
+      },
+    );
+
+    const pctx = mockPipelineContext({ cwd: "/tmp/project", execSafeFn: vi.fn(async () => "aws.lambda.duration") });
+
+    const result = await runDatadogInvestigation({
+      prompt: "investigate the profile fetch lambda in prod",
+      request: parseDatadogRequest("investigate the profile fetch lambda in prod"),
+      candidate,
+      pctx,
+    });
+
+    expect(result.report).toContain(
+      "Recent error logs:\n- No recent error logs matched the resolved Lambda name/tags.",
+    );
+    expect(result.isError).toBeUndefined();
   });
 
   it("falls back to traces for sparse metrics and preserves the no-log-match message", async () => {
@@ -167,22 +226,26 @@ describe("runDatadogInvestigation", () => {
 
     const pctx = mockPipelineContext({ cwd: "/tmp/project", execSafeFn: vi.fn(async () => "aws.lambda.duration") });
 
-    const traceText = await runDatadogInvestigation({
+    const traceResult = await runDatadogInvestigation({
       prompt: "investigate the profile fetch lambda in prod",
       request: parseDatadogRequest("investigate the profile fetch lambda in prod"),
       candidate: profileCandidate,
       pctx,
     });
-    const invoiceText = await runDatadogInvestigation({
+    const invoiceResult = await runDatadogInvestigation({
       prompt: "investigate the invoice lambda in prod",
       request: parseDatadogRequest("investigate the invoice lambda in prod"),
       candidate: invoiceCandidate,
       pctx,
     });
 
-    expect(traceText).toContain("Metric data was sparse, so Datadog trace search was used as a fallback.");
-    expect(traceText).toContain("Span count: 3");
-    expect(traceText).toContain("- p95: 6.10 s");
-    expect(invoiceText).toContain("Recent error logs:\n- No recent error logs matched the resolved Lambda name/tags.");
+    expect(traceResult.report).toContain("Metric data was sparse, so Datadog trace search was used as a fallback.");
+    expect(traceResult.report).toContain("Span count: 3");
+    expect(traceResult.report).toContain("- p95: 6.10 s");
+    expect(invoiceResult.report).toContain(
+      "Recent error logs:\n- No recent error logs matched the resolved Lambda name/tags.",
+    );
+    expect(traceResult.isError).toBeUndefined();
+    expect(invoiceResult.isError).toBeUndefined();
   });
 });
