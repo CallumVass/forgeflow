@@ -1,27 +1,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { SessionsConfig } from "../config/forgeflow-config.js";
-import type { ArchiveOutcome } from "./archive.js";
+import type { SessionsConfig } from "../../config/forgeflow-config.js";
 import { moveToArchive, readOutcomeMarker } from "./archive.js";
-import { runRoot, sanitiseRunId } from "./fs.js";
-
-/**
- * Handle returned by `createRunDir`, closed over by the session-path
- * allocator. Lives on `PipelineContext.runDir` so pipelines and helpers
- * that thread their own session paths (for example the chain-builder)
- * can allocate explicitly.
- */
-export interface RunDirHandle {
-  runId: string;
-  /** Absolute path to `.forgeflow/run/<runId>/`. */
-  dir: string;
-  /**
-   * Allocate the next session path. Each call increments a private
-   * counter and pre-creates an empty file at `0o600` so pi's subsequent
-   * `--session <path>` writes never land in a world-readable file.
-   */
-  allocSessionPath: (agentName: string) => string;
-}
+import { runRoot, sanitiseRunId } from "./paths.js";
+import type { ArchiveOutcome, RunDirHandle } from "./types.js";
 
 /**
  * Create `.forgeflow/run/<runId>/` at `0o700`, archiving any stale directory

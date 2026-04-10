@@ -1,13 +1,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { SessionsConfig } from "../config/forgeflow-config.js";
-import type { RunDirHandle } from "./create.js";
-import { archiveRoot } from "./fs.js";
+import type { SessionsConfig } from "../../config/forgeflow-config.js";
+import { archiveRoot } from "./paths.js";
+import type { ArchiveOutcome, RunDirHandle } from "./types.js";
 
 /** Marker file written on `failed` outcome so a subsequent run can archive it correctly. */
 const OUTCOME_MARKER = "outcome.json";
-
-export type ArchiveOutcome = "success" | "failed" | "cancelled";
 
 /**
  * Filesystem-safe timestamp used as the archive prefix: `YYYYMMDD-HHmmss`.
