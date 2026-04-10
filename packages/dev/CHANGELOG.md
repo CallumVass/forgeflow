@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.23.0...forgeflow-dev-v0.23.1) (2026-04-10)
+
+
+### Bug Fixes
+
+* improve datadog oauth and lambda resolution ([#173](https://github.com/CallumVass/forgeflow/issues/173)) ([a7b5f31](https://github.com/CallumVass/forgeflow/commit/a7b5f31fcdf4bee918e73a18a7189554bc7e87b0))
+
 ## [0.23.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.22.0...forgeflow-dev-v0.23.0) (2026-04-10)
 
 
