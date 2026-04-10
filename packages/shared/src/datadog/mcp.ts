@@ -3,10 +3,16 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { getDatadogMcpConfig, readDatadogMcpOauthState, writeDatadogMcpOauthState } from "./oauth.js";
 
+export interface DatadogMcpTool {
+  name: string;
+  description?: string;
+}
+
 export interface DatadogMcpSession {
   client: Client;
   transport: StreamableHTTPClientTransport;
   serverUrl: string;
+  tools: DatadogMcpTool[];
   toolNames: string[];
 }
 
@@ -77,11 +83,18 @@ async function connectDatadogMcpSession(): Promise<DatadogMcpSession | string> {
   try {
     await client.connect(transport);
     const tools = await client.listTools();
+    const availableTools = tools.tools
+      .map((tool: { name: string; description?: string }) => ({
+        name: tool.name,
+        description: typeof tool.description === "string" ? tool.description : undefined,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
     return {
       client,
       transport,
       serverUrl: config.serverUrl,
-      toolNames: tools.tools.map((tool: { name: string }) => tool.name).sort(),
+      tools: availableTools,
+      toolNames: availableTools.map((tool) => tool.name),
     };
   } catch (err) {
     await transport.close().catch(() => undefined);
@@ -138,6 +151,60 @@ function extractFirstText(content: unknown): string | undefined {
   const entry = content.find((item) => isRecord(item) && item.type === "text" && typeof item.text === "string");
   if (!entry || !isRecord(entry)) return undefined;
   return typeof entry.text === "string" ? entry.text : undefined;
+}
+
+function normaliseToolText(value: string | undefined): string {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function scoreTool(tool: DatadogMcpTool, requiredTerms: string[], optionalTerms: string[]): number {
+  const haystack = `${normaliseToolText(tool.name)} ${normaliseToolText(tool.description)}`.trim();
+  if (!haystack) return -1;
+  if (requiredTerms.some((term) => !haystack.includes(term))) return -1;
+
+  let score = 0;
+  for (const term of requiredTerms) {
+    if (normaliseToolText(tool.name).includes(term)) score += 5;
+    else score += 2;
+  }
+  for (const term of optionalTerms) {
+    if (haystack.includes(term)) score += normaliseToolText(tool.name).includes(term) ? 3 : 1;
+  }
+  return score;
+}
+
+type DatadogToolCapability = "metricsQuery" | "logsSearch" | "metricsCatalog";
+
+export function resolveDatadogMcpTool(
+  session: Pick<DatadogMcpSession, "tools" | "toolNames">,
+  capability: DatadogToolCapability,
+): string | undefined {
+  const exactAliases: Record<DatadogToolCapability, string[]> = {
+    metricsQuery: ["query-metrics", "get_datadog_metric", "query_datadog_metrics"],
+    logsSearch: ["search-logs", "search_datadog_logs"],
+    metricsCatalog: ["get-metrics", "list_datadog_metrics", "search_datadog_metrics"],
+  };
+
+  for (const alias of exactAliases[capability]) {
+    if (session.toolNames.includes(alias)) return alias;
+  }
+
+  const heuristics: Record<DatadogToolCapability, { requiredTerms: string[]; optionalTerms: string[] }> = {
+    metricsQuery: { requiredTerms: ["metric"], optionalTerms: ["query", "timeseries", "measure", "point", "value"] },
+    logsSearch: { requiredTerms: ["log"], optionalTerms: ["search", "query", "events"] },
+    metricsCatalog: { requiredTerms: ["metric"], optionalTerms: ["list", "catalog", "search", "discover"] },
+  };
+
+  return session.tools
+    .map((tool) => ({
+      tool,
+      score: scoreTool(tool, heuristics[capability].requiredTerms, heuristics[capability].optionalTerms),
+    }))
+    .filter((entry) => entry.score >= 0)
+    .sort((a, b) => b.score - a.score || a.tool.name.localeCompare(b.tool.name))[0]?.tool.name;
 }
 
 export async function getDatadogMcpToolNames(): Promise<string[] | string> {

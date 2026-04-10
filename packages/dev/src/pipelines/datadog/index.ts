@@ -2,6 +2,7 @@ import {
   callDatadogMcpTool,
   type DatadogMcpSession,
   parseDatadogMcpJson,
+  resolveDatadogMcpTool,
   withDatadogMcpSession,
 } from "@callumvass/forgeflow-shared/datadog";
 import {
@@ -10,9 +11,9 @@ import {
   type StageResult,
   withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
+import { formatLambdaCandidate, type LambdaCandidate } from "./candidate.js";
 import { exploreLambdaWithAgent } from "./explorer.js";
 import { parseDatadogRequest } from "./request.js";
-import { formatLambdaCandidate, type LambdaCandidate, resolveLambdaFromRepo } from "./resolver.js";
 
 interface PercentileValue {
   label: string;
@@ -45,36 +46,12 @@ async function runDatadogInner(prompt: string, pctx: PipelineContext) {
   if (!prompt) return pipelineResult("No Datadog prompt provided.", "datadog", stages);
 
   const request = parseDatadogRequest(prompt);
-  const repoResolution = await resolveLambdaFromRepo(pctx.cwd, prompt);
-  const repoCandidates = typeof repoResolution === "string" ? [] : repoResolution.candidates;
+  const agentResolution = await exploreLambdaWithAgent(prompt, pctx, stages);
+  if (typeof agentResolution === "string") return pipelineResult(agentResolution, "datadog", stages, true);
 
-  let selected = typeof repoResolution === "string" ? undefined : repoResolution.selected;
-  let candidates = repoCandidates;
-  const shouldExploreWithAgent = typeof repoResolution === "string" || !selected || !selected.functionName;
-
-  if (shouldExploreWithAgent) {
-    const agentResolution = await exploreLambdaWithAgent(prompt, repoCandidates, pctx, stages);
-    if (typeof agentResolution !== "string") {
-      selected = agentResolution.selected ?? selected;
-      candidates = agentResolution.candidates.length > 0 ? agentResolution.candidates : candidates;
-      if (!selected && agentResolution.ambiguous && agentResolution.candidates.length > 0) {
-        const options = agentResolution.candidates
-          .slice(0, 5)
-          .map((candidate) => `- ${formatLambdaCandidate(candidate)}`)
-          .join("\n");
-        return pipelineResult(
-          `I found multiple plausible Lambda candidates. Please re-run /datadog with one of these names:\n${options}`,
-          "datadog",
-          stages,
-        );
-      }
-    } else if (typeof repoResolution === "string") {
-      return pipelineResult(agentResolution, "datadog", stages, true);
-    }
-  }
-
-  if (!selected && typeof repoResolution !== "string" && !repoResolution.selected) {
-    const options = candidates
+  const selected = agentResolution.selected;
+  if (!selected && agentResolution.ambiguous && agentResolution.candidates.length > 0) {
+    const options = agentResolution.candidates
       .slice(0, 5)
       .map((candidate) => `- ${formatLambdaCandidate(candidate)}`)
       .join("\n");
@@ -86,24 +63,23 @@ async function runDatadogInner(prompt: string, pctx: PipelineContext) {
   }
 
   if (!selected) {
-    const message =
-      typeof repoResolution === "string"
-        ? repoResolution
-        : "No Lambda candidate was selected for the Datadog investigation.";
-    return pipelineResult(message, "datadog", stages, true);
+    return pipelineResult("No Lambda candidate was selected for the Datadog investigation.", "datadog", stages, true);
   }
 
   const result = await withDatadogMcpSession(async (session) => {
-    const missing = ["query-metrics", "search-logs"].filter((tool) => !session.toolNames.includes(tool));
-    if (missing.length > 0) {
-      return `The current Datadog MCP server does not expose the tools forgeflow expects yet: ${missing.join(", ")}. Available tools: ${session.toolNames.join(", ")}`;
+    const metricsQueryTool = resolveDatadogMcpTool(session, "metricsQuery");
+    const logsSearchTool = resolveDatadogMcpTool(session, "logsSearch");
+    if (!metricsQueryTool) {
+      return `The current Datadog MCP server does not expose a metric-query tool forgeflow can use. Available tools: ${session.toolNames.join(", ")}`;
     }
 
-    const percentiles = await fetchPercentiles(session, selected, request.env, request.windowMs);
+    const percentiles = await fetchPercentiles(session, metricsQueryTool, selected, request.env, request.windowMs);
     const logs =
-      request.intent === "investigate"
-        ? await fetchErrorLogs(session, selected, request.env, request.windowMs)
-        : undefined;
+      request.intent === "investigate" && logsSearchTool
+        ? await fetchErrorLogs(session, logsSearchTool, selected, request.env, request.windowMs)
+        : request.intent === "investigate"
+          ? "No Datadog log-search tool is available on the current MCP server."
+          : undefined;
 
     return formatReport(prompt, selected, request.env, request.windowMs, percentiles, logs);
   });
@@ -114,6 +90,7 @@ async function runDatadogInner(prompt: string, pctx: PipelineContext) {
 
 async function fetchPercentiles(
   session: DatadogMcpSession,
+  metricsQueryTool: string,
   candidate: LambdaCandidate,
   env: string | undefined,
   windowMs: number,
@@ -131,7 +108,7 @@ async function fetchPercentiles(
     const values: PercentileValue[] = [];
     for (const label of ["p50", "p95", "p99", "avg"]) {
       const query = `${label}:${metric}{${filter}}.rollup(avg, ${rollupSeconds})`;
-      const raw = await callDatadogMcpTool(session, "query-metrics", { query, from, to });
+      const raw = await callDatadogMcpTool(session, metricsQueryTool, { query, from, to });
       const parsed = parseDatadogMcpJson(raw);
       if (typeof parsed === "string") {
         values.push({ label });
@@ -151,8 +128,9 @@ async function fetchPercentiles(
 }
 
 async function discoverMetricCandidates(session: DatadogMcpSession): Promise<string[]> {
-  if (!session.toolNames.includes("get-metrics")) return [];
-  const raw = await callDatadogMcpTool(session, "get-metrics", { q: "lambda" });
+  const metricsCatalogTool = resolveDatadogMcpTool(session, "metricsCatalog");
+  if (!metricsCatalogTool) return [];
+  const raw = await callDatadogMcpTool(session, metricsCatalogTool, { q: "lambda" });
   const parsed = parseDatadogMcpJson(raw);
   if (!parsed || typeof parsed === "string" || typeof parsed !== "object" || !("metrics" in parsed)) return [];
   const metrics = Array.isArray((parsed as { metrics?: unknown }).metrics)
@@ -182,6 +160,7 @@ function extractLatestMetricValue(parsed: unknown): number | undefined {
 
 async function fetchErrorLogs(
   session: DatadogMcpSession,
+  logsSearchTool: string,
   candidate: LambdaCandidate,
   env: string | undefined,
   windowMs: number,
@@ -192,7 +171,7 @@ async function fetchErrorLogs(
   const queryParts = [`"${lambdaName}"`, "status:error"];
   if (env) queryParts.push(`env:${env}`);
 
-  const raw = await callDatadogMcpTool(session, "search-logs", {
+  const raw = await callDatadogMcpTool(session, logsSearchTool, {
     query: queryParts.join(" "),
     from,
     to,

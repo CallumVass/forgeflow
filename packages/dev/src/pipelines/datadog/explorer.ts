@@ -1,5 +1,5 @@
 import { emptyStage, type PipelineContext, type StageResult, toAgentOpts } from "@callumvass/forgeflow-shared/pipeline";
-import { formatLambdaCandidate, type LambdaCandidate } from "./resolver.js";
+import type { LambdaCandidate } from "./candidate.js";
 
 interface AgentResolutionPayload {
   selected?: LambdaCandidate;
@@ -66,18 +66,10 @@ export function parseAgentLambdaResolution(output: string): AgentResolutionPaylo
   return { selected, candidates, ambiguous };
 }
 
-function buildResolverPrompt(prompt: string, hints: LambdaCandidate[]): string {
-  const hintText =
-    hints.length > 0
-      ? hints
-          .slice(0, 8)
-          .map((candidate) => `- ${formatLambdaCandidate(candidate)}`)
-          .join("\n")
-      : "- none";
-
+function buildResolverPrompt(prompt: string): string {
   return [
     "Resolve which AWS Lambda the user means for a Datadog investigation.",
-    "Explore the repository directly using tools. Do not rely only on the hints below.",
+    "Explore the repository directly using tools.",
     "Be thorough across TypeScript, JavaScript, C#, infra folders, hidden folders like .infra, CDK, CloudFormation, Terraform, and custom constructs from private libraries.",
     "Prefer the deployed Lambda function name when it is explicitly derivable from code. If it is not explicit, leave functionName omitted rather than inventing one.",
     "Return STRICT JSON only with this shape:",
@@ -88,20 +80,16 @@ function buildResolverPrompt(prompt: string, hints: LambdaCandidate[]): string {
     "If nothing is found, return selected=null, candidates=[], ambiguous=false.",
     "",
     `User prompt: ${prompt}`,
-    "",
-    "Deterministic hints from forgeflow:",
-    hintText,
   ].join("\n");
 }
 
 export async function exploreLambdaWithAgent(
   prompt: string,
-  hints: LambdaCandidate[],
   pctx: PipelineContext,
   stages: StageResult[],
 ): Promise<AgentResolutionPayload | string> {
   stages.push(emptyStage("resolve-lambda"));
-  const agentResult = await pctx.runAgentFn("datadog-resolver", buildResolverPrompt(prompt, hints), {
+  const agentResult = await pctx.runAgentFn("datadog-resolver", buildResolverPrompt(prompt), {
     ...toAgentOpts(pctx, { stages, pipeline: "datadog" }),
     stageName: "resolve-lambda",
   });
