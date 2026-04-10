@@ -519,10 +519,18 @@ function normaliseToolText(value: string | undefined): string {
     .trim();
 }
 
-function scoreTool(tool: McpTool, requiredTerms: string[], optionalTerms: string[]): number {
+function scoreTool(
+  tool: McpTool,
+  requiredTerms: string[],
+  optionalTerms: string[],
+  options: { requireOptionalMatch?: boolean } = {},
+): number {
   const haystack = `${normaliseToolText(tool.name)} ${normaliseToolText(tool.description)}`.trim();
   if (!haystack) return -1;
   if (requiredTerms.some((term) => !haystack.includes(term))) return -1;
+
+  const optionalMatches = optionalTerms.filter((term) => haystack.includes(term)).length;
+  if (options.requireOptionalMatch && optionalMatches === 0) return -1;
 
   let score = 0;
   for (const term of requiredTerms) {
@@ -540,13 +548,14 @@ export function resolveMcpTool(
   aliases: string[],
   requiredTerms: string[],
   optionalTerms: string[],
+  options: { requireOptionalMatch?: boolean } = {},
 ): string | undefined {
   for (const alias of aliases) {
     if (session.toolNames.includes(alias)) return alias;
   }
 
   return session.tools
-    .map((tool) => ({ tool, score: scoreTool(tool, requiredTerms, optionalTerms) }))
+    .map((tool) => ({ tool, score: scoreTool(tool, requiredTerms, optionalTerms, options) }))
     .filter((entry) => entry.score >= 0)
     .sort((a, b) => b.score - a.score || a.tool.name.localeCompare(b.tool.name))[0]?.tool.name;
 }
