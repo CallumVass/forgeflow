@@ -161,7 +161,8 @@ export ATLASSIAN_MCP_CLIENT_ID=...
 export ATLASSIAN_MCP_CLIENT_SECRET=...
 # Optional OAuth scope override
 export ATLASSIAN_MCP_SCOPE="read:jira-work read:confluence-content.all"
-# Optional site hint for Jira URL generation and multi-site setups
+# Optional site hint for Jira URL generation, multi-site setups,
+# and MCP servers that expose separate Jira/Confluence cloud resources for one site
 export ATLASSIAN_URL=https://yourcompany.atlassian.net
 ```
 

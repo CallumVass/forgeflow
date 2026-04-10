@@ -173,7 +173,7 @@ export function parseAtlassianMcpJson(result: unknown): unknown | string {
   return parseMcpJson(result, "Atlassian MCP");
 }
 
-type AtlassianToolCapability = "jiraGetIssue" | "confluenceGetPage" | "jiraCreateIssue";
+type AtlassianToolCapability = "jiraGetIssue" | "confluenceGetPage" | "jiraCreateIssue" | "accessibleResources";
 
 export function resolveAtlassianMcpTool(
   session: Pick<AtlassianMcpSession, "tools" | "toolNames">,
@@ -203,6 +203,14 @@ export function resolveAtlassianMcpTool(
       "jira_create_issue",
       "createJiraIssue",
     ],
+    accessibleResources: [
+      "get-accessible-atlassian-resources",
+      "get-accessible-resources",
+      "accessible-atlassian-resources",
+      "getAccessibleAtlassianResources",
+      "getAccessibleResources",
+      "listAccessibleAtlassianResources",
+    ],
   };
 
   const heuristics: Record<AtlassianToolCapability, { requiredTerms: string[]; optionalTerms: string[] }> = {
@@ -212,6 +220,10 @@ export function resolveAtlassianMcpTool(
       optionalTerms: ["page", "content", "read", "fetch", "get"],
     },
     jiraCreateIssue: { requiredTerms: ["jira"], optionalTerms: ["issue", "ticket", "create", "write"] },
+    accessibleResources: {
+      requiredTerms: ["accessible"],
+      optionalTerms: ["resource", "resources", "atlassian", "site", "cloud"],
+    },
   };
 
   return resolveMcpTool(

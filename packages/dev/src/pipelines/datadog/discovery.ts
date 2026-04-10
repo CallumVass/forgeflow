@@ -194,6 +194,24 @@ function buildIdentifierCandidates(candidate: LambdaCandidate): string[] {
   return Array.from(identifiers);
 }
 
+function buildWildcardIdentifierPatterns(candidate: LambdaCandidate): string[] {
+  const raw = [candidate.constructId, candidate.functionName, candidate.className, candidate.variableName].filter(
+    (value): value is string => typeof value === "string" && value.length > 0,
+  );
+
+  const patterns = new Set<string>();
+  for (const value of raw) {
+    const tokens = splitIdentifier(value).filter((part) => part.length >= 2 && !STOPWORDS.has(part));
+    if (tokens.length === 0) continue;
+
+    patterns.add(`*${tokens.join("*")}*`);
+    patterns.add(`*${tokens.join("")}*`);
+    if (tokens.length >= 2) patterns.add(`*${tokens[0]}*${tokens[tokens.length - 1]}*`);
+  }
+
+  return Array.from(patterns).slice(0, 6);
+}
+
 async function discoverRepoMetricHints(candidate: LambdaCandidate, pctx: PipelineContext): Promise<string[]> {
   const output = await pctx.execSafeFn(
     'rg -o --no-filename --no-line-number "[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_-]+){2,}" -g "*.{ts,tsx,js,jsx,mjs,cjs,cs,py,go,java,rb,json,yml,yaml,md}" .',
@@ -319,14 +337,31 @@ function normaliseValue(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
+function matchesOrderedTokenSequence(valueNorm: string, tokens: string[]): boolean {
+  if (tokens.length === 0) return false;
+
+  let cursor = 0;
+  for (const token of tokens) {
+    const index = valueNorm.indexOf(token, cursor);
+    if (index < 0) return false;
+    cursor = index + token.length;
+  }
+
+  return true;
+}
+
 function findBestTagMatch(
   indexedTags: Record<string, string[]>,
   keys: string[],
   candidates: string[],
 ): TagFilter | undefined {
   const wanted = uniqueStrings(candidates)
-    .map((candidate) => ({ raw: candidate, norm: normaliseValue(candidate) }))
-    .filter((candidate) => candidate.norm.length > 0);
+    .map((candidate) => ({
+      raw: candidate,
+      norm: normaliseValue(candidate),
+      tokens: splitIdentifier(candidate).filter((part) => part.length >= 2 && !STOPWORDS.has(part)),
+    }))
+    .filter((candidate) => candidate.norm.length > 0 || candidate.tokens.length > 0);
 
   let best: { filter: TagFilter; score: number } | undefined;
   for (const key of keys) {
@@ -336,9 +371,10 @@ function findBestTagMatch(
       for (const candidate of wanted) {
         let score = -1;
         if (value.toLowerCase() === candidate.raw.toLowerCase()) score = 100;
-        else if (valueNorm === candidate.norm) score = 95;
+        else if (candidate.norm.length > 0 && valueNorm === candidate.norm) score = 95;
         else if (candidate.norm.length >= 4 && valueNorm.includes(candidate.norm)) score = 70;
         else if (candidate.norm.length >= 4 && candidate.norm.includes(valueNorm)) score = 60;
+        else if (candidate.tokens.length >= 2 && matchesOrderedTokenSequence(valueNorm, candidate.tokens)) score = 65;
         if (!best || score > best.score) best = { filter: { key, value }, score };
       }
     }
@@ -377,6 +413,8 @@ function chooseServiceHint(indexedTags: Record<string, string[]>): string | unde
 function buildFallbackPlans(metrics: string[], candidate: LambdaCandidate, env: string | undefined): MetricQueryPlan[] {
   const filtersByMetric: Array<{ metric: string; filters: TagFilter[]; provenance: string[]; score: number }> = [];
   const logicalName = candidate.constructId ? normaliseValue(candidate.constructId) : undefined;
+  const wildcardPatterns = buildWildcardIdentifierPatterns(candidate);
+
   for (const metric of metrics.filter((entry) => DURATION_KEYWORDS.test(entry)).slice(0, 6)) {
     if (candidate.functionName) {
       filtersByMetric.push({
@@ -403,6 +441,22 @@ function buildFallbackPlans(metrics: string[], candidate: LambdaCandidate, env: 
         provenance: [`fallback functionname:${candidate.constructId}`, ...(env ? [`fallback env:${env}`] : [])],
         score: 10,
       });
+    }
+
+    for (const pattern of wildcardPatterns) {
+      for (const [key, score] of [
+        ["functionname", 12],
+        ["name", 11],
+        ["function_arn", 5],
+        ["resource", 5],
+      ] as const) {
+        filtersByMetric.push({
+          metric,
+          filters: [...(env ? [{ key: "env", value: env }] : []), { key, value: pattern }],
+          provenance: [`fallback wildcard ${key}:${pattern}`, ...(env ? [`fallback env:${env}`] : [])],
+          score,
+        });
+      }
     }
   }
 
@@ -457,7 +511,7 @@ export async function discoverDatadogQueryPlans(
     const envFilter = env ? findBestTagMatch(indexedTags, ["env", "environment"], [env]) : undefined;
     const filters = [envFilter, lambdaFilter].filter((value): value is TagFilter => Boolean(value));
     const score =
-      scoreMetric(metric, searchTerms, repoHintSet) +
+      (lambdaFilter || filters.length > 0 ? scoreMetric(metric, searchTerms, repoHintSet) : 1) +
       (lambdaFilter ? 100 : 0) +
       (envFilter ? 25 : 0) +
       (filters.some((filter) => filter.key === "lambda_function") ? 10 : 0);

@@ -152,6 +152,82 @@ describe("Atlassian MCP client", () => {
     );
   });
 
+  it("supports Atlassian's cloudId-based Jira and Confluence tools", async () => {
+    const session = {
+      toolNames: ["getAccessibleAtlassianResources", "getJiraIssue", "getConfluencePage", "createJiraIssue"],
+      tools: [
+        { name: "getAccessibleAtlassianResources", description: "List accessible Atlassian resources" },
+        { name: "getJiraIssue", description: "Read a Jira issue" },
+        { name: "getConfluencePage", description: "Read a Confluence page" },
+        { name: "createJiraIssue", description: "Create a Jira issue" },
+      ],
+    };
+    const callMcpToolFn = vi.fn(async (_session, toolName, args) => {
+      if (toolName === "getAccessibleAtlassianResources") {
+        return mcpText([
+          {
+            id: "cloud-jira",
+            url: "https://example.atlassian.net",
+            name: "Example Jira",
+            scopes: ["read:jira-work", "write:jira-work"],
+          },
+          {
+            id: "cloud-confluence",
+            url: "https://example.atlassian.net",
+            name: "Example Confluence",
+            scopes: ["read:confluence-content.all", "read:page:confluence"],
+          },
+        ]);
+      }
+      if (toolName === "getJiraIssue") {
+        expect(args).toEqual({ cloudId: "cloud-jira", issueIdOrKey: "PROJ-7" });
+        return mcpText({ key: "PROJ-7", title: "Cloud Jira issue", body: "Hello Jira", issueType: "Task" });
+      }
+      if (toolName === "getConfluencePage") {
+        expect(args).toEqual({ cloudId: "cloud-confluence", pageId: "999" });
+        return mcpText({ id: "999", title: "Cloud Page", body: "Hello Confluence" });
+      }
+      if (toolName === "createJiraIssue") {
+        expect(args).toEqual({
+          cloudId: "cloud-jira",
+          projectKey: "PROJ",
+          summary: "Add dashboard filters",
+          description: "## Description\nUsers can filter the dashboard.",
+          issueType: "Story",
+        });
+        return mcpText({ id: "10001", key: "PROJ-101" });
+      }
+      throw new Error(`Unexpected tool ${toolName}`);
+    });
+    const deps = {
+      withMcpSessionFn: async (fn: (session: unknown) => Promise<unknown>) => fn(session),
+      callMcpToolFn,
+      siteUrl: "https://example.atlassian.net",
+    };
+
+    const jira = await fetchJiraIssueViaOauth("PROJ-7", deps);
+    const confluence = await fetchConfluencePageViaOauth(
+      "https://example.atlassian.net/wiki/spaces/X/pages/999/Page",
+      deps,
+    );
+    const created = await createJiraIssueViaOauth(
+      {
+        projectKey: "PROJ",
+        summary: "Add dashboard filters",
+        description: "## Description\nUsers can filter the dashboard.",
+      },
+      deps,
+    );
+
+    expect(jira).toEqual({ key: "PROJ-7", title: "Cloud Jira issue", body: "Hello Jira", issueType: "Task" });
+    expect(confluence).toEqual({ id: "999", title: "Cloud Page", body: "Hello Confluence" });
+    expect(created).toEqual({
+      id: "10001",
+      key: "PROJ-101",
+      url: "https://example.atlassian.net/browse/PROJ-101",
+    });
+  });
+
   it("creates Jira issues through Atlassian MCP", async () => {
     const session = {
       toolNames: ["create-jira-issue"],
