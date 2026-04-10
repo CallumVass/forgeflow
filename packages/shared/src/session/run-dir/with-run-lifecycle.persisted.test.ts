@@ -1,28 +1,23 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { mockPipelineContext, setupIsolatedHomeFixture } from "../../test-utils.js";
+import { mockPipelineContext, mockRunAgent, setupIsolatedHomeFixture } from "../../test-utils.js";
 import { RUN_DIR_GITIGNORE_LINE, withRunLifecycle } from "./index.js";
 
 const fixture = setupIsolatedHomeFixture("run-dir-lifecycle-persisted");
 
+const PERSISTED_SESSIONS = { persist: true, archiveRuns: 20, archiveMaxAge: 30 };
+
 describe("withRunLifecycle persisted runs", () => {
   it("wraps runAgentFn with persisted session allocation and archives clean runs as -success", async () => {
     const recorded: Array<{ agent: string; sessionPath: string | undefined; forkFrom: string | undefined }> = [];
+    const baseRunAgent = mockRunAgent();
     const pctx = mockPipelineContext({
       cwd: fixture.cwdDir,
-      sessionsConfig: { persist: true, archiveRuns: 20, archiveMaxAge: 30 },
-      runAgentFn: vi.fn(async (agent, _prompt, opts) => {
+      sessionsConfig: PERSISTED_SESSIONS,
+      runAgentFn: vi.fn(async (agent, prompt, opts) => {
         recorded.push({ agent, sessionPath: opts.sessionPath, forkFrom: opts.forkFrom });
-        return {
-          name: agent,
-          status: "done",
-          messages: [],
-          exitCode: 0,
-          stderr: "",
-          output: "",
-          usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
-        };
+        return baseRunAgent(agent, prompt, opts);
       }),
     });
 
@@ -57,7 +52,7 @@ describe("withRunLifecycle persisted runs", () => {
   it("maps error results and thrown callbacks to failed runs that keep outcome.json in place", async () => {
     const failedResultPctx = mockPipelineContext({
       cwd: fixture.cwdDir,
-      sessionsConfig: { persist: true, archiveRuns: 20, archiveMaxAge: 30 },
+      sessionsConfig: PERSISTED_SESSIONS,
     });
 
     await withRunLifecycle(failedResultPctx, "implement-44", async () => ({ isError: true }));
@@ -70,7 +65,7 @@ describe("withRunLifecycle persisted runs", () => {
 
     const thrownPctx = mockPipelineContext({
       cwd: fixture.cwdDir,
-      sessionsConfig: { persist: true, archiveRuns: 20, archiveMaxAge: 30 },
+      sessionsConfig: PERSISTED_SESSIONS,
     });
 
     await expect(
@@ -87,20 +82,13 @@ describe("withRunLifecycle persisted runs", () => {
 
   it("passes explicit sessionPath and forkFrom through unchanged", async () => {
     const recorded: Array<{ sessionPath: string | undefined; forkFrom: string | undefined }> = [];
+    const baseRunAgent = mockRunAgent();
     const pctx = mockPipelineContext({
       cwd: fixture.cwdDir,
-      sessionsConfig: { persist: true, archiveRuns: 20, archiveMaxAge: 30 },
-      runAgentFn: vi.fn(async (_agent, _prompt, opts) => {
+      sessionsConfig: PERSISTED_SESSIONS,
+      runAgentFn: vi.fn(async (agent, prompt, opts) => {
         recorded.push({ sessionPath: opts.sessionPath, forkFrom: opts.forkFrom });
-        return {
-          name: "mock",
-          status: "done",
-          messages: [],
-          exitCode: 0,
-          stderr: "",
-          output: "",
-          usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
-        };
+        return baseRunAgent(agent, prompt, opts);
       }),
     });
 
@@ -138,7 +126,7 @@ describe("withRunLifecycle persisted runs", () => {
   it("ensures the first persisted run writes the run-dir gitignore rule", async () => {
     const pctx = mockPipelineContext({
       cwd: fixture.cwdDir,
-      sessionsConfig: { persist: true, archiveRuns: 20, archiveMaxAge: 30 },
+      sessionsConfig: PERSISTED_SESSIONS,
     });
 
     await withRunLifecycle(pctx, "implement-47", async () => ({ isError: false }));

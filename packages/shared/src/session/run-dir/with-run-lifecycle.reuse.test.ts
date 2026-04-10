@@ -1,16 +1,18 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { mockPipelineContext, setupIsolatedHomeFixture } from "../../test-utils.js";
+import { mockPipelineContext, mockRunAgent, setupIsolatedHomeFixture } from "../../test-utils.js";
 import { withRunLifecycle } from "./index.js";
 
 const fixture = setupIsolatedHomeFixture("run-dir-lifecycle-reuse");
+
+const PERSISTED_SESSIONS = { persist: true, archiveRuns: 20, archiveMaxAge: 30 };
 
 describe("withRunLifecycle reuse and opt-out", () => {
   it("reuses the outer run lifecycle for nested calls", async () => {
     const pctx = mockPipelineContext({
       cwd: fixture.cwdDir,
-      sessionsConfig: { persist: true, archiveRuns: 20, archiveMaxAge: 30 },
+      sessionsConfig: PERSISTED_SESSIONS,
     });
 
     const seenRunIds: string[] = [];
@@ -30,17 +32,15 @@ describe("withRunLifecycle reuse and opt-out", () => {
   });
 
   it("is a no-op when persistence is disabled", async () => {
-    const baseRunAgent = vi.fn(async (_agent: string, _prompt: string, opts: { sessionPath?: string }) => {
+    const fallbackRunAgent = mockRunAgent();
+    const baseRunAgent = vi.fn(async (agent: string, prompt: string, opts: { sessionPath?: string }) => {
       expect(opts.sessionPath).toBeUndefined();
-      return {
-        name: "mock",
-        status: "done" as const,
-        messages: [],
-        exitCode: 0,
-        stderr: "",
-        output: "",
-        usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 },
-      };
+      return fallbackRunAgent(agent, prompt, {
+        agentsDir: "",
+        cwd: fixture.cwdDir,
+        stages: [],
+        pipeline: "implement",
+      });
     });
     const pctx = mockPipelineContext({
       cwd: fixture.cwdDir,
