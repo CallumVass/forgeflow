@@ -98,26 +98,46 @@ jobs:
             echo "pm_released=$pm_released"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Close stale release PR once releases exist
+      - name: Close stale release PR once proposed releases exist
         if: always()
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
         run: |
           set -euo pipefail
-          dev_version=$(jq -r '.version' packages/dev/package.json)
-          pm_version=$(jq -r '.version' packages/pm/package.json)
 
-          if ! gh release view "forgeflow-dev-v${dev_version}" >/dev/null 2>&1; then
-            exit 0
-          fi
-          if ! gh release view "forgeflow-pm-v${pm_version}" >/dev/null 2>&1; then
+          pr_json=$(gh pr list --state open --head release-please--branches--main --limit 1 --json number,body --jq '.[0] // empty')
+          if [ -z "$pr_json" ]; then
             exit 0
           fi
 
-          pr_number=$(gh pr list --state open --head release-please--branches--main --limit 1 --json number --jq '.[0].number // empty')
-          if [ -n "$pr_number" ]; then
-            gh pr close "$pr_number" --comment "Closing stale release PR because the matching GitHub releases already exist."
+          pr_number=$(echo "$pr_json" | jq -r '.number // empty')
+          pr_body=$(echo "$pr_json" | jq -r '.body // ""')
+          if [ -z "$pr_number" ] || [ -z "$pr_body" ]; then
+            exit 0
           fi
+
+          mapfile -t release_tags < <(
+            BODY="$pr_body" node - <<'NODE'
+            const body = process.env.BODY ?? "";
+            const re = /<summary>\s*(forgeflow-(?:dev|pm)):\s*([0-9]+\.[0-9]+\.[0-9]+)\s*<\/summary>/gi;
+            let match;
+            while ((match = re.exec(body)) !== null) {
+              console.log(`${match[1]}-v${match[2]}`);
+            }
+            NODE
+          )
+
+          if [ ${#release_tags[@]} -eq 0 ]; then
+            exit 0
+          fi
+
+          for tag in "${release_tags[@]}"; do
+            if ! gh release view "$tag" >/dev/null 2>&1; then
+              exit 0
+            fi
+          done
+
+          gh pr close "$pr_number" --comment "Closing stale release PR because the proposed GitHub releases already exist."
 
       - name: Export combined release outputs
         id: outputs
