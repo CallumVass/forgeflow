@@ -1,5 +1,6 @@
 import type { ForgeflowContext } from "@callumvass/forgeflow-shared/pipeline";
 import {
+  mockExecFn,
   mockForgeflowContext,
   mockPipelineContext,
   mockRunAgent,
@@ -16,6 +17,18 @@ const TWO_CANDIDATES = [
   "### 2. Avoid god module",
   "Adding these functions to pipeline.ts would push it past 300 lines. Extract to a dedicated module.",
 ].join("\n");
+
+function fakeRunDir(): { runId: string; dir: string; allocSessionPath: (name: string) => string } {
+  let counter = 0;
+  return {
+    runId: "test-run",
+    dir: "/tmp/test-run",
+    allocSessionPath: (name: string) => {
+      counter += 1;
+      return `/tmp/test-run/${String(counter).padStart(2, "0")}-${name}.jsonl`;
+    },
+  };
+}
 
 function mockCtx(
   opts: { editorResult?: string; selectResult?: string; inputAnswers?: (string | undefined)[] } = {},
@@ -212,6 +225,32 @@ describe("runPlanning", () => {
     expect(result.errorStage).toBe("architecture-reviewer");
     expect(result.plan).toContain("arch error");
     expect(runAgentFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("persists edited plans with a supported pi CLI command", async () => {
+    const ctx = mockCtx({ editorResult: "## Plan\n- Edited step", selectResult: "Approve and implement" });
+    const runAgentFn = sequencedRunAgent([
+      { output: "## Plan\n- Original step" },
+      { output: "No architectural recommendations" },
+    ]);
+    const execFn = mockExecFn();
+
+    await runPlanning("Issue context", undefined, {
+      ...mockPipelineContext({ ctx, runAgentFn, execFn, runDir: fakeRunDir() }),
+      interactive: true,
+      stages: [],
+    });
+
+    expect(execFn).toHaveBeenCalledTimes(1);
+    const call = execFn.mock.calls[0];
+    expect(call).toBeDefined();
+    const cmd = call?.[0] ?? "";
+    const cwd = call?.[1];
+    expect(cwd).toBe("/tmp/test");
+    expect(cmd).toContain('pi --session "/tmp/test-run/02-architecture-reviewer.jsonl" -p --mode json');
+    expect(cmd).not.toContain("--no-exit");
+    expect(cmd).toContain("Updated implementation plan (user edits applied):");
+    expect(cmd).toContain("Edited step");
   });
 });
 
