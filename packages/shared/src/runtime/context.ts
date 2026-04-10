@@ -6,13 +6,13 @@ import {
   type SessionsConfig,
 } from "../config/forgeflow-config.js";
 import { type ExecFn, exec, execSafe } from "../io/exec.js";
-import type { RunDirHandle } from "../session/run-dir.js";
+import type { RunDirHandle } from "../session/run-dir/index.js";
 import { runAgent } from "./run-agent.js";
 import type { OnUpdate, RunAgentFn, RunAgentOpts, StageResult } from "./stages.js";
 
 export type { ExecFn } from "../io/exec.js";
-export type { ArchiveOutcome, RunDirHandle } from "../session/run-dir.js";
-export { withRunLifecycle } from "../session/run-dir.js";
+export type { ArchiveOutcome, RunDirHandle } from "../session/run-dir/index.js";
+export { withRunLifecycle } from "../session/run-dir/index.js";
 
 // ─── Context types and builders ───────────────────────────────────────
 

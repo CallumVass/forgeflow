@@ -28,7 +28,7 @@ export interface AgentConfig {
 /**
  * Sub-agent session persistence config. `persist` gates the whole feature;
  * `archiveRuns` and `archiveMaxAge` are the GC knobs (whichever trips first
- * prunes). See `run-dir.ts` for the lifecycle implementation.
+ * prunes). See `session/run-dir/index.ts` for the lifecycle implementation.
  */
 export interface SessionsConfig {
   persist: boolean;
