@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.25.1...forgeflow-dev-v0.26.0) (2026-04-10)
+
+
+### Features
+
+* **shared:** split Atlassian client entry points ([#201](https://github.com/CallumVass/forgeflow/issues/201)) ([996b57f](https://github.com/CallumVass/forgeflow/commit/996b57f9540df08ccdff7b445d71bf2ae260432b))
+
 ## [0.25.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.25.0...forgeflow-dev-v0.25.1) (2026-04-10)
 
 
