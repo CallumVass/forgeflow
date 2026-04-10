@@ -12,9 +12,9 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      releases_created: ${{ steps.release.outputs.releases_created }}
-      pm_released: ${{ steps.release.outputs['packages/pm--release_created'] }}
-      dev_released: ${{ steps.release.outputs['packages/dev--release_created'] }}
+      releases_created: ${{ steps.outputs.outputs.releases_created }}
+      pm_released: ${{ steps.outputs.outputs.pm_released }}
+      dev_released: ${{ steps.outputs.outputs.dev_released }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -25,6 +25,123 @@ jobs:
           # under branch protection.
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           skip-labeling: true
+
+      - uses: actions/checkout@v4
+
+      - name: Label the open release PR manually
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          pr_json=$(gh pr list --state open --head release-please--branches--main --limit 1 --json number,labels)
+          pr_number=$(echo "$pr_json" | jq -r '.[0].number // empty')
+          if [ -z "$pr_number" ]; then
+            exit 0
+          fi
+
+          has_pending=$(echo "$pr_json" | jq -r '.[0].labels | any(.name == "autorelease: pending")')
+          if [ "$has_pending" != "true" ]; then
+            gh pr edit "$pr_number" --add-label "autorelease: pending"
+          fi
+
+      - name: Recover missing GitHub releases for current package versions
+        id: recover
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          dev_version=$(jq -r '.version' packages/dev/package.json)
+          pm_version=$(jq -r '.version' packages/pm/package.json)
+          dev_tag="forgeflow-dev-v${dev_version}"
+          pm_tag="forgeflow-pm-v${pm_version}"
+
+          dev_released=false
+          pm_released=false
+
+          extract_notes() {
+            local file="$1"
+            local version="$2"
+            VERSION="$version" node -e '
+              const fs = require("fs");
+              const file = process.argv[1];
+              const version = process.env.VERSION;
+              const text = fs.readFileSync(file, "utf8");
+              const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              const re = new RegExp(`## \\[${escaped}\\][\\s\\S]*?(?=\\n## \\[|$)`);
+              const match = text.match(re);
+              process.stdout.write((match ? match[0] : `## ${version}`).trim() + "\n");
+            ' "$file"
+          }
+
+          if ! gh release view "$dev_tag" >/dev/null 2>&1; then
+            extract_notes packages/dev/CHANGELOG.md "$dev_version" > /tmp/forgeflow-dev-release-notes.md
+            gh release create "$dev_tag" \
+              --target "$GITHUB_SHA" \
+              --title "forgeflow-dev: v${dev_version}" \
+              --notes-file /tmp/forgeflow-dev-release-notes.md
+            dev_released=true
+          fi
+
+          if ! gh release view "$pm_tag" >/dev/null 2>&1; then
+            extract_notes packages/pm/CHANGELOG.md "$pm_version" > /tmp/forgeflow-pm-release-notes.md
+            gh release create "$pm_tag" \
+              --target "$GITHUB_SHA" \
+              --title "forgeflow-pm: v${pm_version}" \
+              --notes-file /tmp/forgeflow-pm-release-notes.md
+            pm_released=true
+          fi
+
+          {
+            echo "dev_released=$dev_released"
+            echo "pm_released=$pm_released"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Close stale release PR once releases exist
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          dev_version=$(jq -r '.version' packages/dev/package.json)
+          pm_version=$(jq -r '.version' packages/pm/package.json)
+
+          if ! gh release view "forgeflow-dev-v${dev_version}" >/dev/null 2>&1; then
+            exit 0
+          fi
+          if ! gh release view "forgeflow-pm-v${pm_version}" >/dev/null 2>&1; then
+            exit 0
+          fi
+
+          pr_number=$(gh pr list --state open --head release-please--branches--main --limit 1 --json number --jq '.[0].number // empty')
+          if [ -n "$pr_number" ]; then
+            gh pr close "$pr_number" --comment "Closing stale release PR because the matching GitHub releases already exist."
+          fi
+
+      - name: Export combined release outputs
+        id: outputs
+        run: |
+          set -euo pipefail
+          rp_releases_created='${{ steps.release.outputs.releases_created }}'
+          rp_pm='${{ steps.release.outputs['packages/pm--release_created'] }}'
+          rp_dev='${{ steps.release.outputs['packages/dev--release_created'] }}'
+          recover_pm='${{ steps.recover.outputs.pm_released }}'
+          recover_dev='${{ steps.recover.outputs.dev_released }}'
+
+          pm_released=false
+          dev_released=false
+          releases_created=false
+
+          if [ "$rp_pm" = "true" ] || [ "$recover_pm" = "true" ]; then pm_released=true; releases_created=true; fi
+          if [ "$rp_dev" = "true" ] || [ "$recover_dev" = "true" ]; then dev_released=true; releases_created=true; fi
+          if [ "$rp_releases_created" = "true" ]; then releases_created=true; fi
+
+          {
+            echo "releases_created=$releases_created"
+            echo "pm_released=$pm_released"
+            echo "dev_released=$dev_released"
+          } >> "$GITHUB_OUTPUT"
 
   publish:
     needs: release-please
