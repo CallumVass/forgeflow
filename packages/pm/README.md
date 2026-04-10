@@ -53,7 +53,9 @@ That updates `PRD.md` with `## Done` / `## Next`, QAs the next phase, then creat
 | `/create-gh-issue` | Create one GitHub issue from a feature idea |
 | `/investigate` | Research a topic, compare options, and write a spike/RFC markdown doc |
 | `/create-jira-issues` | Turn Confluence PM docs into Jira issues |
-| `/atlassian-login` | Authenticate to Jira/Confluence via OAuth |
+| `/atlassian-login` | Authenticate to an OAuth-enabled Atlassian MCP server |
+| `/atlassian-status` | Show Atlassian MCP auth status |
+| `/atlassian-logout` | Remove stored Atlassian MCP credentials |
 | `/atlassian-read` | Read a Jira issue or Confluence page by URL |
 
 ## What a good greenfield PRD should contain
@@ -122,25 +124,32 @@ Generic roots such as `src/`, `app/`, `server/`, `client/`, `test/`, and `tests/
 
 ## Jira and Confluence
 
-If you use Atlassian, configure OAuth once:
+If you use Atlassian, configure Atlassian MCP once:
 
 ```bash
-export ATLASSIAN_CLIENT_ID=...
-export ATLASSIAN_CLIENT_SECRET=...
+export ATLASSIAN_MCP_URL=https://your-atlassian-mcp.example.com/mcp
+export ATLASSIAN_MCP_REDIRECT_URI=http://127.0.0.1:33389/callback
+# Optional when your MCP server requires a pre-registered OAuth client
+export ATLASSIAN_MCP_CLIENT_ID=...
+export ATLASSIAN_MCP_CLIENT_SECRET=...
+# Optional OAuth scope override
+export ATLASSIAN_MCP_SCOPE="read:jira-work read:confluence-content.all"
+# Optional site hint for Jira URL generation and multi-site setups
 export ATLASSIAN_URL=https://yourcompany.atlassian.net
-export ATLASSIAN_REDIRECT_URI=http://127.0.0.1:33389/callback
 ```
 
 Then run:
 
 ```text
 /atlassian-login
+/atlassian-status
 ```
 
 Extra notes:
 - `/atlassian-read <url>` reads a Jira issue or Confluence page into chat
 - `/create-jira-issues` turns Confluence PM docs into Jira issues
 - `/investigate` can optionally use a Confluence template URL and prefetch Jira/Confluence links mentioned in the topic
+- `/atlassian-logout` removes the stored Atlassian MCP login
 
 Set `ATLASSIAN_JIRA_PROJECT` unless you provide an example Jira ticket URL that lets forgeflow infer the project key.
 

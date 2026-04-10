@@ -103,7 +103,9 @@ Confluence templates are supported, but not required.
 | `/create-gh-issue` | Create one GitHub issue from a feature idea |
 | `/investigate` | Research a topic and write a spike/RFC markdown doc |
 | `/create-jira-issues` | Turn Confluence PM docs into Jira issues |
-| `/atlassian-login` | Authenticate to Jira/Confluence |
+| `/atlassian-login` | Authenticate to an OAuth-enabled Atlassian MCP server |
+| `/atlassian-status` | Show Atlassian MCP auth status |
+| `/atlassian-logout` | Remove stored Atlassian MCP credentials |
 | `/atlassian-read` | Read a Jira issue or Confluence page by URL |
 
 ### Dev package
@@ -133,19 +135,33 @@ For `/create-gh-issues`, `/implement`, `/implement-all`, and `/review`:
 - use a repo with issues enabled
 
 ### Atlassian features
-For `/atlassian-login`, `/atlassian-read`, `/create-jira-issues`, optional Confluence-backed `/investigate`, and Jira-backed `/implement PROJ-123`:
+For `/atlassian-login`, `/atlassian-status`, `/atlassian-logout`, `/atlassian-read`, `/create-jira-issues`, optional Confluence-backed `/investigate`, and Jira-backed `/implement PROJ-123`:
+
+Required:
 
 ```bash
-export ATLASSIAN_CLIENT_ID=...
-export ATLASSIAN_CLIENT_SECRET=...
+export ATLASSIAN_MCP_URL=https://your-atlassian-mcp.example.com/mcp
+```
+
+Optional:
+
+```bash
+# Defaults to http://127.0.0.1:33389/callback
+export ATLASSIAN_MCP_REDIRECT_URI=http://127.0.0.1:33389/callback
+# Optional when your MCP server requires a pre-registered OAuth client
+export ATLASSIAN_MCP_CLIENT_ID=...
+export ATLASSIAN_MCP_CLIENT_SECRET=...
+# Optional OAuth scope override
+export ATLASSIAN_MCP_SCOPE="read:jira-work read:confluence-content.all"
+# Optional site hint for Jira URL generation and multi-site setups
 export ATLASSIAN_URL=https://yourcompany.atlassian.net
-export ATLASSIAN_REDIRECT_URI=http://127.0.0.1:33389/callback
 ```
 
 Then run:
 
 ```text
 /atlassian-login
+/atlassian-status
 ```
 
 Set `ATLASSIAN_JIRA_PROJECT` unless you provide an example Jira ticket URL that lets forgeflow infer the project key.

@@ -1,45 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { getAtlassianOauthConfig } from "./oauth.js";
+import { getAtlassianOauthConfig, getAtlassianOauthTokenPath } from "./oauth.js";
 
-describe("getAtlassianOauthConfig", () => {
-  it("uses granular Confluence read scopes by default", () => {
+describe("Atlassian OAuth compatibility exports", () => {
+  it("maps the legacy config helper to Atlassian MCP config", () => {
     const config = getAtlassianOauthConfig({
-      ATLASSIAN_CLIENT_ID: "client-id",
-      ATLASSIAN_CLIENT_SECRET: "client-secret",
+      ATLASSIAN_MCP_URL: "https://example.com/mcp",
       ATLASSIAN_URL: "https://example.atlassian.net",
     });
 
     expect(config).toEqual({
-      clientId: "client-id",
-      clientSecret: "client-secret",
+      serverUrl: "https://example.com/mcp",
       redirectUri: "http://127.0.0.1:33389/callback",
-      scopes: [
-        "offline_access",
-        "read:jira-work",
-        "write:jira-work",
-        "read:confluence-content.all",
-        "read:page:confluence",
-        "read:content.metadata:confluence",
-        "read:content-details:confluence",
-        "read:space:confluence",
-      ],
+      clientName: "Forgeflow Atlassian MCP",
+      scope: undefined,
+      clientId: undefined,
+      clientSecret: undefined,
+      clientMetadataUrl: undefined,
       siteUrl: "https://example.atlassian.net",
     });
   });
 
-  it("lets ATLASSIAN_SCOPES override the default scope list", () => {
-    const config = getAtlassianOauthConfig({
-      ATLASSIAN_CLIENT_ID: "client-id",
-      ATLASSIAN_CLIENT_SECRET: "client-secret",
-      ATLASSIAN_SCOPES: "offline_access read:jira-work read:page:confluence",
-    });
-
-    expect(config).toEqual({
-      clientId: "client-id",
-      clientSecret: "client-secret",
-      redirectUri: "http://127.0.0.1:33389/callback",
-      scopes: ["offline_access", "read:jira-work", "read:page:confluence"],
-      siteUrl: undefined,
-    });
+  it("maps the legacy token path helper to the MCP OAuth state path", () => {
+    expect(getAtlassianOauthTokenPath()).toContain("forgeflow-atlassian-mcp-oauth.json");
   });
 });

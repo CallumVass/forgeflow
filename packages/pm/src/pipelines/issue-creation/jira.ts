@@ -108,7 +108,7 @@ Return ONLY JSON in this exact shape:
 ]
 \`\`\`
 
-Do not create any Jira issues yourself. Forgeflow will publish the JSON output via Atlassian OAuth.
+Do not create any Jira issues yourself. Forgeflow will publish the JSON output via Atlassian MCP.
 Read the writing-style skill before writing any issue content.`;
 
   await pctx.runAgentFn("jira-issue-planner", task, opts);
