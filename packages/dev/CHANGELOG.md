@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.2](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.23.1...forgeflow-dev-v0.23.2) (2026-04-10)
+
+
+### Bug Fixes
+
+* use reported datadog tools and llm resolution ([#175](https://github.com/CallumVass/forgeflow/issues/175)) ([4012a6d](https://github.com/CallumVass/forgeflow/commit/4012a6da8c671d5116d0742edf103b2d48610238))
+
 ## [0.23.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.23.0...forgeflow-dev-v0.23.1) (2026-04-10)
 
 
