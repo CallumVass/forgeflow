@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { ResolvedIssue } from "../issues/tracker.js";
+import type { ResolvedIssue } from "../issues/index.js";
 
 const PR_TEMPLATE_PATHS = [
   ".github/pull_request_template.md",

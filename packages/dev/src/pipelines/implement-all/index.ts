@@ -6,15 +6,14 @@ import {
   sumUsage,
   withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
-import { findPrNumber, mergePr, returnToMain } from "../../git/pr-lifecycle.js";
+import { findPrNumber, mergePr, returnToMain } from "../../git/index.js";
 import { setForgeflowStatus, updateProgressWidget } from "../../ui/index.js";
 import { runImplement } from "../implement/index.js";
 import { waitForChecksAndFix } from "./ci-wait.js";
 import { getReadyIssues } from "./dependency-resolution.js";
 import { fetchCompletedIssueNumbers, fetchOpenIssues } from "./issue-query.js";
-import { ARCHITECTURE_LABEL, IMPLEMENT_ALL_LABELS } from "./labels.js";
 
-export { ARCHITECTURE_LABEL, getReadyIssues, IMPLEMENT_ALL_LABELS };
+export { getReadyIssues };
 
 type IssueStatus = "pending" | "running" | "done" | "failed";
 

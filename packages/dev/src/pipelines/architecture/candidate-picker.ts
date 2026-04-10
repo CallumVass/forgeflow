@@ -5,7 +5,7 @@ import type {
   ForgeflowTui,
 } from "@callumvass/forgeflow-shared/pipeline";
 import { Key, matchesKey, truncateToWidth } from "@mariozechner/pi-tui";
-import type { ArchitectureCandidate } from "./index.js";
+import type { ArchitectureCandidate } from "../architecture-review/index.js";
 
 export async function pickArchitectureCandidates(
   ctx: ForgeflowContext,

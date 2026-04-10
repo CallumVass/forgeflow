@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { makeGitHubResolvedIssue, makeJiraResolvedIssue } from "../issues/tracker.fixtures.js";
-import { buildPrBody } from "./pr-template.js";
+import { buildPrBody } from "./index.js";
 
 const githubIssue = makeGitHubResolvedIssue({ title: "GH", body: "GH body" });
 const jiraIssue = makeJiraResolvedIssue({ title: "Jira", body: "Jira body", branch: "feat/CUS-123-jira" });

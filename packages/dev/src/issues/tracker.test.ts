@@ -14,12 +14,12 @@ async function importTrackerWithJiraResult(result: unknown) {
   vi.doMock("@callumvass/forgeflow-shared/atlassian", () => ({
     fetchJiraIssueViaOauth: vi.fn(async () => result),
   }));
-  return import("./tracker.js");
+  return import("./index.js");
 }
 
 describe("resolveIssue", () => {
   it("uses execSafeFn for `gh issue view` and returns a GitHub-shaped ResolvedIssue", async () => {
-    const { resolveIssue } = await import("./tracker.js");
+    const { resolveIssue } = await import("./index.js");
     const execSafeFn = mockExecFn({ "gh issue view": ghIssueResponse });
     const execFn = mockExecFn();
 
@@ -74,7 +74,7 @@ describe("resolveIssue", () => {
   });
 
   it("with no arg, detects GitHub feature branches via `git branch --show-current`", async () => {
-    const { resolveIssue } = await import("./tracker.js");
+    const { resolveIssue } = await import("./index.js");
     const execFn = mockExecFn({ "git branch --show-current": "feat/issue-7" });
     const execSafeFn = mockExecFn({ "gh issue view": JSON.stringify({ number: 7, title: "Auto", body: "B" }) });
 
@@ -85,7 +85,7 @@ describe("resolveIssue", () => {
   });
 
   it("returns a free-text ResolvedIssue without invoking exec when given a description", async () => {
-    const { resolveIssue } = await import("./tracker.js");
+    const { resolveIssue } = await import("./index.js");
     const execFn = mockExecFn();
     const execSafeFn = mockExecFn();
 
@@ -104,7 +104,7 @@ describe("resolveIssue", () => {
   });
 
   it("returns an error string for malformed GitHub issue JSON", async () => {
-    const { resolveIssue } = await import("./tracker.js");
+    const { resolveIssue } = await import("./index.js");
     const result = await resolveIssue("/tmp", "42", {
       execFn: mockExecFn(),
       execSafeFn: mockExecFn({ "gh issue view": "{ not json" }),
@@ -115,7 +115,7 @@ describe("resolveIssue", () => {
   });
 
   it("returns an error string when the current branch is unrecognised", async () => {
-    const { resolveIssue } = await import("./tracker.js");
+    const { resolveIssue } = await import("./index.js");
     const result = await resolveIssue("/tmp", undefined, {
       execFn: mockExecFn({ "git branch --show-current": "main" }),
       execSafeFn: mockExecFn(),

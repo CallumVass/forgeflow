@@ -4,7 +4,7 @@ import {
   type PipelineContext,
   type StageResult,
 } from "@callumvass/forgeflow-shared/pipeline";
-import { parseCandidates } from "../architecture/index.js";
+import { parseCandidates } from "../architecture-review/index.js";
 import { appendArchitecturalNotes } from "./plan-architecture.js";
 
 interface PlanResult {

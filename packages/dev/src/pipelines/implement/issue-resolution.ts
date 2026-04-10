@@ -1,7 +1,6 @@
 import type { PipelineContext } from "@callumvass/forgeflow-shared/pipeline";
-import { setupBranch } from "../../git/branch-lifecycle.js";
-import { findPrNumber } from "../../git/pr-lifecycle.js";
-import { type ResolvedIssue, resolveIssue } from "../../issues/tracker.js";
+import { findPrNumber, setupBranch } from "../../git/index.js";
+import { type ResolvedIssue, resolveIssue } from "../../issues/index.js";
 
 /**
  * Discriminated union describing how `runImplement` should resume work for

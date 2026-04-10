@@ -7,7 +7,7 @@
  * participate in the planning sub-chain's fork lineage.
  */
 
-import type { ArchitectureCandidate } from "../architecture/index.js";
+import type { ArchitectureCandidate } from "../architecture-review/index.js";
 
 /**
  * Append architectural recommendations to the plan.
