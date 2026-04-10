@@ -117,14 +117,14 @@ jobs:
           fi
 
           mapfile -t release_tags < <(
-            BODY="$pr_body" node - <<'NODE'
-            const body = process.env.BODY ?? "";
-            const re = /<summary>\s*(forgeflow-(?:dev|pm)):\s*([0-9]+\.[0-9]+\.[0-9]+)\s*<\/summary>/gi;
-            let match;
-            while ((match = re.exec(body)) !== null) {
-              console.log(`${match[1]}-v${match[2]}`);
-            }
-            NODE
+            BODY="$pr_body" node -e '
+              const body = process.env.BODY ?? "";
+              const re = /<summary>\\s*(forgeflow-(?:dev|pm)):\\s*([0-9]+\\.[0-9]+\\.[0-9]+)\\s*<\\/summary>/gi;
+              let match;
+              while ((match = re.exec(body)) !== null) {
+                console.log(`${match[1]}-v${match[2]}`);
+              }
+            '
           )
 
           if [ ${#release_tags[@]} -eq 0 ]; then
