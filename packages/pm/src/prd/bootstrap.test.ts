@@ -3,11 +3,12 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildInitialPrd, promptBootstrapPrd } from "./bootstrap.js";
+import { buildBootstrapDoc, buildInitialPrd, promptBootstrapPrd } from "./bootstrap.js";
+import { bootstrapExists, readBootstrap } from "./bootstrap-document.js";
 import { prdExists, readPrd } from "./document.js";
 
 describe("buildInitialPrd", () => {
-  it("includes a technical direction section and open questions for missing inputs", () => {
+  it("includes locked technical inputs, technical direction, and open questions for missing inputs", () => {
     const prd = buildInitialPrd({
       productName: "QR Forge",
       productSummary: "A web app for generating downloadable QR codes.",
@@ -21,11 +22,15 @@ describe("buildInitialPrd", () => {
       persistence: "",
       auth: "None for MVP.",
       testingBaseline: "Vitest and Playwright.",
+      lockedBootstrapInputs: "Use pnpm and Cloudflare's vite-react template. Keep Tailwind CSS v4 and avoid SCSS.",
       hosting: "Cloudflare",
       libraryPreferences: "Prefer Clerk if auth is later introduced.",
       integrationsAndConstraints: "Keep the initial release lightweight and low-cost.",
     });
 
+    expect(prd).toContain("## Locked Technical Inputs");
+    expect(prd).toContain(".forgeflow/BOOTSTRAP.md");
+    expect(prd).toContain("Use pnpm and Cloudflare's vite-react template. Keep Tailwind CSS v4 and avoid SCSS.");
     expect(prd).toContain("## Technical Direction");
     expect(prd).toContain("Project type: Full-stack web app");
     expect(prd).toContain("Preferred stack/ecosystem: TypeScript/Node.js");
@@ -38,6 +43,36 @@ describe("buildInitialPrd", () => {
     expect(prd).toContain("Hosting/deployment target: Cloudflare");
     expect(prd).toContain("## Open Questions");
     expect(prd).toContain("Confirm whether the MVP needs durable persistence");
+  });
+});
+
+describe("buildBootstrapDoc", () => {
+  it("captures exact user-stated bootstrap constraints for later pipelines", () => {
+    const doc = buildBootstrapDoc({
+      productName: "QR Forge",
+      productSummary: "A web app for generating downloadable QR codes.",
+      usersAndProblem: "Solo founders need a quick way to create branded QR codes without design tools.",
+      mainFlow: "A user lands on the app, enters a URL, customises the QR code, previews it, and downloads it.",
+      successCriteria: "A new user can generate and download a QR code in under one minute.",
+      outOfScope: "Analytics dashboards and team collaboration.",
+      projectType: "Full-stack web app",
+      stack: "TypeScript/Node.js",
+      frameworkPreferences: "Hono on Cloudflare Workers with the official Vite React starter.",
+      persistence: "",
+      auth: "None for MVP.",
+      testingBaseline: "Vitest and Playwright.",
+      lockedBootstrapInputs:
+        "Use pnpm. Scaffold from cloudflare/templates/vite-react-template. Use Tailwind CSS v4. Avoid SCSS.",
+      hosting: "Cloudflare",
+      libraryPreferences: "Prefer Tailwind CSS and avoid additional styling layers.",
+      integrationsAndConstraints: "Keep the initial release lightweight and low-cost.",
+    });
+
+    expect(doc).toContain("# Bootstrap Constraints");
+    expect(doc).toContain(
+      "Use pnpm. Scaffold from cloudflare/templates/vite-react-template. Use Tailwind CSS v4. Avoid SCSS.",
+    );
+    expect(doc).toContain("preserve it exactly where relevant");
   });
 });
 
@@ -65,6 +100,9 @@ describe("promptBootstrapPrd", () => {
       .mockResolvedValueOnce("None for MVP.")
       .mockResolvedValueOnce("None for MVP.")
       .mockResolvedValueOnce("Vitest and Playwright")
+      .mockResolvedValueOnce(
+        "Use pnpm. Scaffold from cloudflare/templates/vite-react-template. Use Tailwind CSS v4. Avoid SCSS.",
+      )
       .mockResolvedValueOnce("Cloudflare")
       .mockResolvedValueOnce("Prefer Clerk if auth is added later")
       .mockResolvedValueOnce("Keep costs low and use mainstream libraries.");
@@ -76,13 +114,18 @@ describe("promptBootstrapPrd", () => {
 
     expect(created).toBe(true);
     expect(prdExists(tmpDir)).toBe(true);
+    expect(bootstrapExists(tmpDir)).toBe(true);
     expect(readPrd(tmpDir)).toContain("# PRD: QR Forge");
+    expect(readPrd(tmpDir)).toContain("## Locked Technical Inputs");
+    expect(readPrd(tmpDir)).toContain(".forgeflow/BOOTSTRAP.md");
     expect(readPrd(tmpDir)).toContain("## Technical Direction");
     expect(readPrd(tmpDir)).toContain("Project type: Full-stack web app");
     expect(readPrd(tmpDir)).toContain("Preferred stack/ecosystem: TypeScript");
     expect(readPrd(tmpDir)).toContain("Authentication/access model: None for MVP.");
     expect(readPrd(tmpDir)).toContain("Testing baseline: Vitest and Playwright");
     expect(readPrd(tmpDir)).toContain("## Alternatives Considered");
+    expect(readBootstrap(tmpDir)).toContain("cloudflare/templates/vite-react-template");
+    expect(readBootstrap(tmpDir)).toContain("Use Tailwind CSS v4. Avoid SCSS.");
     expect(editor).toHaveBeenCalledOnce();
   });
 

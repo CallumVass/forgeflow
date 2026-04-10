@@ -15,6 +15,18 @@ npx pi install @callumvass/forgeflow-pm
 
 ```text
 /init
+# optionally create the initial bootstrap issue and run /implement on it
+/continue
+```
+
+`/init` now writes both `PRD.md` and `.forgeflow/BOOTSTRAP.md`.
+The PRD stays human-readable; `.forgeflow/BOOTSTRAP.md` preserves exact blank-slate constraints such as starter/template identifiers, package manager choice, scaffold commands, versioned tooling requests, and explicit use/avoid constraints.
+
+If you choose to create the bootstrap issue during `/init`, implement that slice first, then run `/continue` so forgeflow can update `## Done` / `## Next` from the actual codebase and create the next issue set.
+
+If you prefer to refine the PRD before any issue creation, you can still run:
+
+```text
 /prd-qa
 # final review/edit of PRD.md
 /create-gh-issues
@@ -34,7 +46,7 @@ That updates `PRD.md` with `## Done` / `## Next`, QAs the next phase, then creat
 
 | Command | What it does |
 |---|---|
-| `/init` | Draft a first `PRD.md` for a greenfield project |
+| `/init` | Draft a first `PRD.md`, capture bootstrap constraints, and optionally create the initial bootstrap issue |
 | `/prd-qa` | Refine `PRD.md` through the full critic → architect → integrator loop, then prompt for one final review |
 | `/continue` | Update `PRD.md` for the next phase on an existing project |
 | `/create-gh-issues` | Turn `PRD.md` into vertical-slice GitHub issues |
@@ -51,6 +63,7 @@ After `/prd-qa`, a greenfield PRD should usually include:
 - scope and non-goals
 - `## Technical Direction` with the chosen stack/framework/testing/auth/persistence decisions where they materially matter
 - `## Alternatives Considered` for major project-shaping decisions, kept brief
+- `## Locked Technical Inputs` pointing to `.forgeflow/BOOTSTRAP.md` when `/init` captured exact bootstrap/tooling constraints
 
 This gives you an easy review point before issue creation:
 - "Use Vue, not React"
@@ -58,7 +71,7 @@ This gives you an easy review point before issue creation:
 - "Use ASP.NET Core Identity"
 - "Keep this framework-light for MVP"
 
-`/create-gh-issues` treats the chosen option as binding and alternatives as context only.
+`/create-gh-issues` treats the chosen option as binding and alternatives as context only. If `.forgeflow/BOOTSTRAP.md` exists, exact starter/template identifiers, package manager choices, scaffold commands, versioned tooling choices, and explicit use/avoid constraints are binding too.
 
 ## `/investigate` in plain English
 

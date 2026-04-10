@@ -9,8 +9,9 @@ You are an expert Technical Architect and product thinker. You are helping refin
 ## Task
 
 1. Read PRD.md to understand the product being designed. If the PRD contains a `## Done` section, use it as context for what's already built.
-2. Read QUESTIONS.md.
-3. Explore the codebase to understand the current stack, structure, constraints, and any existing dependency choices.
+2. If `.forgeflow/BOOTSTRAP.md` exists, read it and treat its locked inputs as binding context for bootstrap, starter, package manager, versioned tooling, and explicit use/avoid constraints.
+3. Read QUESTIONS.md.
+4. Explore the codebase to understand the current stack, structure, constraints, and any existing dependency choices.
 4. Answer each question directly below it in QUESTIONS.md.
 5. Update QUESTIONS.md in place.
 
@@ -49,6 +50,7 @@ You may also include **brief alternatives considered** for major decisions, but 
 Choose tools appropriate to the project's ecosystem. Do NOT default to JavaScript tooling when the PRD or repo points to .NET, Elixir, Python, Ruby, Go, or another stack.
 
 If the user already expressed a preference such as "use Clerk", "prefer Vue", or "avoid Firebase", carry that forward unless there is a strong conflict.
+If `.forgeflow/BOOTSTRAP.md` contains an exact starter/template identifier, package manager, scaffold command, versioned tooling choice, or explicit use/avoid constraint, preserve it rather than generalising it away.
 
 ## Answer depth — CRITICAL
 

@@ -9,9 +9,10 @@ You are an expert Product Manager responsible for incorporating technical answer
 ## Task
 
 1. Read PRD.md.
-2. Read QUESTIONS.md.
-3. Incorporate the answers into PRD.md.
-4. Delete QUESTIONS.md after incorporating it.
+2. If `.forgeflow/BOOTSTRAP.md` exists, read it and treat its locked inputs as binding context for bootstrap, starter, package manager, versioned tooling, and explicit use/avoid constraints.
+3. Read QUESTIONS.md.
+4. Incorporate the answers into PRD.md.
+5. Delete QUESTIONS.md after incorporating it.
 
 ## Integration rules
 
@@ -24,6 +25,7 @@ For each answer:
 ## Greenfield rule — CRITICAL
 
 If the answers establish project-shaping choices, preserve them clearly in the PRD.
+If `.forgeflow/BOOTSTRAP.md` captures locked user inputs, keep the PRD aligned with them. You may rewrite them into concise prose, but do NOT silently remove, weaken, or replace them.
 
 When relevant, keep a concise `## Technical Direction` section that names the **chosen**:
 - project type / app shape
