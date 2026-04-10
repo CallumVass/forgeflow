@@ -8,7 +8,7 @@ afterEach(() => {
 
 describe("fetchConfluencePage", () => {
   it("fetches Confluence pages through Atlassian MCP", async () => {
-    vi.doMock("../atlassian/index.js", () => ({
+    vi.doMock("../atlassian/confluence/index.js", () => ({
       fetchConfluencePageViaOauth: vi.fn(async () => ({ id: "77", title: "MCP", body: "Hello MCP" })),
     }));
 
@@ -21,7 +21,7 @@ describe("fetchConfluencePage", () => {
   });
 
   it("returns an error string from the Atlassian client", async () => {
-    vi.doMock("../atlassian/index.js", () => ({
+    vi.doMock("../atlassian/confluence/index.js", () => ({
       fetchConfluencePageViaOauth: vi.fn(
         async () => "Atlassian MCP is configured but no login was found. Run /atlassian-login.",
       ),

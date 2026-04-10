@@ -11,7 +11,7 @@ afterEach(() => {
 });
 
 async function importTrackerWithJiraResult(result: unknown) {
-  vi.doMock("@callumvass/forgeflow-shared/atlassian", () => ({
+  vi.doMock("@callumvass/forgeflow-shared/atlassian/jira", () => ({
     fetchJiraIssueViaOauth: vi.fn(async () => result),
   }));
   return import("./index.js");

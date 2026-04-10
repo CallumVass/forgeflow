@@ -24,7 +24,7 @@ describe("runJiraIssues", () => {
       .mockResolvedValueOnce({ id: "10001", key: "PROJ-101", url: "https://example.atlassian.net/browse/PROJ-101" })
       .mockResolvedValueOnce({ id: "10002", key: "PROJ-102", url: "https://example.atlassian.net/browse/PROJ-102" });
 
-    vi.doMock("@callumvass/forgeflow-shared/atlassian", () => ({
+    vi.doMock("@callumvass/forgeflow-shared/atlassian/jira", () => ({
       createJiraIssueViaOauth,
       extractJiraKey: (input: string) => {
         const match = input.match(/\b[A-Z][A-Z0-9]+-\d+\b/);

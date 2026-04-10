@@ -1,8 +1,5 @@
-import {
-  extractJiraKey,
-  fetchAtlassianContentFromUrl,
-  formatAtlassianContent,
-} from "@callumvass/forgeflow-shared/atlassian";
+import { fetchAtlassianContentFromUrl, formatAtlassianContent } from "@callumvass/forgeflow-shared/atlassian/content";
+import { extractJiraKey } from "@callumvass/forgeflow-shared/atlassian/jira";
 import { type ConfluencePage, fetchConfluencePage } from "@callumvass/forgeflow-shared/confluence";
 import {
   emptyStage,
