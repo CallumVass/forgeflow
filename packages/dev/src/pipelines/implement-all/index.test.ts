@@ -1,7 +1,7 @@
 import { type mockExecFn, mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../git/pr-lifecycle.js", () => ({
+vi.mock("../../git/index.js", () => ({
   findPrNumber: vi.fn(async () => 100),
   mergePr: vi.fn(async () => {}),
   returnToMain: vi.fn(async () => {}),
@@ -27,9 +27,10 @@ vi.mock("../implement/index.js", () => ({
   })),
 }));
 
+import { IMPLEMENT_ALL_LABELS } from "../../issues/index.js";
 import { setForgeflowStatus, updateProgressWidget } from "../../ui/index.js";
 import { runImplement } from "../implement/index.js";
-import { getReadyIssues, IMPLEMENT_ALL_LABELS, runImplementAll } from "./index.js";
+import { getReadyIssues, runImplementAll } from "./index.js";
 
 describe("getReadyIssues", () => {
   it("excludes issues already in the completed set", () => {

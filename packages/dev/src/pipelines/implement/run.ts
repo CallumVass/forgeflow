@@ -5,7 +5,7 @@ import {
   type StageResult,
   signalExists,
 } from "@callumvass/forgeflow-shared/pipeline";
-import type { ResolvedIssue } from "../../issues/tracker.js";
+import type { ResolvedIssue } from "../../issues/index.js";
 import { runReviewPipeline } from "../review/index.js";
 import { type Phase, runChain } from "../shared/index.js";
 import { buildImplementorPrompt } from "./phases.js";

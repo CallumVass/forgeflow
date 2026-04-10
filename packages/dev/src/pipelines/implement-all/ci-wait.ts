@@ -1,5 +1,5 @@
 import type { PipelineContext, StageResult } from "@callumvass/forgeflow-shared/pipeline";
-import { fetchFailedCiLogs, waitForChecks } from "../../git/pr-lifecycle.js";
+import { fetchFailedCiLogs, waitForChecks } from "../../git/index.js";
 import { runChain } from "../shared/index.js";
 
 interface CiWaitResult {

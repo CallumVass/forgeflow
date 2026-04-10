@@ -7,7 +7,8 @@ import {
   sequencedRunAgent,
 } from "@callumvass/forgeflow-shared/testing";
 import { describe, expect, it, vi } from "vitest";
-import { type ArchitectureCandidate, parseCandidates, runArchitecture } from "./index.js";
+import type { ArchitectureCandidate } from "../architecture-review/index.js";
+import { runArchitecture } from "./index.js";
 
 type PickerResult = ArchitectureCandidate[] | null | undefined;
 
@@ -109,7 +110,9 @@ describe("runArchitecture", () => {
     expect(result.content[0].text).not.toContain("issues/102");
     expect(runAgentFn).toHaveBeenCalledTimes(3);
     expect(runAgentFn.mock.calls[1]?.[1]).toContain("High coupling in auth module");
+    expect(runAgentFn.mock.calls[1]?.[1]).toContain('label "architecture"');
     expect(runAgentFn.mock.calls[2]?.[1]).toContain("Circular dependency in utils");
+    expect(runAgentFn.mock.calls[2]?.[1]).toContain('label "architecture"');
   });
 
   it("does not hide the multi-candidate picker behind a terminal width gate", async () => {
@@ -321,29 +324,5 @@ describe("runArchitecture", () => {
       "Yes — generate RFC",
       "Skip",
     ]);
-  });
-});
-
-describe("parseCandidates", () => {
-  it("parses numbered markdown headings into label/body pairs", () => {
-    const text = [
-      "### 1. High coupling in auth module",
-      "Auth is tightly coupled to the database layer.",
-      "",
-      "### 2. Missing error boundaries",
-      "No error boundaries in the React tree.",
-    ].join("\n");
-
-    const result = parseCandidates(text);
-    expect(result).toHaveLength(2);
-    expect(result[0]?.label).toBe("1. High coupling in auth module");
-    expect(result[0]?.body).toContain("Auth is tightly coupled");
-    expect(result[1]?.label).toBe("2. Missing error boundaries");
-    expect(result[1]?.body).toContain("No error boundaries");
-  });
-
-  it("returns empty array for input with no numbered headings", () => {
-    expect(parseCandidates("")).toEqual([]);
-    expect(parseCandidates("Just some text with no candidates")).toEqual([]);
   });
 });

@@ -1,4 +1,4 @@
-import type { ResolvedIssue } from "../../issues/tracker.js";
+import type { ResolvedIssue } from "../../issues/index.js";
 
 /** Input shape for `buildImplementorPrompt`. */
 interface ImplementorPromptInput {

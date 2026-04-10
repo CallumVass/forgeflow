@@ -1,7 +1,6 @@
 import { emitUpdate, emptyStage, type PipelineContext, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
-import { ensurePr, mergePr, returnToMain } from "../../git/pr-lifecycle.js";
-import { buildPrBody } from "../../git/pr-template.js";
-import type { ResolvedIssue } from "../../issues/tracker.js";
+import { buildPrBody, ensurePr, mergePr, returnToMain } from "../../git/index.js";
+import type { ResolvedIssue } from "../../issues/index.js";
 
 interface FinalisePrOptions {
   autonomous: boolean;

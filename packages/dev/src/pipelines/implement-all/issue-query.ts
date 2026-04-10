@@ -1,5 +1,5 @@
 import type { ExecFn } from "@callumvass/forgeflow-shared/pipeline";
-import { IMPLEMENT_ALL_LABELS } from "./labels.js";
+import { IMPLEMENT_ALL_LABELS } from "../../issues/index.js";
 
 export interface IssueInfo {
   number: number;
