@@ -222,6 +222,129 @@ describe("runDatadog", () => {
     expect(text).toContain("- p95: 6.10 s");
   });
 
+  it("recovers from partial lambda names by matching token sequences in Datadog tag values", async () => {
+    mocks.exploreLambdaWithAgent.mockResolvedValue({
+      selected: {
+        file: "infra/lambda.ts",
+        line: 42,
+        constructId: "ClientsMe",
+        score: 1,
+        reasons: [],
+      },
+      candidates: [],
+      ambiguous: false,
+    });
+
+    const session = {
+      serverUrl: "https://example.com/mcp",
+      client: {} as never,
+      transport: {} as never,
+      toolNames: ["get_datadog_metric", "get_datadog_metric_context"],
+      tools: [
+        { name: "get_datadog_metric", description: "Get Datadog metric timeseries" },
+        { name: "get_datadog_metric_context", description: "Get metric context including indexed tags" },
+      ],
+    };
+
+    mocks.withDatadogMcpSession.mockImplementation(async (fn: (sessionArg: unknown) => Promise<unknown>) =>
+      fn(session),
+    );
+    mocks.callDatadogMcpTool.mockImplementation(
+      async (_session: unknown, tool: string, args: Record<string, unknown>) => {
+        if (tool === "get_datadog_metric_context") {
+          return mcpJson({
+            metric_name: "aws.lambda.duration",
+            tags_data: {
+              indexed_tags: {
+                env: ["prod"],
+                functionname: ["prod-infrastack-clientsgetmed6b4e2c5-x1tvjcyjpepy"],
+              },
+            },
+          });
+        }
+
+        if (tool === "get_datadog_metric") {
+          const queries = (args.queries as string[]) ?? [];
+          expect(queries).toContain(
+            "avg:aws.lambda.duration{env:prod,functionname:prod-infrastack-clientsgetmed6b4e2c5-x1tvjcyjpepy}",
+          );
+          return mcpJson(
+            queries.map((expression) => ({
+              expression,
+              overall_stats: {
+                avg: expression.startsWith("sum:") ? 3 : 2400,
+                sum: expression.startsWith("sum:") ? 3 : undefined,
+              },
+            })),
+          );
+        }
+
+        return mcpJson({});
+      },
+    );
+
+    const pctx = mockPipelineContext({ cwd: "/tmp/project", execSafeFn: vi.fn(async () => "") });
+    const result = await runDatadog("investigate the clients me lambda in prod", pctx);
+    const text = result.content[0]?.text ?? "";
+
+    expect(text).toContain("Metric used: aws.lambda.duration");
+    expect(text).toContain("Filters used: env:prod, functionname:prod-infrastack-clientsgetmed6b4e2c5-x1tvjcyjpepy");
+  });
+
+  it("tries wildcard metric filters when no exact Datadog tag value can be resolved", async () => {
+    mocks.exploreLambdaWithAgent.mockResolvedValue({
+      selected: {
+        file: "infra/lambda.ts",
+        line: 42,
+        constructId: "ClientsMe",
+        score: 1,
+        reasons: [],
+      },
+      candidates: [],
+      ambiguous: false,
+    });
+
+    const session = {
+      serverUrl: "https://example.com/mcp",
+      client: {} as never,
+      transport: {} as never,
+      toolNames: ["get_datadog_metric"],
+      tools: [{ name: "get_datadog_metric", description: "Get Datadog metric timeseries" }],
+    };
+
+    mocks.withDatadogMcpSession.mockImplementation(async (fn: (sessionArg: unknown) => Promise<unknown>) =>
+      fn(session),
+    );
+    mocks.callDatadogMcpTool.mockImplementation(
+      async (_session: unknown, tool: string, args: Record<string, unknown>) => {
+        if (tool !== "get_datadog_metric") return mcpJson({});
+
+        const queries = (args.queries as string[]) ?? [];
+        if (queries.some((query) => query.includes("functionname:*clients*me*"))) {
+          return mcpJson(
+            queries.map((expression) => ({
+              expression,
+              overall_stats: {
+                avg: expression.startsWith("sum:") ? 8 : 4100,
+                sum: expression.startsWith("sum:") ? 8 : undefined,
+                max: expression.startsWith("max:") ? 5200 : undefined,
+              },
+            })),
+          );
+        }
+
+        return mcpJson([]);
+      },
+    );
+
+    const pctx = mockPipelineContext({ cwd: "/tmp/project", execSafeFn: vi.fn(async () => "aws.lambda.duration") });
+    const result = await runDatadog("investigate the clients me lambda in prod", pctx);
+    const text = result.content[0]?.text ?? "";
+
+    expect(text).toContain("Metric used: aws.lambda.duration");
+    expect(text).toContain("Filters used: env:prod, functionname:*clients*me*");
+  });
+
   it("falls back to discovered environment tag keys instead of assuming env", async () => {
     mocks.exploreLambdaWithAgent.mockResolvedValue({
       selected: {
