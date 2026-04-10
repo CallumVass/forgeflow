@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.23.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.23.0...forgeflow-pm-v0.23.1) (2026-04-10)
+
+
+### Bug Fixes
+
+* recover release-please state after failed labeling ([#184](https://github.com/CallumVass/forgeflow/issues/184)) ([459d687](https://github.com/CallumVass/forgeflow/commit/459d687f407a5aa11e5add05507c8f29247f614c))
+* support Atlassian cloudId tools and harden Datadog lambda resolution ([#181](https://github.com/CallumVass/forgeflow/issues/181)) ([5b9c533](https://github.com/CallumVass/forgeflow/commit/5b9c533aa740d171f0aa9de93c08da03034ed024))
+
 ## [0.23.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.22.0...forgeflow-pm-v0.23.0) (2026-04-10)
 
 
