@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.25.0...forgeflow-dev-v0.25.1) (2026-04-10)
+
+
+### Bug Fixes
+
+* **dev:** remove unsupported pi flag in plan persistence ([#189](https://github.com/CallumVass/forgeflow/issues/189)) ([dfc265d](https://github.com/CallumVass/forgeflow/commit/dfc265d63c13a89a7a418ec0780ce898f3795ed2))
+
 ## [0.25.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.24.1...forgeflow-dev-v0.25.0) (2026-04-10)
 
 
