@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.2](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.24.1...forgeflow-dev-v0.24.2) (2026-04-10)
+
+
+### Bug Fixes
+
+* support Atlassian cloudId tools and harden Datadog lambda resolution ([#181](https://github.com/CallumVass/forgeflow/issues/181)) ([5b9c533](https://github.com/CallumVass/forgeflow/commit/5b9c533aa740d171f0aa9de93c08da03034ed024))
+
 ## [0.24.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.24.0...forgeflow-dev-v0.24.1) (2026-04-10)
 
 
