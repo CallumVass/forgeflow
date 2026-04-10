@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.23.2...forgeflow-dev-v0.24.0) (2026-04-10)
+
+
+### Features
+
+* route Atlassian through MCP ([#177](https://github.com/CallumVass/forgeflow/issues/177)) ([a3a86e5](https://github.com/CallumVass/forgeflow/commit/a3a86e5f5ee056e6cc675c8b20a30efe07031aa4))
+
 ## [0.23.2](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.23.1...forgeflow-dev-v0.23.2) (2026-04-10)
 
 
