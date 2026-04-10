@@ -22,9 +22,9 @@ You do NOT write code. You do NOT create or modify files. You only output a plan
 7. **Sequence by dependency**.
 8. **Output the plan**.
 
-## Greenfield rule — CRITICAL
+## Project direction — CRITICAL
 
-If the issue belongs to a greenfield or mostly empty project, do NOT silently plan bespoke plumbing for commodity or project-shaping concerns.
+Do NOT silently plan bespoke plumbing for commodity or project-shaping concerns when the issue, PRD, or existing repo already establishes a direction.
 
 For concerns such as:
 - app/runtime framework
@@ -34,9 +34,9 @@ For concerns such as:
 - validation/forms
 - persistence access layer
 
-follow the chosen project direction from the issue/PRD.
+follow the chosen project direction from the issue, PRD, and current codebase.
 
-If the issue clearly specifies a framework, provider, or library, treat it as binding.
+If the issue clearly specifies a framework, provider, library, or platform convention, treat it as binding.
 If the issue does NOT establish a necessary project-shaping choice and the repo has no existing pattern, call it out in `### Unresolved Questions` instead of assuming a hand-rolled approach.
 
 If the issue is explicitly a scaffold/bootstrap slice, plan only the minimum platform baseline named by the issue: chosen runtime/app shape, baseline tests, and the first reusable boundary. Do NOT pull later product flows into the scaffold plan.
@@ -89,7 +89,7 @@ N. <behaviour>
 - Generic roots such as `src/`, `app/`, `server/`, `client/`, `test/`, and `tests/` are roots, not owning boundaries.
 - Do NOT place new production files directly under a flat source root unless the file is a true application entry point.
 - Do NOT place new test files directly under a flat test root when a feature/domain test area should own them.
-- In greenfield or nearly empty repos, the first plan must establish at least one feature/domain boundary beneath the broad source root.
+- When the current structure is still flat, establish at least one feature/domain boundary beneath the broad source root instead of normalising new slice code at that root.
 - First test must be a trigger test.
 - Boundary tests are the default.
 - Unit tests are only for pure algorithmic logic.

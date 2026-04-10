@@ -16,7 +16,8 @@ Your caller may have just been discussing architecture at a high level. You are 
 2. Read AGENTS.md, CLAUDE.md, or .pi/AGENTS.md to understand the project rules and conventions.
 3. Read the issue-template skill for the standard issue format **and all of its rules**. You will re-read it again in the pre-flight step below — do not treat it as a read-once template.
 4. Explore the codebase to understand the current architecture, relevant files, and patterns.
-5. Identify the single owning boundary for this slice. If none exists yet, decide whether this issue should create it. Name the boundary folder and its small public entry point (`index.ts`, `__init__.py`, `routes.rb`, or equivalent in the project's language).
+5. If `.forgeflow/BOOTSTRAP.md` exists and this slice touches project setup or foundational tooling, read it and treat its locked inputs as binding.
+6. Identify the single owning boundary for this slice. If none exists yet, decide whether this issue should create it. Name the boundary folder and its small public entry point appropriate to the project's language or framework.
 6. Draft the issue body in memory following the issue-template skill format.
 7. Run the pre-flight checklist below against your draft.
 8. If every pre-flight check passes, create the issue with `gh issue create --label "auto-generated"`. If any check fails, fix the draft and re-run pre-flight.
@@ -39,6 +40,7 @@ Only after all eight pre-flight checks pass may you call `gh issue create`.
 - Do NOT ask the user questions or wait for input. Make reasonable assumptions based on your codebase exploration. If an assumption is significant, note it in the issue context.
 - Follow the issue-template skill format exactly.
 - Populate the Implementation Hints section with specific files, functions, and patterns you discovered during codebase exploration.
+- If `.forgeflow/BOOTSTRAP.md` is relevant to this slice, preserve its exact starter/template identifiers, package manager choices, scaffold commands, versioned tooling choices, and explicit use/avoid constraints rather than generalising them away.
 - Populate `## Structural Placement` with one owning boundary, one public entry point, and explicit out-of-scope placements.
 - If no suitable boundary exists, the issue may create one. Do not spread one slice across multiple new boundaries.
 - Do not treat a generic root such as `src/`, `app/`, `server/`, `client/`, `test/`, or `tests/` as the owning boundary.

@@ -27,7 +27,7 @@ const registerForgeflow = createForgeflowExtension({
   toolName: "forgeflow-pm",
   toolLabel: "Forgeflow PM",
   description: [
-    "Run forgeflow PM pipelines: init (draft an initial PRD for greenfield projects),",
+    "Run forgeflow PM pipelines: init (draft an initial PRD plus bootstrap constraints for greenfield projects),",
     "continue (update PRD Done/Next→QA→create issues for next phase),",
     "prd-qa (draft PRD if missing, then refine it and prompt for one final review), create-gh-issues (decompose PRD into GitHub issues),",
     "create-gh-issue (single issue from a feature idea),",

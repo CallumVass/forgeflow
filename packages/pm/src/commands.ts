@@ -4,7 +4,7 @@ import type { CommandDefinition } from "@callumvass/forgeflow-shared/extension";
 export const commands: CommandDefinition[] = [
   {
     name: "init",
-    description: "Draft an initial PRD.md for a greenfield project",
+    description: "Draft an initial PRD.md plus bootstrap constraints for a greenfield project",
     pipeline: "init",
   },
   {

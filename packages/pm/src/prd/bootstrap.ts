@@ -1,4 +1,5 @@
 import type { PipelineContext } from "@callumvass/forgeflow-shared/pipeline";
+import { BOOTSTRAP_FILE, writeBootstrap } from "./bootstrap-document.js";
 import { promptEditPrd, writePrd } from "./document.js";
 
 interface InitialPrdAnswers {
@@ -14,6 +15,7 @@ interface InitialPrdAnswers {
   persistence: string;
   auth: string;
   testingBaseline: string;
+  lockedBootstrapInputs: string;
   hosting: string;
   libraryPreferences: string;
   integrationsAndConstraints: string;
@@ -85,6 +87,12 @@ const QUESTIONS: BootstrapQuestion[] = [
     key: "testingBaseline",
     title: "Preferred testing baseline?",
     placeholder: "e.g. Vitest + Playwright, xUnit + Playwright, ExUnit + Phoenix tests, or leave blank",
+  },
+  {
+    key: "lockedBootstrapInputs",
+    title: "Any exact bootstrap or tooling inputs to preserve?",
+    placeholder:
+      "e.g. use pnpm, scaffold from cloudflare/templates/vite-react-template, use Tailwind CSS v4, avoid SCSS, or leave blank",
   },
   {
     key: "hosting",
@@ -167,6 +175,55 @@ function buildFunctionalRequirements(answers: InitialPrdAnswers): string[] {
   return requirements;
 }
 
+function buildLockedTechnicalInputsSummary(answers: InitialPrdAnswers): string[] {
+  const summary = [
+    `- Exact bootstrap commands, template identifiers, package manager choices, versioned tooling requests, and explicit use/avoid constraints are recorded in \`${BOOTSTRAP_FILE}\` and are binding unless the user explicitly changes them.`,
+  ];
+
+  if (clean(answers.frameworkPreferences)) {
+    summary.push(`- Framework/starter direction: ${clean(answers.frameworkPreferences)}.`);
+  }
+  if (clean(answers.lockedBootstrapInputs)) {
+    summary.push(`- Explicit bootstrap/tooling constraints: ${clean(answers.lockedBootstrapInputs)}.`);
+  }
+  if (clean(answers.testingBaseline)) {
+    summary.push(`- Testing baseline to preserve: ${clean(answers.testingBaseline)}.`);
+  }
+  if (clean(answers.hosting)) {
+    summary.push(`- Hosting/deployment target to preserve: ${clean(answers.hosting)}.`);
+  }
+  if (clean(answers.libraryPreferences)) {
+    summary.push(`- Provider/library preferences to preserve: ${clean(answers.libraryPreferences)}.`);
+  }
+
+  return summary;
+}
+
+export function buildBootstrapDoc(answers: InitialPrdAnswers): string {
+  return [
+    "# Bootstrap Constraints",
+    "",
+    "These inputs came directly from the user during /init.",
+    "Treat them as binding unless the user explicitly changes them later.",
+    "",
+    "## Locked Inputs Captured During /init",
+    `- Product name: ${answerOrFallback(answers.productName, "Not specified.")}`,
+    `- Preferred stack/ecosystem: ${answerOrFallback(answers.stack, "Not specified.")}`,
+    `- Preferred app/runtime framework, starter, or delivery approach: ${answerOrFallback(answers.frameworkPreferences, "Not specified.")}`,
+    `- Exact bootstrap/tooling inputs to preserve: ${answerOrFallback(answers.lockedBootstrapInputs, "None captured explicitly.")}`,
+    `- Testing baseline: ${answerOrFallback(answers.testingBaseline, "Not specified.")}`,
+    `- Hosting/deployment target: ${answerOrFallback(answers.hosting, "Not specified.")}`,
+    `- Preferred libraries/providers to use or avoid: ${answerOrFallback(answers.libraryPreferences, "None stated.")}`,
+    `- Integrations/constraints: ${answerOrFallback(answers.integrationsAndConstraints, "None stated.")}`,
+    "",
+    "## Rules For Later Pipelines",
+    "- PRD.md may summarise these choices in prose, but must not silently remove, weaken, or replace them.",
+    "- Issue creation must carry relevant locked inputs into the initial scaffold/bootstrap issue and any later setup-sensitive issues.",
+    "- If the user provided an exact starter/template identifier, package manager choice, scaffold command, versioned tooling choice, or explicit use/avoid constraint, preserve it exactly where relevant.",
+    "",
+  ].join("\n");
+}
+
 export function buildInitialPrd(answers: InitialPrdAnswers): string {
   const productName = answerOrFallback(answers.productName, "New Project");
   const outOfScope = answerOrFallback(
@@ -197,6 +254,9 @@ export function buildInitialPrd(answers: InitialPrdAnswers): string {
     "",
     "## Functional Requirements",
     ...functionalRequirements.map((item) => `- ${item}`),
+    "",
+    "## Locked Technical Inputs",
+    ...buildLockedTechnicalInputsSummary(answers),
     "",
     "## Technical Direction",
     `- Project type: ${answerOrFallback(answers.projectType, "Undecided — confirm during PRD QA.")}`,
@@ -254,6 +314,7 @@ export async function promptBootstrapPrd(
   if (!answers) return false;
 
   writePrd(cwd, buildInitialPrd(answers));
+  writeBootstrap(cwd, buildBootstrapDoc(answers));
   await promptEditPrd(pctx, "Review initial PRD");
   return true;
 }

@@ -3,7 +3,7 @@
 Forgeflow is a pair of [Pi](https://shittycodingagent.ai/) packages that take you from a product idea to merged pull requests.
 
 ```text
-idea -> /init -> /prd-qa -> /create-gh-issues -> /implement-all
+idea -> /init -> optional bootstrap issue -> /implement -> /continue -> /implement-all
 ```
 
 Install one package or both:
@@ -25,6 +25,17 @@ cd your-project
 
 ```text
 /init
+# optionally create the initial bootstrap issue and run /implement on it
+/continue
+/implement-all
+```
+
+`/init` now writes both `PRD.md` and `.forgeflow/BOOTSTRAP.md`.
+The PRD stays human-readable; `.forgeflow/BOOTSTRAP.md` preserves exact blank-slate constraints such as starter/template identifiers, package manager choice, scaffold commands, versioned tooling requests, and explicit use/avoid constraints.
+
+If you prefer to refine the PRD before any issue creation, you can still run:
+
+```text
 /prd-qa
 # final review/edit PRD.md
 /create-gh-issues
@@ -41,11 +52,14 @@ cd your-project
 ## Recommended greenfield workflow
 
 After `/prd-qa`, do one final review of `PRD.md` before creating issues.
+If `/init` captured exact bootstrap/tooling constraints, make sure `PRD.md` keeps its `## Locked Technical Inputs` reference to `.forgeflow/BOOTSTRAP.md`.
+
 A good greenfield PRD should usually include:
 - a clear MVP flow
 - scope and non-goals
 - `## Technical Direction` with the chosen stack/framework/testing/auth/persistence decisions where they materially matter
 - `## Alternatives Considered` for major project-shaping choices, kept brief
+- `## Locked Technical Inputs` pointing to `.forgeflow/BOOTSTRAP.md` when `/init` captured exact bootstrap/tooling constraints
 
 That gives you a cheap review point before code exists:
 - "Use Vue, not React"
@@ -53,7 +67,7 @@ That gives you a cheap review point before code exists:
 - "Use ASP.NET Core Identity"
 - "Keep this server-rendered for MVP"
 
-`/create-gh-issues` treats the chosen option as binding and alternatives as context only.
+`/create-gh-issues` treats the chosen option as binding and alternatives as context only. If `.forgeflow/BOOTSTRAP.md` exists, exact starter/template identifiers, package manager choices, scaffold commands, versioned tooling choices, and explicit use/avoid constraints are binding too.
 
 ## When to use `/investigate`
 
@@ -82,7 +96,7 @@ Confluence templates are supported, but not required.
 
 | Command | What it does |
 |---|---|
-| `/init` | Draft a first `PRD.md` |
+| `/init` | Draft a first `PRD.md`, capture bootstrap constraints, and optionally create the initial bootstrap issue |
 | `/prd-qa` | Refine the PRD until it is implementation-ready |
 | `/continue` | Refresh `PRD.md` for the next phase on an existing project |
 | `/create-gh-issues` | Turn the PRD into vertical-slice GitHub issues |
@@ -96,12 +110,14 @@ Confluence templates are supported, but not required.
 
 | Command | What it does |
 |---|---|
-| `/implement` | Implement one issue using plan → TDD → review |
+| `/implement` | Implement one issue using plan → TDD → refactor → review |
 | `/implement-all` | Implement, review, and merge all open generated issues |
 | `/review` | Run structured PR review |
 | `/architecture` | Analyse structural friction and create RFC issues |
 | `/discover-skills` | Find domain-specific plugins for the current stack |
 | `/datadog-login` | Authenticate to an OAuth-enabled Datadog MCP server |
+| `/datadog-status` | Show Datadog MCP auth status |
+| `/datadog-logout` | Remove stored Datadog MCP credentials |
 | `/datadog` | Resolve a Lambda from repo code and investigate it through Datadog MCP |
 
 ## Requirements
@@ -137,15 +153,29 @@ Set `ATLASSIAN_JIRA_PROJECT` unless you provide an example Jira ticket URL that 
 ### Datadog MCP features
 For `/datadog-login` and `/datadog`:
 
+Required:
+
 ```bash
 export DATADOG_MCP_URL=https://your-datadog-mcp.example.com/mcp
+```
+
+Optional:
+
+```bash
+# Defaults to http://127.0.0.1:33390/callback
 export DATADOG_MCP_REDIRECT_URI=http://127.0.0.1:33390/callback
+# Optional when your MCP server requires a pre-registered OAuth client
+export DATADOG_MCP_CLIENT_ID=...
+export DATADOG_MCP_CLIENT_SECRET=...
+# Optional OAuth scope override
+export DATADOG_MCP_SCOPE="metrics logs traces"
 ```
 
 Then run:
 
 ```text
 /datadog-login
+/datadog-status
 /datadog "investigate why the billing lambda is slow in prod"
 ```
 

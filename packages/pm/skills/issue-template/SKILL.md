@@ -76,7 +76,7 @@ Body:
 ## Structural Placement
 <MANDATORY. Name exactly one owning boundary for this slice. If no suitable boundary exists yet, say this issue creates it.>
 - Owning boundary: `<path/to/feature-or-domain/>`
-- Public entry point: `<small public entry point for that boundary, e.g. path/to/feature-or-domain/index.ts, __init__.py, routes.rb, or equivalent in the project's language>`
+- Public entry point: `<small public entry point for that boundary, appropriate to the project's language or framework>`
 - Files in scope: `<files this slice may create or modify>`
 - Out of scope: `<placements or cross-boundary work this slice must avoid>`
 
