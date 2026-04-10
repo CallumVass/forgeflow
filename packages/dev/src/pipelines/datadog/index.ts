@@ -4,7 +4,13 @@ import {
   parseDatadogMcpJson,
   withDatadogMcpSession,
 } from "@callumvass/forgeflow-shared/datadog";
-import { type PipelineContext, pipelineResult, withRunLifecycle } from "@callumvass/forgeflow-shared/pipeline";
+import {
+  type PipelineContext,
+  pipelineResult,
+  type StageResult,
+  withRunLifecycle,
+} from "@callumvass/forgeflow-shared/pipeline";
+import { exploreLambdaWithAgent } from "./explorer.js";
 import { parseDatadogRequest } from "./request.js";
 import { formatLambdaCandidate, type LambdaCandidate, resolveLambdaFromRepo } from "./resolver.js";
 
@@ -29,32 +35,62 @@ export async function runDatadog(prompt: string, pctx: PipelineContext) {
 }
 
 async function runDatadogInner(prompt: string, pctx: PipelineContext) {
+  const stages: StageResult[] = [];
+
   if (!prompt && pctx.ctx.hasUI) {
     const input = await pctx.ctx.ui.input("Datadog prompt?", "e.g. investigate why the billing lambda is slow in prod");
     prompt = input?.trim() ?? "";
   }
 
-  if (!prompt) return pipelineResult("No Datadog prompt provided.", "datadog", []);
+  if (!prompt) return pipelineResult("No Datadog prompt provided.", "datadog", stages);
 
   const request = parseDatadogRequest(prompt);
-  const resolution = await resolveLambdaFromRepo(pctx.cwd, prompt);
-  if (typeof resolution === "string") return pipelineResult(resolution, "datadog", [], true);
+  const repoResolution = await resolveLambdaFromRepo(pctx.cwd, prompt);
+  const repoCandidates = typeof repoResolution === "string" ? [] : repoResolution.candidates;
 
-  if (!resolution.selected) {
-    const options = resolution.candidates
+  let selected = typeof repoResolution === "string" ? undefined : repoResolution.selected;
+  let candidates = repoCandidates;
+  const shouldExploreWithAgent = typeof repoResolution === "string" || !selected || !selected.functionName;
+
+  if (shouldExploreWithAgent) {
+    const agentResolution = await exploreLambdaWithAgent(prompt, repoCandidates, pctx, stages);
+    if (typeof agentResolution !== "string") {
+      selected = agentResolution.selected ?? selected;
+      candidates = agentResolution.candidates.length > 0 ? agentResolution.candidates : candidates;
+      if (!selected && agentResolution.ambiguous && agentResolution.candidates.length > 0) {
+        const options = agentResolution.candidates
+          .slice(0, 5)
+          .map((candidate) => `- ${formatLambdaCandidate(candidate)}`)
+          .join("\n");
+        return pipelineResult(
+          `I found multiple plausible Lambda candidates. Please re-run /datadog with one of these names:\n${options}`,
+          "datadog",
+          stages,
+        );
+      }
+    } else if (typeof repoResolution === "string") {
+      return pipelineResult(agentResolution, "datadog", stages, true);
+    }
+  }
+
+  if (!selected && typeof repoResolution !== "string" && !repoResolution.selected) {
+    const options = candidates
       .slice(0, 5)
       .map((candidate) => `- ${formatLambdaCandidate(candidate)}`)
       .join("\n");
     return pipelineResult(
       `I found multiple plausible Lambda candidates. Please re-run /datadog with one of these names:\n${options}`,
       "datadog",
-      [],
+      stages,
     );
   }
 
-  const selected = resolution.selected;
   if (!selected) {
-    return pipelineResult("No Lambda candidate was selected for the Datadog investigation.", "datadog", [], true);
+    const message =
+      typeof repoResolution === "string"
+        ? repoResolution
+        : "No Lambda candidate was selected for the Datadog investigation.";
+    return pipelineResult(message, "datadog", stages, true);
   }
 
   const result = await withDatadogMcpSession(async (session) => {
@@ -72,8 +108,8 @@ async function runDatadogInner(prompt: string, pctx: PipelineContext) {
     return formatReport(prompt, selected, request.env, request.windowMs, percentiles, logs);
   });
 
-  if (typeof result === "string") return pipelineResult(result, "datadog", [], true);
-  return pipelineResult(result, "datadog", []);
+  if (typeof result === "string") return pipelineResult(result, "datadog", stages, true);
+  return pipelineResult(result, "datadog", stages);
 }
 
 async function fetchPercentiles(
