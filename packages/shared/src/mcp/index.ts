@@ -471,11 +471,38 @@ export function parseMcpJson(result: unknown, serviceLabel: string): unknown | s
   const text = extractFirstText(result.content);
   if (!text) return `${serviceLabel} returned no text content.`;
 
+  return parseStructuredMcpText(text);
+}
+
+function parseStructuredMcpText(text: string): unknown | string {
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    return text;
+    // Fall through to tagged payload extraction.
   }
+
+  const wrappedJson = extractTaggedBlock(text, "JSON_DATA");
+  if (wrappedJson !== undefined) {
+    try {
+      return JSON.parse(wrappedJson) as unknown;
+    } catch {
+      return wrappedJson;
+    }
+  }
+
+  const wrappedYaml = extractTaggedBlock(text, "YAML_DATA");
+  if (wrappedYaml !== undefined) {
+    const trimmed = wrappedYaml.trim();
+    if (!trimmed) return [];
+    return trimmed;
+  }
+
+  return text;
+}
+
+function extractTaggedBlock(text: string, tag: string): string | undefined {
+  const match = text.match(new RegExp(`<${tag}>\\s*([\\s\\S]*?)\\s*</${tag}>`, "i"));
+  return match?.[1]?.trim();
 }
 
 function extractFirstText(content: unknown): string | undefined {
