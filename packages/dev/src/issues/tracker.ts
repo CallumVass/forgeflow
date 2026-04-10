@@ -1,4 +1,4 @@
-import { fetchJiraIssueViaOauth } from "@callumvass/forgeflow-shared/atlassian";
+import { fetchJiraIssueViaOauth } from "@callumvass/forgeflow-shared/atlassian/jira";
 import type { ExecFn } from "@callumvass/forgeflow-shared/pipeline";
 
 /**

@@ -1,4 +1,4 @@
-import { type ConfluencePage, fetchConfluencePageViaOauth } from "../atlassian/index.js";
+import { type ConfluencePage, fetchConfluencePageViaOauth } from "../atlassian/confluence/index.js";
 import type { ExecFn } from "./exec.js";
 
 export type { ConfluencePage };

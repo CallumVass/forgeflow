@@ -1,4 +1,4 @@
-import type { JiraIssueDraft } from "@callumvass/forgeflow-shared/atlassian";
+import type { JiraIssueDraft } from "@callumvass/forgeflow-shared/atlassian/jira";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

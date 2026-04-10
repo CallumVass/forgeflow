@@ -19,11 +19,13 @@ describe("runInvestigate", () => {
         return `Unexpected URL ${url}`;
       }),
     }));
-    vi.doMock("@callumvass/forgeflow-shared/atlassian", () => ({
+    vi.doMock("@callumvass/forgeflow-shared/atlassian/jira", () => ({
       extractJiraKey: (input: string) => {
         const match = input.match(/\b[A-Z][A-Z0-9]+-\d+\b/);
         return match?.[0] ?? null;
       },
+    }));
+    vi.doMock("@callumvass/forgeflow-shared/atlassian/content", () => ({
       fetchAtlassianContentFromUrl: vi.fn(async (url: string) => {
         if (url.includes("/pages/200/")) {
           return {

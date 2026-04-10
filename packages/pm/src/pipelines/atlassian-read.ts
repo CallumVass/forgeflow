@@ -1,4 +1,4 @@
-import { fetchAtlassianContentFromUrl, formatAtlassianContent } from "@callumvass/forgeflow-shared/atlassian";
+import { fetchAtlassianContentFromUrl, formatAtlassianContent } from "@callumvass/forgeflow-shared/atlassian/content";
 import { type PipelineContext, pipelineResult, withRunLifecycle } from "@callumvass/forgeflow-shared/pipeline";
 
 export async function runAtlassianRead(url: string, pctx: PipelineContext) {

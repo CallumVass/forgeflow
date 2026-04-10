@@ -4,7 +4,7 @@ import {
   extractProjectKey,
   fetchJiraIssueFromUrl,
   getJiraCreationDefaults,
-} from "@callumvass/forgeflow-shared/atlassian";
+} from "@callumvass/forgeflow-shared/atlassian/jira";
 import { type ConfluencePage, fetchConfluencePage } from "@callumvass/forgeflow-shared/confluence";
 import {
   emitUpdate,
