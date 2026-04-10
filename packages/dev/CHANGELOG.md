@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.24.0...forgeflow-dev-v0.24.1) (2026-04-10)
+
+
+### Bug Fixes
+
+* make datadog pipeline discover metrics and tags ([#179](https://github.com/CallumVass/forgeflow/issues/179)) ([a221ced](https://github.com/CallumVass/forgeflow/commit/a221cedc686952be43439d1157000755c3a4784c))
+
 ## [0.24.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.23.2...forgeflow-dev-v0.24.0) (2026-04-10)
 
 
