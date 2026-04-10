@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.21.0...forgeflow-pm-v0.22.0) (2026-04-10)
+
+
+### Features
+
+* **pm,dev:** preserve init bootstrap constraints ([#171](https://github.com/CallumVass/forgeflow/issues/171)) ([30978f2](https://github.com/CallumVass/forgeflow/commit/30978f2ff3ee2c5ce0d77cc90c9527556da59389))
+
 ## [0.21.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.20.1...forgeflow-pm-v0.21.0) (2026-04-09)
 
 
