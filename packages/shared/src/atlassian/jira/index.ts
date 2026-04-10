@@ -1,9 +1,8 @@
 import { plainTextToAdf } from "../adf.js";
-import { type AtlassianClientDeps, availableToolsLabel, buildIssueUrl } from "../internal/deps.js";
+import { type AtlassianClientDeps, buildIssueUrl } from "../internal/deps.js";
 import { parseJiraCreateResponse, parseJiraIssueResponse } from "../internal/jira-parser.js";
-import { resolveResourceForProduct } from "../internal/resource-selection.js";
-import { callToolWithVariants } from "../internal/tool-call.js";
-import { getAtlassianMcpConfig, resolveAtlassianMcpTool, withAtlassianMcpSession } from "../mcp.js";
+import { invokeProductToolViaOauth } from "../internal/product-tool.js";
+import { getAtlassianMcpConfig } from "../mcp.js";
 
 export type { JiraCreatedIssue, JiraIssue, JiraIssueDraft } from "./types.js";
 
@@ -34,35 +33,24 @@ export async function fetchJiraIssueViaOauth(
 
   const siteUrl = deps?.siteUrl ?? config.siteUrl;
   const issueUrl = buildIssueUrl(jiraKey, siteUrl);
-  const withSessionFn = deps?.withMcpSessionFn ?? withAtlassianMcpSession;
-  const result = await withSessionFn(async (session) => {
-    const tool = resolveAtlassianMcpTool(session, "jiraGetIssue");
-    if (!tool) {
-      return `The current Atlassian MCP server does not expose a Jira issue reader forgeflow can use. Available tools: ${availableToolsLabel(session.toolNames)}`;
-    }
-
-    const resource = await resolveResourceForProduct(
-      session,
-      siteUrl,
-      { product: "jira", scopePatterns: [/^read:jira-work$/, /^write:jira-work$/] },
-      deps,
-    );
-    if (typeof resource === "string") return resource;
-
-    return callToolWithVariants(
-      session,
-      tool,
-      [
-        ...(resource
+  const result = await invokeProductToolViaOauth(
+    {
+      capability: "jiraGetIssue",
+      preferredSiteUrl: siteUrl,
+      product: "jira",
+      scopePatterns: [/^read:jira-work$/, /^write:jira-work$/],
+      unavailableMessage: "The current Atlassian MCP server does not expose a Jira issue reader forgeflow can use.",
+      buildArgVariants: (resourceId) => [
+        ...(resourceId
           ? [
-              { cloudId: resource.id, issueIdOrKey: jiraKey },
-              { cloudId: resource.id, issueKey: jiraKey },
-              { cloudId: resource.id, key: jiraKey },
-              { cloudId: resource.id, jiraKey },
+              { cloudId: resourceId, issueIdOrKey: jiraKey },
+              { cloudId: resourceId, issueKey: jiraKey },
+              { cloudId: resourceId, key: jiraKey },
+              { cloudId: resourceId, jiraKey },
               ...(issueUrl
                 ? [
-                    { cloudId: resource.id, url: issueUrl },
-                    { cloudId: resource.id, issueUrl },
+                    { cloudId: resourceId, url: issueUrl },
+                    { cloudId: resourceId, issueUrl },
                   ]
                 : []),
             ]
@@ -72,9 +60,9 @@ export async function fetchJiraIssueViaOauth(
         { jiraKey },
         ...(issueUrl ? [{ url: issueUrl }, { issueUrl }] : []),
       ],
-      deps,
-    );
-  });
+    },
+    deps,
+  );
   if (typeof result === "string") return result;
 
   return parseJiraIssueResponse(result, jiraKey);
@@ -97,36 +85,26 @@ export async function createJiraIssueViaOauth(
   if (typeof config === "string") return config;
 
   const siteUrl = deps?.siteUrl ?? config.siteUrl;
-  const withSessionFn = deps?.withMcpSessionFn ?? withAtlassianMcpSession;
-  const result = await withSessionFn(async (session) => {
-    const tool = resolveAtlassianMcpTool(session, "jiraCreateIssue");
-    if (!tool) {
-      return `The current Atlassian MCP server does not expose a Jira issue creation tool forgeflow can use. Available tools: ${availableToolsLabel(session.toolNames)}`;
-    }
-
-    const resource = await resolveResourceForProduct(
-      session,
-      siteUrl,
-      { product: "jira", scopePatterns: [/^read:jira-work$/, /^write:jira-work$/] },
-      deps,
-    );
-    if (typeof resource === "string") return resource;
-
-    return callToolWithVariants(
-      session,
-      tool,
-      [
-        ...(resource
+  const result = await invokeProductToolViaOauth(
+    {
+      capability: "jiraCreateIssue",
+      preferredSiteUrl: siteUrl,
+      product: "jira",
+      scopePatterns: [/^read:jira-work$/, /^write:jira-work$/],
+      unavailableMessage:
+        "The current Atlassian MCP server does not expose a Jira issue creation tool forgeflow can use.",
+      buildArgVariants: (resourceId) => [
+        ...(resourceId
           ? [
               {
-                cloudId: resource.id,
+                cloudId: resourceId,
                 projectKey: issue.projectKey,
                 summary: issue.summary,
                 description: issue.description,
                 issueType: issue.issueType ?? "Story",
               },
               {
-                cloudId: resource.id,
+                cloudId: resourceId,
                 issue: {
                   projectKey: issue.projectKey,
                   summary: issue.summary,
@@ -135,7 +113,7 @@ export async function createJiraIssueViaOauth(
                 },
               },
               {
-                cloudId: resource.id,
+                cloudId: resourceId,
                 fields: {
                   project: { key: issue.projectKey },
                   summary: issue.summary,
@@ -168,9 +146,9 @@ export async function createJiraIssueViaOauth(
           },
         },
       ],
-      deps,
-    );
-  });
+    },
+    deps,
+  );
   if (typeof result === "string") return result;
 
   return parseJiraCreateResponse(result, issue.summary, siteUrl);
