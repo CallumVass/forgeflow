@@ -1,33 +1,5 @@
-import { splitIdentifier, uniqueStrings } from "./candidate-identifiers.js";
+import { filterIdentifierTokens, uniqueStrings } from "./candidate-identifiers.js";
 import type { TagFilter } from "./contracts.js";
-
-const STOPWORDS = new Set([
-  "api",
-  "bin",
-  "delete",
-  "dev",
-  "function",
-  "generated",
-  "get",
-  "handler",
-  "handlers",
-  "http",
-  "infra",
-  "lambda",
-  "main",
-  "patch",
-  "post",
-  "prod",
-  "publish",
-  "put",
-  "release",
-  "src",
-  "staging",
-  "test",
-  "tests",
-  "uat",
-  "update",
-]);
 
 interface MetricContextSummary {
   indexedTags: Record<string, string[]>;
@@ -113,7 +85,7 @@ export function findBestTagMatch(
     .map((candidate) => ({
       raw: candidate,
       norm: normaliseValue(candidate),
-      tokens: splitIdentifier(candidate).filter((part) => part.length >= 2 && !STOPWORDS.has(part)),
+      tokens: filterIdentifierTokens(candidate),
     }))
     .filter((candidate) => candidate.norm.length > 0 || candidate.tokens.length > 0);
 

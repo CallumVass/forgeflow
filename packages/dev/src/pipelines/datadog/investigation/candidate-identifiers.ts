@@ -28,12 +28,22 @@ const STOPWORDS = new Set([
   "update",
 ]);
 
-export function splitIdentifier(value: string): string[] {
+function splitIdentifier(value: string): string[] {
   return value
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .split(/[^A-Za-z0-9]+/)
     .map((part) => part.trim().toLowerCase())
     .filter(Boolean);
+}
+
+export function filterIdentifierTokens(value: string, minLength = 2): string[] {
+  return splitIdentifier(value).filter((part) => part.length >= minLength && !STOPWORDS.has(part));
+}
+
+export function buildWildcardPattern(value: string, maxTokens = Number.POSITIVE_INFINITY): string | undefined {
+  const tokens = filterIdentifierTokens(value).slice(0, maxTokens);
+  if (tokens.length === 0) return undefined;
+  return `*${tokens.join("*")}*`;
 }
 
 function singularise(token: string): string | undefined {
@@ -62,8 +72,7 @@ export function deriveSearchTerms(candidate: LambdaCandidate): string[] {
 
   const terms = new Set<string>();
   for (const value of raw) {
-    const parts = splitIdentifier(value);
-    const filtered = parts.filter((part) => part.length >= 3 && !STOPWORDS.has(part));
+    const filtered = filterIdentifierTokens(value, 3);
     for (const part of filtered) {
       terms.add(part);
       const singular = singularise(part);
@@ -89,7 +98,7 @@ export function buildIdentifierCandidates(candidate: LambdaCandidate): string[] 
 
   const identifiers = new Set<string>(raw);
   for (const value of raw) {
-    const tokens = splitIdentifier(value).filter((part) => part.length >= 2 && !STOPWORDS.has(part));
+    const tokens = filterIdentifierTokens(value);
     if (tokens.length > 0) identifiers.add(tokens.join(""));
     if (tokens.length > 1) identifiers.add(tokens.join("-"));
   }
@@ -104,10 +113,11 @@ export function buildWildcardIdentifierPatterns(candidate: LambdaCandidate): str
 
   const patterns = new Set<string>();
   for (const value of raw) {
-    const tokens = splitIdentifier(value).filter((part) => part.length >= 2 && !STOPWORDS.has(part));
-    if (tokens.length === 0) continue;
+    const tokens = filterIdentifierTokens(value);
+    const wildcardPattern = buildWildcardPattern(value);
+    if (tokens.length === 0 || !wildcardPattern) continue;
 
-    patterns.add(`*${tokens.join("*")}*`);
+    patterns.add(wildcardPattern);
     patterns.add(`*${tokens.join("")}*`);
     if (tokens.length >= 2) patterns.add(`*${tokens[0]}*${tokens[tokens.length - 1]}*`);
   }

@@ -1,6 +1,8 @@
 import { resolveDatadogMcpTool, withDatadogMcpSession } from "@callumvass/forgeflow-shared/datadog";
 import type { PipelineContext } from "@callumvass/forgeflow-shared/pipeline";
 import type { LambdaCandidate } from "../candidate.js";
+import { buildWildcardPattern } from "./candidate-identifiers.js";
+import type { MetricQueryPlan } from "./contracts.js";
 import { buildLogQuery, discoverDatadogQueryPlans } from "./plan-discovery.js";
 import { fetchErrorLogs, fetchSpanSummary, fetchSummary } from "./query-execution.js";
 import { formatReport } from "./report.js";
@@ -65,14 +67,10 @@ export async function runDatadogInvestigation({ prompt, request, candidate, pctx
     });
   });
 
-  return typeof result === "string" ? result : result;
+  return result;
 }
 
-function buildSpanQueries(
-  candidate: LambdaCandidate,
-  env: string | undefined,
-  plans: Array<{ filters: { key: string; value: string }[]; service?: string }>,
-): string[] {
+function buildSpanQueries(candidate: LambdaCandidate, env: string | undefined, plans: MetricQueryPlan[]): string[] {
   const queries = new Set<string>();
   const resourceWildcard = buildResourceWildcard(candidate);
 
@@ -98,12 +96,5 @@ function buildSpanQueries(
 function buildResourceWildcard(candidate: LambdaCandidate): string | undefined {
   const source = candidate.constructId ?? candidate.className ?? candidate.functionName ?? candidate.variableName;
   if (!source) return undefined;
-  const tokens = source
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .split(/[^A-Za-z0-9]+/)
-    .map((part) => part.trim().toLowerCase())
-    .filter((part) => part.length >= 2 && !["lambda", "function"].includes(part))
-    .slice(0, 4);
-  if (tokens.length === 0) return undefined;
-  return `*${tokens.join("*")}*`;
+  return buildWildcardPattern(source, 4);
 }
