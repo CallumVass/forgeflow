@@ -34,7 +34,6 @@ This works best after the PM package has already produced good greenfield issues
 | `/review` | Review a PR or branch: blocking defects plus advisory architecture and refactor notes |
 | `/review-lite` | Review a PR or branch in strict mode: blocking defects only |
 | `/architecture` | Analyse the repo for structural friction and create RFC issues |
-| `/discover-skills` | Find domain-specific plugins for the current tech stack |
 | `/atlassian-login` | Authenticate to an OAuth-enabled Atlassian MCP server |
 | `/atlassian-status` | Show Atlassian MCP auth status |
 | `/atlassian-logout` | Remove stored Atlassian MCP credentials |

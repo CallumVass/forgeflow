@@ -84,16 +84,4 @@ export const commands: CommandDefinition[] = [
     description: "Analyze codebase for architectural friction and create RFC issues",
     pipeline: "architecture",
   },
-  {
-    name: "discover-skills",
-    description: "Find and install domain-specific plugins from skills.sh for this project's tech stack",
-    pipeline: "discover-skills",
-    parseArgs: (args) => {
-      const query = args.trim();
-      return {
-        params: query ? { issue: query } : {},
-        suffix: "Present the tool's output verbatim — do not summarize or reformat it.",
-      };
-    },
-  },
 ];
