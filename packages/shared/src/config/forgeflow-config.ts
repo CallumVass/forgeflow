@@ -36,6 +36,12 @@ export interface SessionsConfig {
   archiveMaxAge: number;
 }
 
+export interface SkillsConfig {
+  enabled: boolean;
+  extraPaths: string[];
+  maxSelected: number;
+}
+
 /**
  * Defaults for the `sessions` block when neither `~/.pi/agent/forgeflow.json`
  * nor the project `.forgeflow.json` set the field. The values are also the
@@ -47,9 +53,19 @@ export const DEFAULT_SESSIONS: SessionsConfig = {
   archiveMaxAge: 30,
 };
 
+/**
+ * Defaults for cross-agent skill discovery and recommendation.
+ */
+export const DEFAULT_SKILLS: SkillsConfig = {
+  enabled: true,
+  extraPaths: [],
+  maxSelected: 4,
+};
+
 export interface ForgeflowConfig {
   agents?: Record<string, AgentConfig>;
   sessions?: SessionsConfig;
+  skills?: SkillsConfig;
 }
 
 /** Callback invoked by the loader for every dropped value or parse error. */
@@ -66,10 +82,13 @@ type ForgeflowConfigWarn = (message: string) => void;
  *   matters for sensitive-project opt-out: a global `persist: false`
  *   should not be silently re-enabled by a project that tweaks only a
  *   retention knob.
+ * - `skills`: field-level merge, but `extraPaths` concatenates in
+ *   global→project order so project config can add local roots without
+ *   losing shared team/global ones.
  *
  * Both sides are allowed to omit either block. The returned `sessions`
- * block is `undefined` when neither side supplied one; `loadForgeflowConfig`
- * back-fills `DEFAULT_SESSIONS` before returning to callers.
+ * / `skills` blocks are `undefined` when neither side supplied them;
+ * `loadForgeflowConfig` back-fills defaults before returning to callers.
  */
 export function mergeConfigs(global: ForgeflowConfig, project: ForgeflowConfig): ForgeflowConfig {
   const merged: ForgeflowConfig = {
@@ -80,6 +99,13 @@ export function mergeConfigs(global: ForgeflowConfig, project: ForgeflowConfig):
   };
   if (global.sessions || project.sessions) {
     merged.sessions = { ...(global.sessions ?? {}), ...(project.sessions ?? {}) } as SessionsConfig;
+  }
+  if (global.skills || project.skills) {
+    merged.skills = {
+      ...(global.skills ?? {}),
+      ...(project.skills ?? {}),
+      extraPaths: [...(global.skills?.extraPaths ?? []), ...(project.skills?.extraPaths ?? [])],
+    } as SkillsConfig;
   }
   return merged;
 }
@@ -175,6 +201,45 @@ function sanitiseSessions(
   return out;
 }
 
+function resolveConfigPath(value: string, filePath: string): string {
+  if (value === "~") return os.homedir();
+  if (value.startsWith("~/")) return path.join(os.homedir(), value.slice(2));
+  if (path.isAbsolute(value)) return value;
+  return path.resolve(path.dirname(filePath), value);
+}
+
+function sanitiseSkills(
+  raw: unknown,
+  filePath: string,
+  sourceLabel: string,
+  warn: ForgeflowConfigWarn,
+): Partial<SkillsConfig> | undefined {
+  if (raw === undefined) return undefined;
+  if (!isRecord(raw)) {
+    warn(`forgeflow.json (${sourceLabel}): "skills" must be an object — ignored`);
+    return undefined;
+  }
+  const out: Partial<SkillsConfig> = {};
+  if (raw.enabled !== undefined) {
+    if (typeof raw.enabled === "boolean") out.enabled = raw.enabled;
+    else warn(`forgeflow.json (${sourceLabel}): skills.enabled must be a boolean — dropped`);
+  }
+  if (raw.maxSelected !== undefined) {
+    const n = coerceNonNegInt(raw.maxSelected, "skills.maxSelected", sourceLabel, warn);
+    if (n !== undefined) out.maxSelected = n;
+  }
+  if (raw.extraPaths !== undefined) {
+    if (Array.isArray(raw.extraPaths) && raw.extraPaths.every((value) => typeof value === "string")) {
+      out.extraPaths = raw.extraPaths
+        .filter((value) => value.trim().length > 0)
+        .map((value) => resolveConfigPath(value, filePath));
+    } else {
+      warn(`forgeflow.json (${sourceLabel}): skills.extraPaths must be an array of strings — dropped`);
+    }
+  }
+  return out;
+}
+
 function readConfigFile(filePath: string, sourceLabel: string, warn: ForgeflowConfigWarn): ForgeflowConfig {
   let raw: string;
   try {
@@ -195,6 +260,8 @@ function readConfigFile(filePath: string, sourceLabel: string, warn: ForgeflowCo
   const config: ForgeflowConfig = { agents: sanitiseAgents(parsed.agents, sourceLabel, warn) };
   const sessions = sanitiseSessions(parsed.sessions, sourceLabel, warn);
   if (sessions !== undefined) config.sessions = sessions as SessionsConfig;
+  const skills = sanitiseSkills(parsed.skills, filePath, sourceLabel, warn);
+  if (skills !== undefined) config.skills = skills as SkillsConfig;
   return config;
 }
 
@@ -240,8 +307,9 @@ export function loadForgeflowConfig(cwd: string, warn: ForgeflowConfigWarn = () 
   const projectConfig = projectPath ? readConfigFile(projectPath, "project", warn) : { agents: {} };
 
   const merged = mergeConfigs(globalConfig, projectConfig);
-  // Back-fill the sessions block last, so any field the user omitted
-  // defaults to DEFAULT_SESSIONS but fields they explicitly set survive.
+  // Back-fill the sessions / skills blocks last, so any field the user omitted
+  // defaults to the documented values but fields they explicitly set survive.
   merged.sessions = { ...DEFAULT_SESSIONS, ...(merged.sessions ?? {}) };
+  merged.skills = { ...DEFAULT_SKILLS, ...(merged.skills ?? {}), extraPaths: merged.skills?.extraPaths ?? [] };
   return merged;
 }

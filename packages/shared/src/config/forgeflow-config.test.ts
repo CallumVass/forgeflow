@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setupIsolatedHomeFixture } from "../test-utils.js";
 import {
   DEFAULT_SESSIONS,
+  DEFAULT_SKILLS,
   type ForgeflowConfig,
   loadForgeflowConfig,
   mergeConfigs,
@@ -31,7 +32,7 @@ function createConfigWriters(fixture: { homeDir: string; cwdDir: string }) {
 }
 
 describe("mergeConfigs", () => {
-  it("leaves sessions undefined when neither side supplies it (loader back-fills defaults separately)", () => {
+  it("leaves sessions / skills undefined when neither side supplies them (loader back-fills defaults separately)", () => {
     expect(mergeConfigs({}, {})).toEqual({ agents: {} });
     expect(mergeConfigs({ agents: {} }, { agents: {} })).toEqual({ agents: {} });
   });
@@ -79,7 +80,7 @@ describe("loadForgeflowConfig", () => {
 
   it("returns an empty config with sessions defaults when no files are present", () => {
     const result = loadForgeflowConfig(nested, warn);
-    expect(result).toEqual({ agents: {}, sessions: DEFAULT_SESSIONS });
+    expect(result).toEqual({ agents: {}, sessions: DEFAULT_SESSIONS, skills: DEFAULT_SKILLS });
     expect(warn).not.toHaveBeenCalled();
   });
 
@@ -104,6 +105,7 @@ describe("loadForgeflowConfig", () => {
         implementor: { model: "claude-sonnet-4-5", thinkingLevel: "medium" },
       },
       sessions: DEFAULT_SESSIONS,
+      skills: DEFAULT_SKILLS,
     });
     expect(warn).not.toHaveBeenCalled();
   });
@@ -124,6 +126,7 @@ describe("loadForgeflowConfig", () => {
         implementor: {},
       },
       sessions: DEFAULT_SESSIONS,
+      skills: DEFAULT_SKILLS,
     });
     expect(warn).toHaveBeenCalledTimes(2);
   });
@@ -144,8 +147,54 @@ describe("loadForgeflowConfig", () => {
 
     const result = loadForgeflowConfig(nested, warn);
 
-    expect(result).toEqual({ agents: {}, sessions: DEFAULT_SESSIONS });
+    expect(result).toEqual({ agents: {}, sessions: DEFAULT_SESSIONS, skills: DEFAULT_SKILLS });
     expect(warn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("skills config", () => {
+  const fixture = setupIsolatedHomeFixture("skills");
+  const { writeProject } = createConfigWriters(fixture);
+  let warn: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    warn = vi.fn();
+  });
+
+  it("merges skills field-by-field and concatenates extraPaths in global→project order", () => {
+    const merged = mergeConfigs(
+      { skills: { enabled: true, extraPaths: ["/global/a"], maxSelected: 2 } },
+      { skills: { extraPaths: ["/project/b"], maxSelected: 5 } },
+    );
+    expect(merged.skills).toEqual({ enabled: true, extraPaths: ["/global/a", "/project/b"], maxSelected: 5 });
+  });
+
+  it("backfills skills defaults when neither file sets the block", () => {
+    const result = loadForgeflowConfig(fixture.cwdDir, warn);
+    expect(result.skills).toEqual(DEFAULT_SKILLS);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("resolves project-relative extraPaths against the config file location", () => {
+    writeProject({ skills: { extraPaths: ["./custom-skills"], maxSelected: 2 } });
+
+    const result = loadForgeflowConfig(fixture.cwdDir, warn);
+
+    expect(result.skills).toEqual({
+      enabled: true,
+      extraPaths: [path.join(fixture.cwdDir, "custom-skills")],
+      maxSelected: 2,
+    });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("drops invalid skills fields with warnings and falls back to defaults", () => {
+    writeProject({ skills: { enabled: "yes", extraPaths: "oops", maxSelected: -2 } });
+
+    const result = loadForgeflowConfig(fixture.cwdDir, warn);
+
+    expect(result.skills).toEqual(DEFAULT_SKILLS);
+    expect(warn).toHaveBeenCalledTimes(3);
   });
 });
 

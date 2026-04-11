@@ -34,6 +34,7 @@ This works best after the PM package has already produced good greenfield issues
 | `/review` | Review a PR or branch: blocking defects plus advisory architecture and refactor notes |
 | `/review-lite` | Review a PR or branch in strict mode: blocking defects only |
 | `/architecture` | Analyse the repo for structural friction and create RFC issues |
+| `/skill-scan` | Scan common skill locations and explain which skills forgeflow would recommend |
 | `/atlassian-login` | Authenticate to an OAuth-enabled Atlassian MCP server |
 | `/atlassian-status` | Show Atlassian MCP auth status |
 | `/atlassian-logout` | Remove stored Atlassian MCP credentials |
@@ -123,6 +124,33 @@ Examples:
 
 If a necessary project-shaping choice is missing and the repo does not already establish one, the implementor should block instead of making an arbitrary decision.
 
+## Auto skill loading
+
+Forgeflow now shortlists relevant skills before `/implement`, `/implement-all`, `/review`, `/review-lite`, and `/architecture`.
+It reads skills in place from common agent locations rather than asking teams to migrate them into a forgeflow-specific directory.
+
+Discovery covers common local/global roots such as:
+- `.agents/skills/`
+- `.pi/skills/`
+- `.claude/skills/`
+- `.copilot/skills/`
+- `.codex/skills/`
+- `.opencode/skills/`
+- `~/.agents/skills/`
+- `~/.pi/agent/skills/`
+- `~/.claude/skills/`
+- `~/.copilot/skills/`
+- `~/.codex/skills/`
+- `~/.opencode/skills/`
+
+Selection is repo-aware. Forgeflow looks at things like:
+- workspace/package dependencies in `package.json`
+- .NET solutions and project files (`.sln`, `*.csproj`)
+- `mix.exs`, `pyproject.toml`, `go.mod`, `Cargo.toml`
+- changed files for review runs
+
+Use `/skill-scan` to inspect what was discovered and why forgeflow would pick particular skills for a command.
+
 ## Configuration
 
 Optional config lives in:
@@ -138,6 +166,11 @@ Example:
     "implementor": { "thinkingLevel": "medium" },
     "code-reviewer": { "thinkingLevel": "high" },
     "review-judge": { "thinkingLevel": "high" }
+  },
+  "skills": {
+    "enabled": true,
+    "extraPaths": ["~/company-shared-skills", "./tools/skills"],
+    "maxSelected": 4
   },
   "sessions": {
     "persist": true,

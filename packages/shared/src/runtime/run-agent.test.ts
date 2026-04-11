@@ -179,6 +179,41 @@ ${body}`,
     expect(callArgs).not.toContain("--no-session");
   });
 
+  it("passes selected skills via --skill and appends the skill guidance to the system prompt", async () => {
+    writeAgent("planner", "read, grep, find");
+    const skillDir = path.join(tmpDir, "tailwind");
+    fs.mkdirSync(skillDir, { recursive: true });
+    const skillPath = path.join(skillDir, "SKILL.md");
+    fs.writeFileSync(skillPath, "---\nname: tailwind\ndescription: Tailwind\n---\n\n# Tailwind\n", "utf-8");
+
+    spawnMock.mockImplementation((_command, args: string[]) => {
+      expect(args).toContain("--skill");
+      expect(args[args.indexOf("--skill") + 1]).toBe(skillPath);
+      const promptPath = args[args.indexOf("--append-system-prompt") + 1] as string;
+      const prompt = fs.readFileSync(promptPath, "utf-8");
+      expect(prompt).toContain("Preselected cross-agent skills");
+      expect(prompt).toContain(skillPath);
+      const proc = makeFakeProc();
+      setImmediate(() => proc.emit("close", 0));
+      return proc;
+    });
+
+    await runAgent("planner", "do stuff", {
+      ...makeOpts(tmpDir, tmpDir),
+      stages: [emptyStage("planner")],
+      selectedSkills: [
+        {
+          name: "tailwind",
+          description: "Tailwind guidance",
+          filePath: skillPath,
+          score: 42,
+          reasons: ["package.json depends on tailwindcss"],
+          root: { path: skillDir, scope: "project", harness: "claude", distance: 0, precedence: 1 },
+        },
+      ],
+    });
+  });
+
   describe("agentOverrides", () => {
     it("appends --model and --thinking when both are set for the agent", async () => {
       writeAgent("planner", "read, grep, find");

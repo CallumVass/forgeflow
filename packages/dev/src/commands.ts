@@ -84,4 +84,27 @@ export const commands: CommandDefinition[] = [
     description: "Analyze codebase for architectural friction and create RFC issues",
     pipeline: "architecture",
   },
+  {
+    name: "skill-scan",
+    description:
+      "Scan common skill locations, inspect repo signals, and explain which skills forgeflow would recommend. Usage: /skill-scan [--command <implement|review|architecture|...>] [--path <path>] [--issue <text>] [--target <review-target>] [--json]",
+    pipeline: "skill-scan",
+    parseArgs: (args) => {
+      const { flags } = extractFlags(args, {
+        boolean: ["--json"],
+        value: ["--command", "--path", "--issue", "--target", "--branch"],
+      });
+      return {
+        params: {
+          ...(flags["--command"] ? { command: flags["--command"] as string } : {}),
+          ...(flags["--path"] ? { path: flags["--path"] as string } : {}),
+          ...(flags["--issue"] ? { issue: flags["--issue"] as string } : {}),
+          ...(flags["--branch"] ? { target: `--branch ${flags["--branch"] as string}` } : {}),
+          ...(flags["--target"] ? { target: flags["--target"] as string } : {}),
+          ...(flags["--json"] ? { json: true } : {}),
+        },
+        suffix: "Do not interpret the command, path, issue text, or target — pass them as-is.",
+      };
+    },
+  },
 ];

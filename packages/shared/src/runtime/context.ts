@@ -2,11 +2,14 @@ import type { SessionEntry } from "@mariozechner/pi-coding-agent";
 import {
   type AgentConfig,
   DEFAULT_SESSIONS,
+  DEFAULT_SKILLS,
   loadForgeflowConfig,
   type SessionsConfig,
+  type SkillsConfig,
 } from "../config/forgeflow-config.js";
 import { type ExecFn, exec, execSafe } from "../io/exec.js";
 import type { RunDirHandle } from "../session/run-dir/index.js";
+import type { SelectedSkill } from "../skills/index.js";
 import { runAgent } from "./run-agent.js";
 import type { OnUpdate, RunAgentFn, RunAgentOpts, StageResult } from "./stages.js";
 
@@ -119,6 +122,18 @@ export interface PipelineContext {
    */
   agentOverrides: Record<string, AgentConfig>;
   /**
+   * Cross-agent skill discovery / recommendation config. Loaded once at the
+   * extension boundary from `.forgeflow.json` + `~/.pi/agent/forgeflow.json`.
+   */
+  skillsConfig: SkillsConfig;
+  /**
+   * Skills explicitly shortlisted for the current pipeline run. Pipelines set
+   * this after repo/task analysis; `runAgent` forwards the paths via `--skill`
+   * and appends system guidance so sub-agents read the selected `SKILL.md`
+   * files in place.
+   */
+  selectedSkills: SelectedSkill[];
+  /**
    * Sub-agent session persistence config. Loaded once at boundary
    * construction from `.forgeflow.json` + `~/.pi/agent/forgeflow.json`,
    * back-filled with `DEFAULT_SESSIONS`. When `persist` is `false`,
@@ -146,7 +161,10 @@ export function toPipelineContext(
   ctx: ForgeflowContext,
   agentsDir: string,
   overrides?: Partial<
-    Pick<PipelineContext, "runAgentFn" | "execFn" | "execSafeFn" | "agentOverrides" | "sessionsConfig">
+    Pick<
+      PipelineContext,
+      "runAgentFn" | "execFn" | "execSafeFn" | "agentOverrides" | "skillsConfig" | "selectedSkills" | "sessionsConfig"
+    >
   >,
 ): PipelineContext {
   // Load forgeflow.json exactly once per pipeline run at the boundary.
@@ -158,6 +176,7 @@ export function toPipelineContext(
   // `loadForgeflowConfig` back-fills `sessions` with DEFAULT_SESSIONS
   // before returning, so the `?? DEFAULT_SESSIONS` below is defensive
   // belt-and-braces for the type system rather than a runtime path.
+  const skillsConfig = overrides?.skillsConfig ?? loaded.skills ?? DEFAULT_SKILLS;
   const sessionsConfig = overrides?.sessionsConfig ?? loaded.sessions ?? DEFAULT_SESSIONS;
 
   return {
@@ -170,6 +189,8 @@ export function toPipelineContext(
     execFn: overrides?.execFn ?? exec,
     execSafeFn: overrides?.execSafeFn ?? execSafe,
     agentOverrides,
+    skillsConfig,
+    selectedSkills: overrides?.selectedSkills ?? [],
     sessionsConfig,
   };
 }
@@ -182,6 +203,7 @@ export function toAgentOpts(pctx: PipelineContext, extra: { stages: StageResult[
     onUpdate: pctx.onUpdate,
     agentsDir: pctx.agentsDir,
     agentOverrides: pctx.agentOverrides,
+    selectedSkills: pctx.selectedSkills,
     ...extra,
   };
 }

@@ -154,6 +154,12 @@ Extra notes:
 
 Set `ATLASSIAN_JIRA_PROJECT` unless you provide an example Jira ticket URL that lets forgeflow infer the project key.
 
+## Auto skill loading
+
+PM pipelines also shortlist relevant skills before `/init`, `/continue`, `/investigate`, `/create-gh-issue`, and `/create-gh-issues`.
+This uses the same common local/global roots as forgeflow-dev, including existing `.claude/skills`, `.copilot/skills`, `.codex/skills`, `.opencode/skills`, `.agents/skills`, and pi-native skill directories.
+Skills stay in place; forgeflow reads them where the team already keeps them.
+
 ## Configuration
 
 Optional config lives in:
@@ -169,6 +175,11 @@ Example:
     "prd-architect": { "thinkingLevel": "medium" },
     "gh-issue-creator": { "thinkingLevel": "high" },
     "investigator": { "thinkingLevel": "high" }
+  },
+  "skills": {
+    "enabled": true,
+    "extraPaths": ["~/company-shared-skills", "./tools/skills"],
+    "maxSelected": 4
   },
   "sessions": {
     "persist": true,

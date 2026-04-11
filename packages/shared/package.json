@@ -23,7 +23,8 @@
     "./datadog": "./dist/datadog/index.js",
     "./testing": "./dist/test-utils.js",
     "./extension": "./dist/extension.js",
-    "./arg-parsing": "./dist/arg-parsing.js"
+    "./arg-parsing": "./dist/arg-parsing.js",
+    "./skills": "./dist/skills/index.js"
   },
   "typesVersions": {
     "*": {
@@ -45,7 +46,8 @@
       "datadog": ["dist/datadog/index.d.ts"],
       "testing": ["dist/test-utils.d.ts"],
       "extension": ["dist/extension.d.ts"],
-      "arg-parsing": ["dist/arg-parsing.d.ts"]
+      "arg-parsing": ["dist/arg-parsing.d.ts"],
+      "skills": ["dist/skills/index.d.ts"]
     }
   },
   "scripts": {

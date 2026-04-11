@@ -77,6 +77,13 @@ Only write unit tests for pure algorithmic logic where the maths/edge cases matt
 
 Do NOT write source-scanning tests.
 
+## Skill loading during implementation
+
+Before writing your first test:
+- read any preselected skills surfaced in your system prompt
+- if code exploration reveals a concrete framework/library/pattern that materially shapes the work, check the available skills and load a matching skill before continuing
+- treat skills as progressive disclosure: read `SKILL.md` first, then only open linked `references/` docs when needed for the current slice
+
 ## Test reuse
 
 Before writing your first test, read nearby existing tests and reuse:

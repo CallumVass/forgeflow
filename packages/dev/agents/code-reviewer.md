@@ -19,11 +19,15 @@ By default, review the diff provided to you. If invoked on a PR, review the PR d
 ## Process
 
 1. **Read the diff** to understand all changes.
-2. **Read surrounding context** for each changed file — understand what the code does, not just what changed.
-3. **Walk the checklist** in order: Logic → Security → Error Handling → Performance → Test Quality.
-4. **For each potential issue**: verify it by reading the actual code. Quote the exact lines. Explain why it's wrong.
-5. **Score confidence**. Only include findings >= 85.
-6. **If findings exist**: output them in the FINDINGS format as your final response. **If no findings**: output exactly `NO_FINDINGS`.
+2. **Load relevant skills** before deep review:
+   - read any preselected skills surfaced in your system prompt
+   - if the diff or surrounding files reveal a concrete framework/library/pattern that materially shapes correctness, check the available skills and load a matching skill before continuing
+   - treat skills as progressive disclosure: read `SKILL.md` first, then only open linked `references/` docs if the review needs them
+3. **Read surrounding context** for each changed file — understand what the code does, not just what changed.
+4. **Walk the checklist** in order: Logic → Security → Error Handling → Performance → Test Quality.
+5. **For each potential issue**: verify it by reading the actual code. Quote the exact lines. Explain why it's wrong.
+6. **Score confidence**. Only include findings >= 85.
+7. **If findings exist**: output them in the FINDINGS format as your final response. **If no findings**: output exactly `NO_FINDINGS`.
 
 The orchestrator reads your final response directly.
 
