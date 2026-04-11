@@ -10,7 +10,6 @@ import { registerDatadogCommands } from "./datadog/commands.js";
 import { runArchitecture } from "./pipelines/architecture/index.js";
 import { runAtlassianRead } from "./pipelines/atlassian-read.js";
 import { runDatadog } from "./pipelines/datadog/index.js";
-import { runDiscoverSkills } from "./pipelines/discover-skills.js";
 import { runImplement } from "./pipelines/implement/index.js";
 import { runImplementAll } from "./pipelines/implement-all/index.js";
 import { runReview } from "./pipelines/review/index.js";
@@ -33,8 +32,7 @@ const registerForgeflow = createForgeflowExtension({
     "review-lite (strict blocking review→judge only),",
     "architecture (analyze codebase for structural friction→create RFC issues),",
     "atlassian-read (read a Jira issue or Confluence page by URL),",
-    "datadog (resolve repo Lambdas then investigate Datadog runtime questions through MCP),",
-    "discover-skills (find and install domain-specific plugins).",
+    "datadog (resolve repo Lambdas then investigate Datadog runtime questions through MCP).",
     "Each pipeline spawns specialized sub-agents with isolated context.",
   ].join(" "),
   params: {
@@ -76,10 +74,6 @@ const registerForgeflow = createForgeflowExtension({
     {
       name: "datadog",
       execute: (cwd, p, s, u, c) => runDatadog((p.prompt as string) ?? "", pctx(cwd, s, u, c)),
-    },
-    {
-      name: "discover-skills",
-      execute: (cwd, p, s, u, c) => runDiscoverSkills((p.issue as string) ?? "", pctx(cwd, s, u, c)),
     },
   ],
   commands,

@@ -11,7 +11,7 @@ Install one package or both:
 | Package | Install | Use it for |
 |---|---|---|
 | `@callumvass/forgeflow-pm` | `pi install npm:@callumvass/forgeflow-pm` | PRDs, issue creation, research, Jira/Confluence planning |
-| `@callumvass/forgeflow-dev` | `pi install npm:@callumvass/forgeflow-dev` | TDD implementation, review, architecture, skill discovery |
+| `@callumvass/forgeflow-dev` | `pi install npm:@callumvass/forgeflow-dev` | TDD implementation, review, architecture, and Datadog investigations |
 
 ## Quick start
 
@@ -116,7 +116,6 @@ Confluence templates are supported, but not required.
 | `/implement-all` | Implement, review, and merge all open generated issues |
 | `/review` | Run structured PR review |
 | `/architecture` | Analyse structural friction and create RFC issues |
-| `/discover-skills` | Find domain-specific plugins for the current stack |
 | `/datadog-login` | Authenticate to an OAuth-enabled Datadog MCP server |
 | `/datadog-status` | Show Datadog MCP auth status |
 | `/datadog-logout` | Remove stored Datadog MCP credentials |
