@@ -29,17 +29,6 @@ The orchestrator reads your final response directly.
 
 Read the code-review skill for the full checklist, evidence requirements, confidence scoring, severity levels, FINDINGS output format, and anti-patterns list.
 
-## Domain Plugins
-
-Scan `<cwd>/.forgeflow/plugins/*/PLUGIN.md` for plugins matching the `review` stage. Read the plugins skill for the full matching algorithm.
-
-For each matched plugin:
-
-1. Read the plugin's `PLUGIN.md` body for additional review checks.
-2. Apply the plugin's checks using the same evidence and confidence requirements.
-3. If a finding needs deeper context, read from the plugin's `references/` directory. Only read references when needed.
-4. Plugin findings use the same FINDINGS format. Set the Category to the plugin name.
-
 ## Rules
 
 - **Evidence required**: every finding must cite file:line and quote the code. No evidence = no finding.
@@ -48,4 +37,3 @@ For each matched plugin:
 - **Focus on substantive issues**: do not waste findings on lint, formatting, or other low-value tooling noise unless they imply a real runtime problem.
 - **Architecture and refactor advice are out of scope here**: standalone `/review` runs separate advisory passes for those.
 - **One pass, structured**: follow the checklist. Do not freestyle.
-- **Plugin references are lazy**: only read a plugin's `references/` when a specific finding needs verification.
