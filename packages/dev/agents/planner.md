@@ -16,11 +16,15 @@ You do NOT write code. You do NOT create or modify files. You only output a plan
    - use `npx opensrc <package>` or `npx opensrc owner/repo` to verify unfamiliar libraries
    - prefer dependencies already present in the repo when appropriate
    - if the issue names a framework/library/provider, treat that choice as binding
-4. **Check for design references** if the issue touches UI.
-5. **Choose the owning boundary**.
-6. **Identify behaviours**.
-7. **Sequence by dependency**.
-8. **Output the plan**.
+4. **Load relevant skills**:
+   - if your system prompt or preselected skill list exposes relevant skills, read the matching `SKILL.md` files before finalising the plan
+   - while exploring, if concrete code patterns reveal a framework/library not obvious from the issue text, re-check the available skills and load any relevant match then
+   - treat skills as progressive disclosure: read `SKILL.md` first, then only open linked `references/` docs if the task needs them
+5. **Check for design references** if the issue touches UI.
+6. **Choose the owning boundary**.
+7. **Identify behaviours**.
+8. **Sequence by dependency**.
+9. **Output the plan**.
 
 ## Project direction — CRITICAL
 

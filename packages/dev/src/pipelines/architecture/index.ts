@@ -6,6 +6,7 @@ import {
   withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
 import { ARCHITECTURE_LABEL } from "../../issues/index.js";
+import { prepareArchitectureSkillContext } from "../../skills/index.js";
 import { type ArchitectureCandidate, parseCandidates } from "../architecture-review/index.js";
 import { pickArchitectureCandidates } from "./candidate-picker.js";
 
@@ -14,6 +15,8 @@ export async function runArchitecture(pctx: PipelineContext) {
 }
 
 async function runArchitectureInner(pctx: PipelineContext) {
+  const prepared = await prepareArchitectureSkillContext(pctx);
+  pctx = prepared.pctx;
   const { ctx, runAgentFn } = pctx;
   const stages = [emptyStage("architecture-reviewer")];
   const agentOpts = toAgentOpts(pctx, { stages, pipeline: "architecture" });

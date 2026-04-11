@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { SessionManager, withFileMutationQueue } from "@mariozechner/pi-coding-agent";
 import { loadAgent } from "../agents/loader.js";
+import type { SelectedSkill } from "../skills/index.js";
 import { applyMessageToStage, extractFinalOutput, parseMessageLine } from "./message-parser.js";
 import { emitUpdate } from "./progress.js";
 import { emptyStage, type RunAgentOpts, type StageResult } from "./stages.js";
@@ -18,6 +19,25 @@ function getPiInvocation(args: string[]): { command: string; args: string[] } {
     return { command: process.execPath, args };
   }
   return { command: "pi", args };
+}
+
+function buildSelectedSkillsPrompt(selectedSkills: SelectedSkill[] | undefined): string {
+  if (!selectedSkills || selectedSkills.length === 0) return "";
+  const lines = [
+    "## Preselected cross-agent skills",
+    "",
+    "Forgeflow shortlisted these skills as likely relevant to this run.",
+    "Read the relevant `SKILL.md` files with the read tool before proceeding.",
+    "Treat each skill as progressive disclosure: read `SKILL.md` first, then follow linked `references/`, examples, or scripts only when needed.",
+    "Use the skills in place from their current locations. Do not move, copy, or rewrite them.",
+    "",
+    "Selected skills:",
+  ];
+  for (const skill of selectedSkills) {
+    lines.push(`- ${skill.name}: ${skill.filePath}`);
+    for (const reason of skill.reasons.slice(0, 2)) lines.push(`  - ${reason}`);
+  }
+  return `${lines.join("\n")}\n\n`;
 }
 
 async function writePromptToTempFile(name: string, prompt: string): Promise<{ dir: string; filePath: string }> {
@@ -109,9 +129,13 @@ export async function runAgent(agentName: string, task: string, options: RunAgen
   let tmpFile: string | null = null;
 
   try {
-    const tmp = await writePromptToTempFile(agentName, agent.systemPrompt);
+    const promptBody = `${buildSelectedSkillsPrompt(options.selectedSkills)}${agent.systemPrompt}`;
+    const tmp = await writePromptToTempFile(agentName, promptBody);
     tmpDir = tmp.dir;
     tmpFile = tmp.filePath;
+    for (const skill of options.selectedSkills ?? []) {
+      args.push("--skill", skill.filePath);
+    }
     args.push("--append-system-prompt", tmpFile);
     args.push(`Task: ${task}`);
 

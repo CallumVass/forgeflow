@@ -8,6 +8,7 @@ import {
   toAgentOpts,
   withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
+import { prepareInvestigateSkillContext } from "../skills/index.js";
 
 const URL_RE = /https?:\/\/[^\s)>\]]+/g;
 
@@ -98,6 +99,8 @@ async function runInvestigateInner(description: string, templateUrl: string, pct
     return pipelineResult(referenceSection.error, "investigate", [], true);
   }
 
+  const prepared = await prepareInvestigateSkillContext(description, pctx);
+  pctx = prepared.pctx;
   const stages = [emptyStage("investigator")];
   const opts = toAgentOpts(pctx, { stages, pipeline: "investigate" });
 

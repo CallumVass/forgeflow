@@ -10,6 +10,7 @@ function getParseArgs(name: string): NonNullable<CommandDefinition["parseArgs"]>
 
 const implementParseArgs = getParseArgs("implement");
 const reviewParseArgs = getParseArgs("review");
+const skillScanParseArgs = getParseArgs("skill-scan");
 
 describe("implement parseArgs", () => {
   it("does not extract customPrompt from trailing quoted text", () => {
@@ -22,6 +23,19 @@ describe("implement parseArgs", () => {
     const { params } = implementParseArgs("42 some extra text");
     expect(params ?? {}).not.toHaveProperty("customPrompt");
     expect(params?.issue).toBe("42");
+  });
+});
+
+describe("skill-scan parseArgs", () => {
+  it("passes command, path, issue, target, and json flags through verbatim", () => {
+    const { params } = skillScanParseArgs("--command review --path apps/web --issue tailwind --branch feat/ui --json");
+    expect(params).toEqual({
+      command: "review",
+      path: "apps/web",
+      issue: "tailwind",
+      target: "--branch feat/ui",
+      json: true,
+    });
   });
 });
 

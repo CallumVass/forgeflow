@@ -4,6 +4,7 @@ import {
   type StageResult,
   withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
+import { prepareImplementSkillContext } from "../../skills/index.js";
 import { askCustomPrompt, setForgeflowStatus } from "../../ui/index.js";
 import { type IssuePlan, resolveIssuePlan } from "./issue-resolution.js";
 import { finalisePr } from "./pr-lifecycle.js";
@@ -40,6 +41,8 @@ async function runImplementInner(issueArg: string, pctx: PipelineContext, flags:
   const { resolved, issueLabel, issueContext, resume } = plan;
   const autonomous = flags.autonomous ?? false;
   const interactive = pctx.ctx.hasUI && !autonomous;
+  const skillPrepared = await prepareImplementSkillContext(issueContext, pctx);
+  pctx = skillPrepared.pctx;
 
   if (!autonomous && (resolved.number || resolved.key)) {
     const isGH = resolved.source === "github" && resolved.number > 0;

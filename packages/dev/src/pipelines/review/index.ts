@@ -4,6 +4,7 @@ import {
   type StageResult,
   withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
+import { prepareReviewSkillContextFromChangedFiles } from "../../skills/index.js";
 import { askCustomPrompt } from "../../ui/index.js";
 import { proposeAndPostComments } from "./comments.js";
 import { resolveDiffTarget } from "./diff.js";
@@ -34,6 +35,13 @@ async function runReviewInner(target: string, pctx: PipelineContext, strict: boo
   for (const cmd of setupCmds) {
     await execFn(cmd, cwd);
   }
+
+  const changedFiles = ((await execSafeFn("git diff --name-only main...HEAD", cwd)) || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const skillPrepared = await prepareReviewSkillContextFromChangedFiles(changedFiles, strict, pctx);
+  pctx = skillPrepared.pctx;
 
   const customPrompt = await askCustomPrompt(ctx, ctx.hasUI);
 

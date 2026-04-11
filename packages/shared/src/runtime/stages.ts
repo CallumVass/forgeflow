@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import type { AgentToolUpdateCallback } from "@mariozechner/pi-agent-core";
 import type { Message } from "@mariozechner/pi-ai";
 import type { AgentConfig } from "../config/forgeflow-config.js";
+import type { SelectedSkill } from "../skills/index.js";
 
 // ─── Agents directory ─────────────────────────────────────────────────
 
@@ -65,6 +66,12 @@ export type RunAgentOpts = {
    * (e.g. `"planner"`, `"implementor"`), NOT `stageName`.
    */
   agentOverrides?: Record<string, AgentConfig>;
+  /**
+   * Skills explicitly shortlisted for this sub-agent run. `runAgent` forwards
+   * them via repeated `--skill <path>` flags and appends system guidance so the
+   * agent reads the selected `SKILL.md` files in place.
+   */
+  selectedSkills?: SelectedSkill[];
   /**
    * Path of the session JSONL file this sub-agent should write to.
    * Set by `withRunLifecycle` (auto-allocated per call) or by the

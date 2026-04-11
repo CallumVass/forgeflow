@@ -28,6 +28,8 @@ describe("toPipelineContext", () => {
       execFn: exec,
       execSafeFn: execSafe,
       agentOverrides: {},
+      skillsConfig: { enabled: true, extraPaths: [], maxSelected: 4 },
+      selectedSkills: [],
       // Back-filled with DEFAULT_SESSIONS when no forgeflow.json is present.
       sessionsConfig: { persist: true, archiveRuns: 20, archiveMaxAge: 30 },
     });
@@ -74,6 +76,10 @@ describe("toPipelineContext", () => {
         agents: {
           planner: { model: "claude-opus-4-5", thinkingLevel: "turbo" },
         },
+        skills: {
+          extraPaths: ["./skills"],
+          maxSelected: 2,
+        },
       }),
       "utf-8",
     );
@@ -86,6 +92,11 @@ describe("toPipelineContext", () => {
     expect(pctx.agentOverrides).toEqual({
       implementor: { model: "claude-sonnet-4-5", thinkingLevel: "medium" },
       planner: { model: "claude-opus-4-5" }, // invalid thinkingLevel dropped
+    });
+    expect(pctx.skillsConfig).toEqual({
+      enabled: true,
+      extraPaths: [path.join(fixture.cwdDir, "skills")],
+      maxSelected: 2,
     });
     expect(notify).toHaveBeenCalledTimes(1);
     expect(notify.mock.calls[0]?.[1]).toBe("warning");
@@ -106,6 +117,8 @@ describe("toAgentOpts", () => {
       execFn: vi.fn(),
       execSafeFn: vi.fn(),
       agentOverrides,
+      skillsConfig: { enabled: true, extraPaths: [], maxSelected: 4 },
+      selectedSkills: [],
     };
     const result = toAgentOpts(pctx, { stages: [], pipeline: "review" });
 
@@ -115,6 +128,7 @@ describe("toAgentOpts", () => {
       onUpdate,
       agentsDir: "/a",
       agentOverrides,
+      selectedSkills: [],
       stages: [],
       pipeline: "review",
     });

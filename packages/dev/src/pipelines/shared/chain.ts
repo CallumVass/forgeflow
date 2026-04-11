@@ -142,6 +142,7 @@ export async function runChain(phases: Phase[], pctx: PipelineContext, options: 
       signal: pctx.signal,
       onUpdate: pctx.onUpdate,
       agentOverrides: pctx.agentOverrides,
+      selectedSkills: pctx.selectedSkills,
       stages,
       pipeline,
       stageName: phase.stageName,
