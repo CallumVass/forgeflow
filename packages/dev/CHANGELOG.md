@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.26.0...forgeflow-dev-v0.27.0) (2026-04-11)
+
+
+### Features
+
+* **dev:** broaden standalone review and add review-lite ([#205](https://github.com/CallumVass/forgeflow/issues/205)) ([5e90594](https://github.com/CallumVass/forgeflow/commit/5e90594d508f2130d64a047556e800ad47ca67b8))
+
 ## [0.26.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.25.1...forgeflow-dev-v0.26.0) (2026-04-10)
 
 
