@@ -7,6 +7,11 @@ vi.mock("./diff.js", () => ({
 
 vi.mock("./orchestrator.js", () => ({
   runReviewPipeline: vi.fn(async () => ({ passed: false, findings: "Bug found in foo.ts" })),
+  runStandaloneReviewPipeline: vi.fn(async () => ({
+    hasBlockingFindings: true,
+    blockingFindings: "Bug found in foo.ts",
+    report: "Bug found in foo.ts",
+  })),
 }));
 
 vi.mock("./comments.js", () => ({
@@ -16,10 +21,10 @@ vi.mock("./comments.js", () => ({
 import { proposeAndPostComments } from "./comments.js";
 import { resolveDiffTarget } from "./diff.js";
 import { runReview } from "./index.js";
-import { runReviewPipeline } from "./orchestrator.js";
+import { runReviewPipeline, runStandaloneReviewPipeline } from "./orchestrator.js";
 
 describe("runReview composition root", () => {
-  it("wires checkout → diff → orchestrator → comments and returns findings with isError on failure", async () => {
+  it("wires checkout → diff → standalone review → comment proposal and returns findings with isError on blocking findings", async () => {
     const execFn = mockExecFn({
       "gh pr checkout 5": "",
       "gh pr diff 5": "diff output here",
@@ -36,7 +41,10 @@ describe("runReview composition root", () => {
     expect(resolveDiffTarget).toHaveBeenCalledWith("/tmp", "5", pctx.execSafeFn);
     expect(execFn).toHaveBeenCalledWith("gh pr checkout 5", "/tmp");
     expect(execFn).toHaveBeenCalledWith("gh pr diff 5", "/tmp");
-    expect(runReviewPipeline).toHaveBeenCalledWith("diff output here", expect.objectContaining({ cwd: "/tmp" }));
+    expect(runStandaloneReviewPipeline).toHaveBeenCalledWith(
+      "diff output here",
+      expect.objectContaining({ cwd: "/tmp" }),
+    );
     expect(proposeAndPostComments).toHaveBeenCalledWith(
       "Bug found in foo.ts",
       expect.objectContaining({ number: "5" }),
@@ -49,16 +57,18 @@ describe("runReview composition root", () => {
   it("returns early with no-changes message when diff is empty", async () => {
     const execFn = mockExecFn({ "gh pr checkout 5": "" });
     const pctx = mockPipelineContext({ cwd: "/tmp", execFn });
+    vi.mocked(runStandaloneReviewPipeline).mockClear();
     vi.mocked(runReviewPipeline).mockClear();
 
     const result = await runReview("5", pctx);
 
     expect(result.content[0]?.text).toContain("No changes");
+    expect(runStandaloneReviewPipeline).not.toHaveBeenCalled();
     expect(runReviewPipeline).not.toHaveBeenCalled();
   });
 
-  it("returns passed message when review pipeline passes", async () => {
-    vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: true });
+  it("returns passed message when standalone review finds nothing", async () => {
+    vi.mocked(runStandaloneReviewPipeline).mockResolvedValueOnce({ hasBlockingFindings: false, report: undefined });
     const execFn = mockExecFn({ "gh pr checkout 5": "", "gh pr diff 5": "some diff" });
     const pctx = mockPipelineContext({ cwd: "/tmp", execFn });
 
@@ -68,10 +78,26 @@ describe("runReview composition root", () => {
     expect(result.isError).toBeUndefined();
   });
 
-  it("calls ui.input in interactive mode and forwards answer to runReviewPipeline", async () => {
+  it("returns advisory findings without marking the run as an error", async () => {
+    vi.mocked(proposeAndPostComments).mockClear();
+    vi.mocked(runStandaloneReviewPipeline).mockResolvedValueOnce({
+      hasBlockingFindings: false,
+      report: "## Architecture delta review\n\n### 1. Split the module",
+    });
+    const execFn = mockExecFn({ "gh pr checkout 5": "", "gh pr diff 5": "some diff" });
+    const pctx = mockPipelineContext({ cwd: "/tmp", execFn });
+
+    const result = await runReview("5", pctx);
+
+    expect(result.content[0]?.text).toContain("Architecture delta review");
+    expect(result.isError).toBeUndefined();
+    expect(proposeAndPostComments).not.toHaveBeenCalled();
+  });
+
+  it("calls ui.input in interactive mode and forwards answer to standalone review", async () => {
     const inputFn = vi.fn(async () => "look for SQL injection");
-    vi.mocked(runReviewPipeline).mockClear();
-    vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: true });
+    vi.mocked(runStandaloneReviewPipeline).mockClear();
+    vi.mocked(runStandaloneReviewPipeline).mockResolvedValueOnce({ hasBlockingFindings: false, report: undefined });
 
     const execFn = mockExecFn({ "gh pr checkout 5": "", "gh pr diff 5": "some diff" });
     const pctx = mockPipelineContext({
@@ -82,16 +108,16 @@ describe("runReview composition root", () => {
     await runReview("5", pctx);
 
     expect(inputFn).toHaveBeenCalledWith("Additional instructions?", "Skip");
-    expect(runReviewPipeline).toHaveBeenCalledWith(
+    expect(runStandaloneReviewPipeline).toHaveBeenCalledWith(
       "some diff",
       expect.objectContaining({ customPrompt: "look for SQL injection" }),
     );
   });
 
-  it("passes no customPrompt to runReviewPipeline when user skips the prompt", async () => {
+  it("passes no customPrompt to standalone review when user skips the prompt", async () => {
     const inputFn = vi.fn(async () => "");
-    vi.mocked(runReviewPipeline).mockClear();
-    vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: true });
+    vi.mocked(runStandaloneReviewPipeline).mockClear();
+    vi.mocked(runStandaloneReviewPipeline).mockResolvedValueOnce({ hasBlockingFindings: false, report: undefined });
 
     const execFn = mockExecFn({ "gh pr checkout 5": "", "gh pr diff 5": "some diff" });
     const pctx = mockPipelineContext({
@@ -102,8 +128,38 @@ describe("runReview composition root", () => {
     await runReview("5", pctx);
 
     expect(inputFn).toHaveBeenCalled();
-    const firstCall = vi.mocked(runReviewPipeline).mock.calls[0];
-    if (!firstCall) throw new Error("expected runReviewPipeline to be called");
+    const firstCall = vi.mocked(runStandaloneReviewPipeline).mock.calls[0];
+    if (!firstCall) throw new Error("expected runStandaloneReviewPipeline to be called");
     expect(firstCall[1].customPrompt).toBeUndefined();
+  });
+
+  it("uses the strict review path when requested", async () => {
+    vi.mocked(runReviewPipeline).mockClear();
+    vi.mocked(runStandaloneReviewPipeline).mockClear();
+    vi.mocked(proposeAndPostComments).mockClear();
+    vi.mocked(runReviewPipeline).mockResolvedValueOnce({ passed: false, findings: "Strict finding" });
+
+    const execFn = mockExecFn({
+      "gh pr checkout 5": "",
+      "gh pr diff 5": "some diff",
+      "gh repo view": "owner/repo",
+    });
+    const pctx = mockPipelineContext({
+      cwd: "/tmp",
+      execFn,
+      ctx: mockForgeflowContext({ hasUI: true, cwd: "/tmp", ui: { input: vi.fn(async () => undefined) } }),
+    });
+
+    const result = await runReview("5", pctx, { strict: true });
+
+    expect(runReviewPipeline).toHaveBeenCalledWith("some diff", expect.objectContaining({ cwd: "/tmp" }));
+    expect(runStandaloneReviewPipeline).not.toHaveBeenCalled();
+    expect(proposeAndPostComments).toHaveBeenCalledWith(
+      "Strict finding",
+      expect.objectContaining({ number: "5" }),
+      expect.objectContaining({ cwd: "/tmp", ctx: pctx.ctx }),
+    );
+    expect(result.content[0]?.text).toBe("Strict finding");
+    expect(result.isError).toBe(true);
   });
 });

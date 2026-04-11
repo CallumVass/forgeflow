@@ -1,5 +1,7 @@
-import { emptyStage, type PipelineContext, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
+import type { PipelineContext, StageResult } from "@callumvass/forgeflow-shared/pipeline";
+import { buildRefactorReviewTask } from "../../refactor-guidance/index.js";
 import { runChain } from "../shared/index.js";
+import { NO_FINDINGS } from "./constants.js";
 
 /** Review pipeline result. */
 interface ReviewResult {
@@ -15,18 +17,70 @@ interface ReviewResult {
   tailSessionPath?: string;
 }
 
+interface StandaloneReviewResult {
+  hasBlockingFindings: boolean;
+  blockingFindings?: string;
+  architectureFindings?: string;
+  refactorFindings?: string;
+  report?: string;
+}
+
 interface ReviewPipelineOptions extends PipelineContext {
   stages: StageResult[];
   pipeline?: string;
   customPrompt?: string;
 }
 
-const NO_FINDINGS = "NO_FINDINGS";
-
 function findingsFromStage(stages: StageResult[], stageName: string): string | undefined {
   const output = stages.find((stage) => stage.name === stageName)?.output?.trim();
   if (!output || output === NO_FINDINGS) return undefined;
   return output;
+}
+
+function withCustomPrompt(task: string, customPrompt?: string): string {
+  if (!customPrompt) return task;
+  return `${task}\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${customPrompt}`;
+}
+
+function buildArchitectureDeltaTask(diff: string, customPrompt?: string): string {
+  return withCustomPrompt(
+    `Review the following diff for architectural or boundary regressions introduced or worsened by this change:\n\n${diff}\n\nFocus ONLY on files touched by the diff and their immediate neighbours. This is not a full repo audit and not RFC mode.\n\nLook for:\n- cross-feature internal imports where a public entry point exists\n- flat-root sprawl or junk-drawer growth introduced by the change\n- duplicated abstractions created beside an existing boundary\n- touched files turning into obvious god modules or leaky abstractions\n- business logic, infrastructure, and UI concerns mixed more tightly than before\n\nOnly report concerns introduced or clearly worsened by this diff. Ignore pre-existing repo issues unless this change makes them materially worse.\n\nIf you find concerns, output a markdown report headed exactly \`## Architecture delta review\`, then present numbered candidates ranked by severity using the normal candidate format. If nothing rises above that bar, output exactly ${NO_FINDINGS}.`,
+    customPrompt,
+  );
+}
+
+function buildStandaloneReviewReport(sections: {
+  blockingFindings?: string;
+  architectureFindings?: string;
+  refactorFindings?: string;
+}): string | undefined {
+  const parts = [sections.blockingFindings, sections.architectureFindings, sections.refactorFindings].filter(
+    (part): part is string => Boolean(part),
+  );
+  return parts.length > 0 ? parts.join("\n\n---\n\n") : undefined;
+}
+
+async function runAdvisoryReview(
+  agent: string,
+  stageName: string,
+  task: string,
+  opts: ReviewPipelineOptions,
+): Promise<string | undefined> {
+  const { stages, pipeline = "review", customPrompt } = opts;
+
+  await runChain(
+    [
+      {
+        agent,
+        stageName,
+        buildTask: ({ customPrompt: cp }) => withCustomPrompt(task, cp),
+      },
+    ],
+    opts,
+    { pipeline, stages, customPrompt },
+  );
+
+  return findingsFromStage(stages, stageName);
 }
 
 /**
@@ -49,18 +103,12 @@ function findingsFromStage(stages: StageResult[], stageName: string): string | u
 export async function runReviewPipeline(diff: string, opts: ReviewPipelineOptions): Promise<ReviewResult> {
   const { stages, pipeline = "review", customPrompt } = opts;
 
-  // Phase 1: code-reviewer. `resetFork` forces a fresh session at the
-  // build→review boundary; `/review` callers (which have no prior chain)
-  // are unaffected because forkFrom is already undefined for them.
   const reviewerChain = await runChain(
     [
       {
         agent: "code-reviewer",
         resetFork: true,
-        buildTask: ({ customPrompt: cp }) => {
-          const extra = cp ? `\n\nADDITIONAL INSTRUCTIONS FROM USER:\n${cp}` : "";
-          return `Review the following diff:\n\n${diff}${extra}`;
-        },
+        buildTask: ({ customPrompt: cp }) => withCustomPrompt(`Review the following diff:\n\n${diff}`, cp),
       },
     ],
     opts,
@@ -71,13 +119,6 @@ export async function runReviewPipeline(diff: string, opts: ReviewPipelineOption
   if (!findings) {
     return { passed: true, tailSessionPath: reviewerChain.lastSessionPath };
   }
-
-  // Phase 2: review-judge, forked from the reviewer within the review
-  // chain. It needs the reviewer's reasoning as its evaluation input.
-
-  // Ensure a stage exists for the judge so runChain can reuse it (the
-  // back-compat path in runChain looks up stages by name).
-  if (!stages.some((s) => s.name === "review-judge")) stages.push(emptyStage("review-judge"));
 
   const judgeChain = await runChain(
     [
@@ -91,8 +132,6 @@ export async function runReviewPipeline(diff: string, opts: ReviewPipelineOption
     {
       pipeline,
       stages,
-      // No customPrompt forwarded: the reviewer already had it, and
-      // the judge forks from the reviewer so it inherits via history.
       initialForkFrom: reviewerChain.lastSessionPath,
     },
   );
@@ -103,4 +142,44 @@ export async function runReviewPipeline(diff: string, opts: ReviewPipelineOption
   }
 
   return { passed: false, findings: validatedFindings, tailSessionPath: judgeChain.lastSessionPath };
+}
+
+/**
+ * Run standalone `/review`: strict blocking review first, then advisory
+ * architecture/refactor passes for human review.
+ */
+export async function runStandaloneReviewPipeline(
+  diff: string,
+  opts: ReviewPipelineOptions,
+): Promise<StandaloneReviewResult> {
+  const blocking = await runReviewPipeline(diff, opts);
+  const blockingFindings = blocking.passed ? undefined : blocking.findings;
+
+  const architectureFindings = await runAdvisoryReview(
+    "architecture-reviewer",
+    "architecture-delta-reviewer",
+    buildArchitectureDeltaTask(diff),
+    opts,
+  );
+
+  const refactorFindings = await runAdvisoryReview(
+    "refactor-reviewer",
+    "refactor-reviewer",
+    buildRefactorReviewTask(diff),
+    opts,
+  );
+
+  const report = buildStandaloneReviewReport({
+    blockingFindings,
+    architectureFindings,
+    refactorFindings,
+  });
+
+  return {
+    hasBlockingFindings: Boolean(blockingFindings),
+    blockingFindings,
+    architectureFindings,
+    refactorFindings,
+    report,
+  };
 }

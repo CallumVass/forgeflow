@@ -20,7 +20,7 @@ By default, review the diff provided to you. If invoked on a PR, review the PR d
 
 1. **Read the diff** to understand all changes.
 2. **Read surrounding context** for each changed file — understand what the code does, not just what changed.
-3. **Walk the checklist** in order: Logic → Security → Error Handling → Performance → Boundary Hygiene → Test Quality.
+3. **Walk the checklist** in order: Logic → Security → Error Handling → Performance → Test Quality.
 4. **For each potential issue**: verify it by reading the actual code. Quote the exact lines. Explain why it's wrong.
 5. **Score confidence**. Only include findings >= 85.
 6. **If findings exist**: output them in the FINDINGS format as your final response. **If no findings**: output exactly `NO_FINDINGS`.
@@ -45,8 +45,7 @@ For each matched plugin:
 - **Evidence required**: every finding must cite file:line and quote the code. No evidence = no finding.
 - **Precision > recall**: better to miss a minor issue than report a false positive.
 - **No anti-patterns**: do not flag items on the anti-pattern list in the code-review skill.
-- **Deterministic checks first**: assume `npm run check` has already run. Do not duplicate what those tools catch.
-- **Boundary hygiene findings must be concrete**: only flag obvious structural drift such as new junk-drawer folders, new flat-root production files, new flat-root test files, or cross-feature internal imports where a public entry point exists.
-- In repos with broad roots such as `src/`, `app/`, `server/`, `client/`, `test/`, or `tests/`, treat new unrelated top-level files under those roots as a hygiene finding unless they are true entry points or shared harness files.
+- **Focus on substantive issues**: do not waste findings on lint, formatting, or other low-value tooling noise unless they imply a real runtime problem.
+- **Architecture and refactor advice are out of scope here**: standalone `/review` runs separate advisory passes for those.
 - **One pass, structured**: follow the checklist. Do not freestyle.
 - **Plugin references are lazy**: only read a plugin's `references/` when a specific finding needs verification.

@@ -29,7 +29,8 @@ const registerForgeflow = createForgeflowExtension({
   toolLabel: "Forgeflow Dev",
   description: [
     "Run forgeflow dev pipelines: implement (plan→TDD→refactor a single issue),",
-    "implement-all (loop through all open issues autonomously), review (deterministic checks→code review→judge),",
+    "implement-all (loop through all open issues autonomously), review (blocking review→judge plus standalone architecture/refactor advice),",
+    "review-lite (strict blocking review→judge only),",
     "architecture (analyze codebase for structural friction→create RFC issues),",
     "atlassian-read (read a Jira issue or Confluence page by URL),",
     "datadog (resolve repo Lambdas then investigate Datadog runtime questions through MCP),",
@@ -43,6 +44,7 @@ const registerForgeflow = createForgeflowExtension({
     target: { type: "string", description: "PR number or --branch for review pipeline" },
     skipPlan: { type: "boolean", description: "Skip planner, implement directly (default false)" },
     skipReview: { type: "boolean", description: "Skip code review after implementation (default false)" },
+    strict: { type: "boolean", description: "Use strict review mode without advisory architecture/refactor passes" },
   },
   pipelines: [
     {
@@ -63,7 +65,8 @@ const registerForgeflow = createForgeflowExtension({
     },
     {
       name: "review",
-      execute: (cwd, p, s, u, c) => runReview((p.target as string) ?? "", pctx(cwd, s, u, c)),
+      execute: (cwd, p, s, u, c) =>
+        runReview((p.target as string) ?? "", pctx(cwd, s, u, c), { strict: (p.strict as boolean) ?? false }),
     },
     { name: "architecture", execute: (cwd, _p, s, u, c) => runArchitecture(pctx(cwd, s, u, c)) },
     {
@@ -89,6 +92,7 @@ const registerForgeflow = createForgeflowExtension({
     if (args.prompt) text += theme.fg("dim", ` "${args.prompt}"`);
     if (args.url) text += theme.fg("dim", ` ${args.url}`);
     if (args.target) text += theme.fg("dim", ` ${args.target}`);
+    if (args.strict) text += theme.fg("dim", " --strict");
     return text;
   },
 });

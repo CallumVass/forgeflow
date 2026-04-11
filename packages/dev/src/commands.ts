@@ -40,20 +40,41 @@ export const commands: CommandDefinition[] = [
   },
   {
     name: "review",
-    description: "Run code review: deterministic checks → reviewer → judge. Usage: /review [target]",
+    description:
+      "Run standalone review: blocking defects → judge, plus architecture/refactor advice. Usage: /review [target] [--strict]",
+    pipeline: "review",
+    parseArgs: (args) => {
+      const { flags, rest } = extractFlags(args, { boolean: ["--strict"], value: ["--branch"] });
+      const branch = flags["--branch"] as string | undefined;
+      if (branch) {
+        return {
+          params: { target: `--branch ${branch}`, ...(flags["--strict"] ? { strict: true } : {}) },
+          suffix: "Do not interpret the target — pass it as-is.",
+        };
+      }
+      const { first: target } = splitFirstToken(rest);
+      return {
+        params: { ...(target ? { target } : {}), ...(flags["--strict"] ? { strict: true } : {}) },
+        suffix: "Do not interpret the target — pass it as-is.",
+      };
+    },
+  },
+  {
+    name: "review-lite",
+    description: "Run strict review only: blocking defects → judge. Usage: /review-lite [target]",
     pipeline: "review",
     parseArgs: (args) => {
       const { flags, rest } = extractFlags(args, { value: ["--branch"] });
       const branch = flags["--branch"] as string | undefined;
       if (branch) {
         return {
-          params: { target: `--branch ${branch}` },
+          params: { target: `--branch ${branch}`, strict: true },
           suffix: "Do not interpret the target — pass it as-is.",
         };
       }
       const { first: target } = splitFirstToken(rest);
       return {
-        params: { ...(target ? { target } : {}) },
+        params: { ...(target ? { target } : {}), strict: true },
         suffix: "Do not interpret the target — pass it as-is.",
       };
     },

@@ -31,7 +31,8 @@ This works best after the PM package has already produced good greenfield issues
 |---|---|
 | `/implement` | Implement one issue using plan → TDD → refactor → review |
 | `/implement-all` | Loop through all open `auto-generated` and `architecture` issues |
-| `/review` | Run deterministic checks, structured review, and review judge |
+| `/review` | Review a PR or branch: blocking defects plus advisory architecture and refactor notes |
+| `/review-lite` | Review a PR or branch in strict mode: blocking defects only |
 | `/architecture` | Analyse the repo for structural friction and create RFC issues |
 | `/discover-skills` | Find domain-specific plugins for the current tech stack |
 | `/atlassian-login` | Authenticate to an OAuth-enabled Atlassian MCP server |
@@ -71,6 +72,19 @@ The planner and implementor now treat those choices as binding rather than impro
 3. **fix-findings** — fixes accepted findings when needed
 
 At the end, forgeflow opens or updates a PR for human review.
+
+## `/review` in plain English
+
+Standalone `/review` is broader than the review chain inside `/implement`.
+
+1. **code-reviewer** — cold-start defect review of the diff
+2. **review-judge** — validates blocking findings
+3. **architecture-reviewer** — advisory architecture and boundary pass on the changed area
+4. **refactor-reviewer** — advisory refactor pass on the changed area
+
+If you are reviewing a GitHub PR in the UI, forgeflow can draft `gh` review comments for the blocking findings, then let you edit, approve, or skip them before anything is posted.
+
+If you want the old narrow behaviour, use `/review-lite` or `/review --strict`. That runs only the blocking review chain (`code-reviewer` → `review-judge`) and skips the advisory architecture/refactor passes.
 
 ## `/implement-all` in plain English
 
