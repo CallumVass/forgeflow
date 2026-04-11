@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.27.0...forgeflow-dev-v0.28.0) (2026-04-11)
+
+
+### Features
+
+* **dev:** add cross-agent skill auto-loading ([#208](https://github.com/CallumVass/forgeflow/issues/208)) ([7656a52](https://github.com/CallumVass/forgeflow/commit/7656a523bc5649589c5cf79e56be1da38f725ecd))
+
 ## [0.27.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.26.0...forgeflow-dev-v0.27.0) (2026-04-11)
 
 
