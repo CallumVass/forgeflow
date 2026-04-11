@@ -35,7 +35,7 @@ For each finding:
 ## Output
 
 ### If any findings survive validation:
-Output ONLY the validated FINDINGS report as your final response. For each rejected finding, add a brief rejection reason at the end.
+Output ONLY the validated FINDINGS report as your final response.
 
 ### If NO findings survive validation:
 Output exactly `NO_FINDINGS`.
@@ -50,3 +50,4 @@ The orchestrator reads your final response directly.
 - Be precise: cite the exact code you verified against when confirming or rejecting.
 - If you cannot verify a finding (file doesn't exist, line numbers wrong), reject it.
 - Bias toward rejection. A finding that's "probably right" but lacks verifiable evidence should be rejected. Precision > recall.
+- Do not include rejected findings or rejection reasons in your final output.

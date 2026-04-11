@@ -6,6 +6,7 @@ import {
   signalExists,
 } from "@callumvass/forgeflow-shared/pipeline";
 import type { ResolvedIssue } from "../../issues/index.js";
+import { buildRefactorerTask } from "../../refactor-guidance/index.js";
 import { runReviewPipeline } from "../review/index.js";
 import { type Phase, runChain } from "../shared/index.js";
 import { buildImplementorPrompt } from "./phases.js";
@@ -38,8 +39,7 @@ export async function runRefactorAndReview(
     [
       {
         agent: "refactorer",
-        buildTask: () =>
-          "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit and push if changed.",
+        buildTask: () => buildRefactorerTask(),
       },
     ],
     pctx,
@@ -169,8 +169,7 @@ export async function runImplementation(input: RunInput, pctx: PipelineContext):
 
   const refactorerPhase: Phase = {
     agent: "refactorer",
-    buildTask: () =>
-      "Review code added in this branch (git diff main...HEAD). Refactor if clear wins exist. Run checks after changes. Commit and push if changed.",
+    buildTask: () => buildRefactorerTask(),
   };
 
   await runChain([refactorerPhase], pctx, {
