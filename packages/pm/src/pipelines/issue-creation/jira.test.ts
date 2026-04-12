@@ -3,6 +3,30 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const fixture = setupIsolatedHomeFixture("jira-pipeline");
 
+function extractJiraKey(input: string) {
+  const match = input.match(/\b[A-Z][A-Z0-9]+-\d+\b/);
+  return match?.[0] ?? null;
+}
+
+function mockConfluenceModule(fetchConfluencePageViaOauth: (url: string) => Promise<unknown>) {
+  vi.doMock("@callumvass/forgeflow-shared/atlassian/confluence", () => ({
+    fetchConfluencePageViaOauth,
+  }));
+}
+
+function mockJiraModule(options: {
+  createJiraIssueViaOauth: ReturnType<typeof vi.fn>;
+  fetchJiraIssueFromUrl?: ReturnType<typeof vi.fn>;
+}) {
+  vi.doMock("@callumvass/forgeflow-shared/atlassian/jira", () => ({
+    createJiraIssueViaOauth: options.createJiraIssueViaOauth,
+    extractJiraKey,
+    extractProjectKey: (issueKey: string) => issueKey.split("-")[0] ?? issueKey,
+    fetchJiraIssueFromUrl: options.fetchJiraIssueFromUrl ?? vi.fn(),
+    getJiraCreationDefaults: () => ({ projectKey: "PROJ", issueType: "Story" }),
+  }));
+}
+
 afterEach(() => {
   vi.resetModules();
   vi.restoreAllMocks();
@@ -16,30 +40,22 @@ describe("runJiraIssues", () => {
       title: "Product requirements",
       body: "Users need dashboard filtering and saved views.",
     }));
-    vi.doMock("@callumvass/forgeflow-shared/atlassian/confluence", () => ({
-      fetchConfluencePageViaOauth,
-    }));
+    mockConfluenceModule(fetchConfluencePageViaOauth);
 
     const createJiraIssueViaOauth = vi
       .fn()
       .mockResolvedValueOnce({ id: "10001", key: "PROJ-101", url: "https://example.atlassian.net/browse/PROJ-101" })
       .mockResolvedValueOnce({ id: "10002", key: "PROJ-102", url: "https://example.atlassian.net/browse/PROJ-102" });
 
-    vi.doMock("@callumvass/forgeflow-shared/atlassian/jira", () => ({
+    mockJiraModule({
       createJiraIssueViaOauth,
-      extractJiraKey: (input: string) => {
-        const match = input.match(/\b[A-Z][A-Z0-9]+-\d+\b/);
-        return match?.[0] ?? null;
-      },
-      extractProjectKey: (issueKey: string) => issueKey.split("-")[0] ?? issueKey,
       fetchJiraIssueFromUrl: vi.fn(async () => ({
         key: "PROJ-1",
         title: "Example",
         body: "Example body",
         issueType: "Story",
       })),
-      getJiraCreationDefaults: () => ({ projectKey: "PROJ", issueType: "Story" }),
-    }));
+    });
 
     const { runJiraIssues } = await import("./jira.js");
     const plannerOutput = [
@@ -87,24 +103,13 @@ describe("runJiraIssues", () => {
       }
       throw new Error(`Unexpected URL ${url}`);
     });
-    vi.doMock("@callumvass/forgeflow-shared/atlassian/confluence", () => ({
-      fetchConfluencePageViaOauth,
-    }));
+    mockConfluenceModule(fetchConfluencePageViaOauth);
 
     const createJiraIssueViaOauth = vi
       .fn()
       .mockResolvedValueOnce({ id: "10001", key: "PROJ-101", url: "https://example.atlassian.net/browse/PROJ-101" });
 
-    vi.doMock("@callumvass/forgeflow-shared/atlassian/jira", () => ({
-      createJiraIssueViaOauth,
-      extractJiraKey: (input: string) => {
-        const match = input.match(/\b[A-Z][A-Z0-9]+-\d+\b/);
-        return match?.[0] ?? null;
-      },
-      extractProjectKey: (issueKey: string) => issueKey.split("-")[0] ?? issueKey,
-      fetchJiraIssueFromUrl: vi.fn(),
-      getJiraCreationDefaults: () => ({ projectKey: "PROJ", issueType: "Story" }),
-    }));
+    mockJiraModule({ createJiraIssueViaOauth });
 
     const { runJiraIssues } = await import("./jira.js");
     const runAgentFn = mockRunAgent('```json\n[{"summary":"Add dashboard filters","description":"From example"}]\n```');
