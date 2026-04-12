@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.28.0...forgeflow-dev-v0.29.0) (2026-04-12)
+
+
+### Features
+
+* **dev:** add repo-aware skill recommendations ([#210](https://github.com/CallumVass/forgeflow/issues/210)) ([e2caff0](https://github.com/CallumVass/forgeflow/commit/e2caff0675391a01664e39160be818feb3433c32))
+
 ## [0.28.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.27.0...forgeflow-dev-v0.28.0) (2026-04-11)
 
 
