@@ -1,4 +1,4 @@
-import { mockForgeflowContext, mockPi } from "@callumvass/forgeflow-shared/testing";
+import { getRegisteredToolDefinition, mockForgeflowContext, mockPi } from "@callumvass/forgeflow-shared/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import createDevExtension from "./index.js";
 
@@ -74,16 +74,12 @@ describe("dev extension", () => {
     vi.clearAllMocks();
   });
 
-  function getToolDef(pi: ReturnType<typeof mockPi>) {
-    return pi.registerTool.mock.calls[0]?.[0];
-  }
-
   it("registers forgeflow-dev with the current dev commands, Atlassian commands, Datadog commands, and post-run actions", async () => {
     const pi = mockPi();
 
     createDevExtension("file:///repo/packages/dev/extensions/index.js")(pi as never);
 
-    const toolDef = getToolDef(pi);
+    const toolDef = getRegisteredToolDefinition(pi);
     expect(toolDef.name).toBe("forgeflow-dev");
     expect(toolDef.parameters.properties.pipeline.description).toContain('"implement"');
     expect(toolDef.parameters.properties.pipeline.description).toContain('"implement-all"');
@@ -129,7 +125,7 @@ describe("dev extension", () => {
     const pi = mockPi();
     createDevExtension("file:///repo/packages/dev/extensions/index.js")(pi as never);
 
-    const toolDef = getToolDef(pi);
+    const toolDef = getRegisteredToolDefinition(pi);
     const ctx = mockForgeflowContext({ cwd: "/repo/project", hasUI: true });
     await toolDef.execute(
       "call-1",

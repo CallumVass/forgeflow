@@ -6,6 +6,8 @@ describe("testing public entry point", () => {
     const valueExports = [
       "firstCustomCapture",
       "getRegisteredCommandHandler",
+      "getRegisteredEventHandler",
+      "getRegisteredToolDefinition",
       "makeCustomUiMock",
       "mockExecFn",
       "mockForgeflowContext",

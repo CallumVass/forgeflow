@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ForgeflowContext, PipelineDetails } from "../runtime/index.js";
-import { mockForgeflowContext, mockPi } from "../testing/index.js";
+import {
+  getRegisteredEventHandler,
+  getRegisteredToolDefinition,
+  mockForgeflowContext,
+  mockPi,
+} from "../testing/index.js";
 import { createForgeflowPackageExtension } from "./package-extension.js";
 import { resetAtlassianCommandRegistry, resetStagesOverlayRegistry } from "./registry.js";
 
@@ -10,12 +15,9 @@ beforeEach(() => {
 });
 
 function getSessionStartHandler(pi: ReturnType<typeof mockPi>) {
-  const call = pi.on.mock.calls.find((entry: unknown[]) => entry[0] === "session_start");
-  return call?.[1] as ((event: unknown, ctx: ForgeflowContext) => Promise<void>) | undefined;
-}
-
-function getToolDef(pi: ReturnType<typeof mockPi>) {
-  return pi.registerTool.mock.calls[0]?.[0];
+  return getRegisteredEventHandler(pi, "session_start") as
+    | ((event: unknown, ctx: ForgeflowContext) => Promise<void>)
+    | undefined;
 }
 
 describe("createForgeflowPackageExtension", () => {
@@ -91,7 +93,7 @@ describe("createForgeflowPackageExtension", () => {
       commands: [{ name: "alpha-cmd", description: "Run alpha", pipeline: "alpha" }],
     })(pi as never);
 
-    const toolDef = getToolDef(pi);
+    const toolDef = getRegisteredToolDefinition(pi);
     const ctx = mockForgeflowContext({ cwd: "/repo/worktree" });
     await toolDef.execute("call-1", { pipeline: "alpha" }, AbortSignal.timeout(5000), vi.fn(), ctx);
 
@@ -144,8 +146,8 @@ describe("createForgeflowPackageExtension", () => {
     expect(piA.registerTool).toHaveBeenCalledTimes(1);
     expect(piB.registerTool).toHaveBeenCalledTimes(1);
 
-    const pmTool = getToolDef(piA);
-    const devTool = getToolDef(piB);
+    const pmTool = getRegisteredToolDefinition(piA);
+    const devTool = getRegisteredToolDefinition(piB);
     const ctx = mockForgeflowContext({ cwd: "/repo/project" });
     await pmTool.execute("call-pm", { pipeline: "alpha" }, AbortSignal.timeout(5000), vi.fn(), ctx);
     await devTool.execute("call-dev", { pipeline: "beta" }, AbortSignal.timeout(5000), vi.fn(), ctx);

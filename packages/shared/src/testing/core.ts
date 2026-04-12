@@ -74,6 +74,10 @@ export function mockPi() {
   };
 }
 
+export function getRegisteredToolDefinition(pi: ReturnType<typeof mockPi>) {
+  return pi.registerTool.mock.calls[0]?.[0];
+}
+
 export function getRegisteredCommandHandler(pi: ReturnType<typeof mockPi>, name: string) {
   const call = pi.registerCommand.mock.calls.find((c: unknown[]) => c[0] === name);
   return call ? (call[1] as { handler: (args: string, ctx: unknown) => Promise<void> }).handler : undefined;
@@ -82,6 +86,11 @@ export function getRegisteredCommandHandler(pi: ReturnType<typeof mockPi>, name:
 export function getRegisteredShortcutHandler(pi: ReturnType<typeof mockPi>, key: string) {
   const call = pi.registerShortcut.mock.calls.find((c: unknown[]) => c[0] === key);
   return call ? (call[1] as { handler: (ctx: unknown) => Promise<void> }).handler : undefined;
+}
+
+export function getRegisteredEventHandler(pi: ReturnType<typeof mockPi>, eventName: string) {
+  const call = pi.on.mock.calls.find((c: unknown[]) => c[0] === eventName);
+  return call ? (call[1] as (event: unknown, ctx: unknown) => Promise<void>) : undefined;
 }
 
 /**

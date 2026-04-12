@@ -1,4 +1,9 @@
-import { mockForgeflowContext, mockPi, mockTheme } from "@callumvass/forgeflow-shared/testing";
+import {
+  getRegisteredToolDefinition,
+  mockForgeflowContext,
+  mockPi,
+  mockTheme,
+} from "@callumvass/forgeflow-shared/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import createPmExtension from "./index.js";
 
@@ -58,17 +63,13 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-function getToolDef(pi: ReturnType<typeof mockPi>) {
-  return pi.registerTool.mock.calls[0]?.[0];
-}
-
 describe("pm extension", () => {
   it("registers forgeflow-pm with the current PM commands and call rendering", () => {
     const pi = mockPi();
 
     createPmExtension("file:///repo/packages/pm/extensions/index.js")(pi as never);
 
-    const toolDef = getToolDef(pi);
+    const toolDef = getRegisteredToolDefinition(pi);
     expect(toolDef.name).toBe("forgeflow-pm");
     expect(toolDef.parameters.properties.pipeline.description).toContain('"init"');
     expect(toolDef.parameters.properties.pipeline.description).toContain('"continue"');
@@ -98,7 +99,7 @@ describe("pm extension", () => {
     const pi = mockPi();
     createPmExtension("file:///repo/packages/pm/extensions/index.js")(pi as never);
 
-    const toolDef = getToolDef(pi);
+    const toolDef = getRegisteredToolDefinition(pi);
     const ctx = mockForgeflowContext({ cwd: "/repo/project" });
     await toolDef.execute(
       "call-1",
