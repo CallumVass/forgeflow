@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.27.0...forgeflow-pm-v0.28.0) (2026-04-12)
+
+
+### Features
+
+* **shared:** collapse wrapper exports into feature entry points ([#218](https://github.com/CallumVass/forgeflow/issues/218)) ([0f8b0a5](https://github.com/CallumVass/forgeflow/commit/0f8b0a50d5f42cc65cbaf8b79b7808c5065bd37a))
+
 ## [0.27.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.26.0...forgeflow-pm-v0.27.0) (2026-04-11)
 
 
