@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.33.0...forgeflow-dev-v0.33.1) (2026-04-12)
+
+
+### Bug Fixes
+
+* **dev:** diversify skill recommendations by library family ([#236](https://github.com/CallumVass/forgeflow/issues/236)) ([84331a0](https://github.com/CallumVass/forgeflow/commit/84331a0067bee80caf3046b17e1c47381466c0ac))
+
 ## [0.33.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.32.0...forgeflow-dev-v0.33.0) (2026-04-12)
 
 
