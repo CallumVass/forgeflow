@@ -1,5 +1,6 @@
 import { fetchJiraIssueViaOauth } from "@callumvass/forgeflow-shared/atlassian/jira";
 import type { ExecFn } from "@callumvass/forgeflow-shared/pipeline";
+import { readGitHubIssue } from "@callumvass/forgeflow-shared/repository";
 
 /**
  * Pair of shell-execution functions injected into issue-tracker helpers.
@@ -87,15 +88,8 @@ async function resolveGitHubIssue(
   issueNum: number,
   deps: IssueTrackerDeps,
 ): Promise<ResolvedIssue | string> {
-  const issueJson = await deps.execSafeFn(`gh issue view ${issueNum} --json number,title,body`, cwd);
-  if (!issueJson) return `Could not fetch issue #${issueNum}.`;
-
-  let issue: { number: number; title: string; body: string };
-  try {
-    issue = JSON.parse(issueJson);
-  } catch {
-    return `Could not parse issue #${issueNum}.`;
-  }
+  const issue = await readGitHubIssue(issueNum, { cwd, execSafeFn: deps.execSafeFn });
+  if (issue == null) return `Could not fetch issue #${issueNum}.`;
 
   return { source: "github", key: String(issueNum), ...issue, branch: `feat/issue-${issueNum}` };
 }

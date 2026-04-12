@@ -5,6 +5,7 @@ import {
   type StageResult,
   signalExists,
 } from "@callumvass/forgeflow-shared/pipeline";
+import { readUnifiedDiffAgainstMain } from "@callumvass/forgeflow-shared/repository";
 import type { ResolvedIssue } from "../../issues/index.js";
 import { buildRefactorerTask } from "../../refactor-guidance/index.js";
 import { runReviewPipeline } from "../review/index.js";
@@ -18,7 +19,7 @@ import { runPlanning } from "./planning.js";
  * import of `review-orchestrator.js` per the structural criteria.
  */
 export async function runReviewAndFixOnly(pctx: PipelineContext, stages: StageResult[]): Promise<void> {
-  const diff = await pctx.execFn("git diff main...HEAD", pctx.cwd);
+  const diff = await readUnifiedDiffAgainstMain({ cwd: pctx.cwd, execFn: pctx.execFn });
   if (!diff) return;
   const result = await runReviewPipeline(diff, { ...pctx, stages, pipeline: "implement" });
   if (result.passed) return;
@@ -196,7 +197,7 @@ export async function runImplementation(input: RunInput, pctx: PipelineContext):
     return { kind: "completed", stages };
   }
 
-  const diff = await pctx.execFn("git diff main...HEAD", pctx.cwd);
+  const diff = await readUnifiedDiffAgainstMain({ cwd: pctx.cwd, execFn: pctx.execFn });
   if (!diff) return { kind: "completed", stages };
 
   // runReviewPipeline now handles the reviewer → judge fork link

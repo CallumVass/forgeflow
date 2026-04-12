@@ -5,6 +5,11 @@ import {
   type StageResult,
   withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
+import {
+  readRepositoryNameWithOwner,
+  readReviewDiff,
+  resolveReviewChangedFiles as resolveRepositoryReviewChangedFiles,
+} from "@callumvass/forgeflow-shared/repository";
 import { prepareSkillContext } from "@callumvass/forgeflow-shared/skills";
 import { askCustomPrompt, setForgeflowStatus } from "../../ui/index.js";
 import { proposeAndPostComments } from "./comments.js";
@@ -25,43 +30,14 @@ function describeReviewTarget(target: string, prNumber?: string): string {
   return trimmed;
 }
 
-function parseChangedFiles(output: string): string[] {
-  return output
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
 async function prepareReviewSkillContext(changedFiles: string[], strict: boolean, pctx: PipelineContext) {
   return prepareSkillContext(pctx, { command: strict ? "review-lite" : "review", changedFiles });
 }
 
 type ReviewTarget = Awaited<ReturnType<typeof resolveDiffTarget>>;
 
-async function resolvePrBaseChangedFiles(target: ReviewTarget, pctx: PipelineExecRuntime): Promise<string> {
-  if (!target.prNumber) return "";
-
-  const baseRef = (
-    await pctx.execSafeFn(`gh pr view ${target.prNumber} --json baseRefName --jq .baseRefName`, pctx.cwd)
-  ).trim();
-  if (!baseRef) return "";
-
-  const quotedBaseRef = JSON.stringify(baseRef);
-  const quotedRemoteBaseRef = JSON.stringify(`origin/${baseRef}`);
-
-  await pctx.execSafeFn(`git fetch origin ${quotedBaseRef} 2>/dev/null || true`, pctx.cwd);
-  return pctx.execSafeFn(`git diff --name-only ${quotedRemoteBaseRef}...HEAD`, pctx.cwd);
-}
-
-async function resolveChangedFilesForTarget(target: ReviewTarget, pctx: PipelineExecRuntime): Promise<string[]> {
-  for (const cmd of target.setupCmds) {
-    await pctx.execFn(cmd, pctx.cwd);
-  }
-
-  const output =
-    (await pctx.execSafeFn("git diff --name-only main...HEAD", pctx.cwd)) ||
-    (target.diffCmd.includes("gh pr diff") ? await resolvePrBaseChangedFiles(target, pctx) : "");
-  return parseChangedFiles(output);
+function reviewTargetPrNumber(target: ReviewTarget): string | undefined {
+  return target.kind === "branch" ? undefined : target.prNumber;
 }
 
 function reviewRunId(target: string, strict: boolean): string {
@@ -77,16 +53,16 @@ export async function runReview(target: string, pctx: PipelineContext, opts: Run
 
 export async function resolveReviewChangedFiles(target: string, pctx: PipelineExecRuntime): Promise<string[]> {
   const reviewTarget = await resolveDiffTarget(pctx.cwd, target, pctx.execSafeFn);
-  return resolveChangedFilesForTarget(reviewTarget, pctx);
+  return resolveRepositoryReviewChangedFiles(reviewTarget, pctx);
 }
 
 async function runReviewInner(target: string, pctx: PipelineContext, strict: boolean) {
   const { cwd, ctx, execFn, execSafeFn } = pctx;
   const stages: StageResult[] = [];
   const reviewTarget = await resolveDiffTarget(cwd, target, execSafeFn);
-  const { diffCmd, prNumber } = reviewTarget;
+  const prNumber = reviewTargetPrNumber(reviewTarget);
 
-  const changedFiles = await resolveChangedFilesForTarget(reviewTarget, pctx);
+  const changedFiles = await resolveRepositoryReviewChangedFiles(reviewTarget, pctx);
   if (ctx.hasUI) {
     const fileSummary =
       changedFiles.length > 0 ? ` · ${changedFiles.length} file${changedFiles.length === 1 ? "" : "s"}` : "";
@@ -101,7 +77,7 @@ async function runReviewInner(target: string, pctx: PipelineContext, strict: boo
 
   const customPrompt = await askCustomPrompt(ctx, ctx.hasUI);
 
-  const diff = await execFn(diffCmd, cwd);
+  const diff = await readReviewDiff(reviewTarget, { cwd, execFn });
   if (!diff) {
     return pipelineResult(
       `No changes to review for ${describeReviewTarget(target, prNumber)} against main.`,
@@ -116,7 +92,7 @@ async function runReviewInner(target: string, pctx: PipelineContext, strict: boo
 
     const findings = result.findings ?? "";
     if (ctx.hasUI && prNumber) {
-      const repo = await execFn("gh repo view --json nameWithOwner --jq .nameWithOwner", cwd);
+      const repo = await readRepositoryNameWithOwner({ cwd, execFn });
       await proposeAndPostComments(findings, { number: prNumber, repo }, { ...pctx, stages, pipeline: "review" });
     }
 
@@ -127,7 +103,7 @@ async function runReviewInner(target: string, pctx: PipelineContext, strict: boo
   if (!result.report) return pipelineResult("Review passed — no actionable findings.", "review", stages);
 
   if (ctx.hasUI && prNumber && result.blockingFindings) {
-    const repo = await execFn("gh repo view --json nameWithOwner --jq .nameWithOwner", cwd);
+    const repo = await readRepositoryNameWithOwner({ cwd, execFn });
     await proposeAndPostComments(
       result.blockingFindings,
       { number: prNumber, repo },

@@ -1,52 +1,27 @@
 import type { ExecFn } from "@callumvass/forgeflow-shared/pipeline";
-
-interface DiffTarget {
-  diffCmd: string;
-  prNumber?: string;
-  setupCmds: string[];
-}
+import { type ReviewTarget, readCurrentPrNumber } from "@callumvass/forgeflow-shared/repository";
 
 /**
- * Resolve what to diff based on the target string.
- * - Numeric target → check out the PR branch, then `gh pr diff <n>`
- * - `--branch <name>` → check out that branch, then `git diff main...HEAD`
- * - Empty → `git diff main...HEAD`, auto-detect PR from current branch
+ * Resolve review policy from the target string.
+ * - Numeric target → review a pull request
+ * - `--branch <name>` → review a named branch
+ * - Empty → review the current branch and attach the current PR number when available
  */
-export async function resolveDiffTarget(cwd: string, target: string, execFn: ExecFn): Promise<DiffTarget> {
+export async function resolveDiffTarget(cwd: string, target: string, execFn: ExecFn): Promise<ReviewTarget> {
   const trimmed = target.trim();
 
   if (trimmed.match(/^\d+$/)) {
-    return {
-      diffCmd: `gh pr diff ${trimmed}`,
-      prNumber: trimmed,
-      setupCmds: [`gh pr checkout ${trimmed}`],
-    };
+    return { kind: "pr", prNumber: trimmed };
   }
 
   if (trimmed.startsWith("--branch")) {
     const branch = trimmed.replace("--branch", "").trim() || "HEAD";
     if (branch === "HEAD") {
-      return { diffCmd: "git diff main...HEAD", setupCmds: [] };
+      return { kind: "current" };
     }
 
-    const quotedBranch = JSON.stringify(branch);
-    const quotedRemoteBranch = JSON.stringify(`origin/${branch}`);
-
-    return {
-      diffCmd: "git diff main...HEAD",
-      setupCmds: [
-        `git fetch origin ${quotedBranch} 2>/dev/null || true`,
-        `git checkout ${quotedBranch} 2>/dev/null || git checkout -b ${quotedBranch} --track ${quotedRemoteBranch}`,
-      ],
-    };
+    return { kind: "branch", branch };
   }
 
-  // Default: diff against main, try to auto-detect PR number
-  let prNumber: string | undefined;
-  const pr = await execFn("gh pr view --json number --jq .number", cwd);
-  if (pr && pr !== "") {
-    prNumber = pr;
-  }
-
-  return { diffCmd: "git diff main...HEAD", prNumber, setupCmds: [] };
+  return { kind: "current", prNumber: await readCurrentPrNumber({ cwd, execSafeFn: execFn }) };
 }
