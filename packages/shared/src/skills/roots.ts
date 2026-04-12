@@ -104,7 +104,12 @@ export async function discoverSkillLandscape(cwd: string, config: SkillsConfig):
 
   for (const root of rootsScanned) {
     const result = loadSkills({ cwd, includeDefaults: false, skillPaths: [root.path] });
-    diagnostics.push(...result.diagnostics.map((diag) => diag.message));
+    diagnostics.push(
+      ...result.diagnostics.map((diag) => {
+        const location = typeof diag.path === "string" && diag.path.length > 0 ? ` (${diag.path})` : "";
+        return `${diag.type}: ${diag.message}${location}`;
+      }),
+    );
     for (const skill of result.skills) {
       const discovered = toDiscoveredSkill(skill, root);
       if (seenPaths.has(discovered.filePath)) continue;
