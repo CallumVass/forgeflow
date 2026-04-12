@@ -10,24 +10,7 @@ import {
   renderSkillSelectionReport,
   type SkillCommand,
 } from "@callumvass/forgeflow-shared/skills";
-import { resolveDiffTarget } from "../pipelines/review/diff.js";
-
-function parseChangedFiles(output: string): string[] {
-  return output
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-async function resolveReviewChangedFiles(target: string, pctx: PipelineContext): Promise<string[]> {
-  const { diffCmd, setupCmds } = await resolveDiffTarget(pctx.cwd, target, pctx.execSafeFn);
-  for (const cmd of setupCmds) await pctx.execFn(cmd, pctx.cwd);
-  // Once the target branch/PR is checked out, use git to resolve concrete paths.
-  const output =
-    (await pctx.execSafeFn("git diff --name-only main...HEAD", pctx.cwd)) ||
-    (diffCmd.includes("gh pr diff") ? await pctx.execSafeFn("git diff --name-only HEAD~1...HEAD", pctx.cwd) : "");
-  return parseChangedFiles(output);
-}
+import { resolveReviewChangedFiles } from "../pipelines/review/index.js";
 
 export async function prepareImplementSkillContext(issueText: string, pctx: PipelineContext) {
   return prepareSkillContext(pctx, { command: "implement", issueText });
@@ -35,14 +18,6 @@ export async function prepareImplementSkillContext(issueText: string, pctx: Pipe
 
 export async function prepareArchitectureSkillContext(pctx: PipelineContext) {
   return prepareSkillContext(pctx, { command: "architecture" });
-}
-
-export async function prepareReviewSkillContextFromChangedFiles(
-  changedFiles: string[],
-  strict: boolean,
-  pctx: PipelineContext,
-) {
-  return prepareSkillContext(pctx, { command: strict ? "review-lite" : "review", changedFiles });
 }
 
 interface RepoSkillOptions {

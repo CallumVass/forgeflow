@@ -1,25 +1,17 @@
 import { mockForgeflowContext, mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../prd/document.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../prd/document.js")>();
+vi.mock("../prd/index.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../prd/index.js")>();
   return {
     ...actual,
     prdExists: vi.fn(() => true),
+    runQaLoop: vi.fn(async () => ({ accepted: true })),
+    promptBootstrapPrd: vi.fn(async () => false),
   };
 });
 
-vi.mock("../prd/qa-loop.js", () => ({
-  runQaLoop: vi.fn(async () => ({ accepted: true })),
-}));
-
-vi.mock("../prd/bootstrap.js", () => ({
-  promptBootstrapPrd: vi.fn(async () => false),
-}));
-
-import { promptBootstrapPrd } from "../prd/bootstrap.js";
-import { prdExists } from "../prd/document.js";
-import { runQaLoop } from "../prd/qa-loop.js";
+import { prdExists, promptBootstrapPrd, runQaLoop } from "../prd/index.js";
 import { runPrdQa } from "./prd-qa.js";
 
 describe("runPrdQa", () => {
