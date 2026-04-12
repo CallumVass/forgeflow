@@ -7,8 +7,18 @@ import { discoverSkillLandscape } from "./roots.js";
 import type { SkillScanReport, SkillSelectionInput, SkillSelectionReport } from "./types.js";
 
 export { DEFAULT_DETECTORS, detectSkillSignals } from "./detectors/index.js";
+export {
+  buildSkillRecommendationReport,
+  buildSkillSearchQueries,
+  createSkillsCliRecommendationProvider,
+  parseSkillsFindOutput,
+  renderSkillRecommendationReport,
+} from "./recommend.js";
 export type {
   DiscoveredSkill,
+  ExternalSkillCandidate,
+  QueriedExternalSkillCandidate,
+  RecommendedExternalSkill,
   RepoFile,
   RepoInventory,
   SelectedSkill,
@@ -16,8 +26,12 @@ export type {
   SkillDetectionContext,
   SkillDuplicate,
   SkillLandscape,
+  SkillRecommendationProvider,
+  SkillRecommendationProviderResult,
+  SkillRecommendationReport,
   SkillRoot,
   SkillScanReport,
+  SkillSearchQuery,
   SkillSelectionInput,
   SkillSelectionReport,
   SkillSignal,

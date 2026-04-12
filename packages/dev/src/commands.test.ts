@@ -11,6 +11,7 @@ function getParseArgs(name: string): NonNullable<CommandDefinition["parseArgs"]>
 const implementParseArgs = getParseArgs("implement");
 const reviewParseArgs = getParseArgs("review");
 const skillScanParseArgs = getParseArgs("skill-scan");
+const skillRecommendParseArgs = getParseArgs("skill-recommend");
 
 describe("implement parseArgs", () => {
   it("does not extract customPrompt from trailing quoted text", () => {
@@ -34,6 +35,22 @@ describe("skill-scan parseArgs", () => {
       path: "apps/web",
       issue: "tailwind",
       target: "--branch feat/ui",
+      json: true,
+    });
+  });
+});
+
+describe("skill-recommend parseArgs", () => {
+  it("passes stage, path, issue, target, limit, and json flags through verbatim", () => {
+    const { params } = skillRecommendParseArgs(
+      "--for review --path apps/web --issue tailwind --branch feat/ui --limit 5 --json",
+    );
+    expect(params).toEqual({
+      command: "review",
+      path: "apps/web",
+      issue: "tailwind",
+      target: "--branch feat/ui",
+      limit: 5,
       json: true,
     });
   });

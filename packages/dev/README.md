@@ -34,7 +34,8 @@ This works best after the PM package has already produced good greenfield issues
 | `/review` | Review a PR or branch: blocking defects plus advisory architecture and refactor notes |
 | `/review-lite` | Review a PR or branch in strict mode: blocking defects only |
 | `/architecture` | Analyse the repo for structural friction and create RFC issues |
-| `/skill-scan` | Scan common skill locations and explain which skills forgeflow would recommend |
+| `/skill-scan` | Scan common skill locations and explain which installed skills forgeflow would recommend |
+| `/skill-recommend` | Recommend missing skills from skills.sh that fit the current repo and stage |
 | `/atlassian-login` | Authenticate to an OAuth-enabled Atlassian MCP server |
 | `/atlassian-status` | Show Atlassian MCP auth status |
 | `/atlassian-logout` | Remove stored Atlassian MCP credentials |
@@ -149,7 +150,17 @@ Selection is repo-aware. Forgeflow looks at things like:
 - `mix.exs`, `pyproject.toml`, `go.mod`, `Cargo.toml`
 - changed files for review runs
 
-Use `/skill-scan` to inspect what was discovered and why forgeflow would pick particular skills for a command.
+Use `/skill-scan` to inspect what was discovered and why forgeflow would pick particular installed skills for a command.
+
+Use `/skill-recommend` to look beyond the repo and query [skills.sh](https://skills.sh/) for missing skills worth adding. Forgeflow generates repo-aware search queries from the detected stack, dedupes the results locally, and ranks them against the same repo signals it uses for auto-loading. Recommendations include install commands so you can add the skill and let future forgeflow runs auto-load it.
+
+Examples:
+
+```text
+/skill-recommend
+/skill-recommend --for review --branch feat/ui
+/skill-recommend --for architecture --path apps/web --limit 5
+```
 
 ## Configuration
 

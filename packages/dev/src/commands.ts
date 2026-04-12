@@ -107,4 +107,31 @@ export const commands: CommandDefinition[] = [
       };
     },
   },
+  {
+    name: "skill-recommend",
+    description:
+      "Recommend missing skills from skills.sh for the current repo and stage. Usage: /skill-recommend [--for <implement|review|architecture|...>] [--path <path>] [--issue <text>] [--target <review-target>] [--limit <n>] [--json]",
+    pipeline: "skill-recommend",
+    parseArgs: (args) => {
+      const { flags } = extractFlags(args, {
+        boolean: ["--json"],
+        value: ["--for", "--command", "--path", "--issue", "--target", "--branch", "--limit"],
+      });
+      const command = (flags["--for"] as string | undefined) ?? (flags["--command"] as string | undefined);
+      const limitRaw = flags["--limit"] as string | undefined;
+      const limit = limitRaw ? Number(limitRaw) : undefined;
+      return {
+        params: {
+          ...(command ? { command } : {}),
+          ...(flags["--path"] ? { path: flags["--path"] as string } : {}),
+          ...(flags["--issue"] ? { issue: flags["--issue"] as string } : {}),
+          ...(flags["--branch"] ? { target: `--branch ${flags["--branch"] as string}` } : {}),
+          ...(flags["--target"] ? { target: flags["--target"] as string } : {}),
+          ...(limit !== undefined ? { limit } : {}),
+          ...(flags["--json"] ? { json: true } : {}),
+        },
+        suffix: "Do not interpret the command, path, issue text, target, or limit — pass them as-is.",
+      };
+    },
+  },
 ];

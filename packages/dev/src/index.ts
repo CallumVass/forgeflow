@@ -13,7 +13,7 @@ import { runDatadog } from "./pipelines/datadog/index.js";
 import { runImplement } from "./pipelines/implement/index.js";
 import { runImplementAll } from "./pipelines/implement-all/index.js";
 import { runReview } from "./pipelines/review/index.js";
-import { runSkillScan } from "./skills/index.js";
+import { runSkillRecommend, runSkillScan } from "./skills/index.js";
 
 const AGENTS_DIR = resolveAgentsDir(import.meta.url);
 
@@ -33,6 +33,7 @@ const registerForgeflow = createForgeflowExtension({
     "review-lite (strict blocking review→judge only),",
     "architecture (analyze codebase for structural friction→create RFC issues),",
     "skill-scan (scan common skill locations and explain repo-aware recommendations),",
+    "skill-recommend (query skills.sh for missing repo-relevant skills to install),",
     "atlassian-read (read a Jira issue or Confluence page by URL),",
     "datadog (resolve repo Lambdas then investigate Datadog runtime questions through MCP).",
     "Each pipeline spawns specialized sub-agents with isolated context.",
@@ -45,9 +46,16 @@ const registerForgeflow = createForgeflowExtension({
     skipPlan: { type: "boolean", description: "Skip planner, implement directly (default false)" },
     skipReview: { type: "boolean", description: "Skip code review after implementation (default false)" },
     strict: { type: "boolean", description: "Use strict review mode without advisory architecture/refactor passes" },
-    command: { type: "string", description: "Target command to analyse for the skill-scan pipeline" },
-    path: { type: "string", description: "Focus path for the skill-scan pipeline" },
-    json: { type: "boolean", description: "Emit machine-readable JSON from the skill-scan pipeline" },
+    command: {
+      type: "string",
+      description: "Target command to analyse for the skill-scan / skill-recommend pipelines",
+    },
+    path: { type: "string", description: "Focus path for the skill-scan / skill-recommend pipelines" },
+    json: {
+      type: "boolean",
+      description: "Emit machine-readable JSON from the skill-scan / skill-recommend pipelines",
+    },
+    limit: { type: "number", description: "Maximum remote skills to return for the skill-recommend pipeline" },
   },
   pipelines: [
     {
@@ -87,6 +95,21 @@ const registerForgeflow = createForgeflowExtension({
         ),
     },
     {
+      name: "skill-recommend",
+      execute: (cwd, p, s, u, c) =>
+        runSkillRecommend(
+          {
+            command: p.command as string | undefined,
+            path: p.path as string | undefined,
+            issue: p.issue as string | undefined,
+            target: p.target as string | undefined,
+            json: (p.json as boolean) ?? false,
+            limit: typeof p.limit === "number" ? p.limit : undefined,
+          },
+          pctx(cwd, s, u, c),
+        ),
+    },
+    {
       name: "atlassian-read",
       execute: (cwd, p, s, u, c) => runAtlassianRead((p.url as string) ?? "", pctx(cwd, s, u, c)),
     },
@@ -108,6 +131,7 @@ const registerForgeflow = createForgeflowExtension({
     if (args.command) text += theme.fg("dim", ` --command ${args.command}`);
     if (args.path) text += theme.fg("dim", ` --path ${args.path}`);
     if (args.json) text += theme.fg("dim", " --json");
+    if (args.limit !== undefined) text += theme.fg("dim", ` --limit ${args.limit}`);
     if (args.strict) text += theme.fg("dim", " --strict");
     return text;
   },

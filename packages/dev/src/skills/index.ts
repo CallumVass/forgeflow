@@ -1,8 +1,11 @@
 import { type PipelineContext, pipelineResult } from "@callumvass/forgeflow-shared/pipeline";
 import {
+  buildSkillRecommendationReport,
   buildSkillScanReport,
+  createSkillsCliRecommendationProvider,
   defaultSkillScanInputs,
   prepareSkillContext,
+  renderSkillRecommendationReport,
   renderSkillScanReport,
   renderSkillSelectionReport,
   type SkillCommand,
@@ -42,12 +45,13 @@ export async function prepareReviewSkillContextFromChangedFiles(
   return prepareSkillContext(pctx, { command: strict ? "review-lite" : "review", changedFiles });
 }
 
-interface SkillScanOptions {
+interface RepoSkillOptions {
   command?: string;
   path?: string;
   issue?: string;
   target?: string;
   json?: boolean;
+  limit?: number;
 }
 
 function isSkillCommand(value: string): value is SkillCommand {
@@ -64,7 +68,7 @@ function isSkillCommand(value: string): value is SkillCommand {
   ].includes(value);
 }
 
-function buildSelectionInputs(command: SkillCommand | undefined, opts: SkillScanOptions, changedFiles: string[]) {
+function buildSelectionInputs(command: SkillCommand | undefined, opts: RepoSkillOptions, changedFiles: string[]) {
   const focusPaths = opts.path ? [opts.path] : [];
   if (command) {
     return [
@@ -85,7 +89,7 @@ function buildSelectionInputs(command: SkillCommand | undefined, opts: SkillScan
   }));
 }
 
-export async function runSkillScan(opts: SkillScanOptions, pctx: PipelineContext) {
+export async function runSkillScan(opts: RepoSkillOptions, pctx: PipelineContext) {
   const command = opts.command && isSkillCommand(opts.command) ? opts.command : undefined;
   if (opts.command && !command) {
     return pipelineResult(`Unknown command for skill scan: ${opts.command}`, "skill-scan", [], true);
@@ -112,4 +116,28 @@ export async function runSkillScan(opts: SkillScanOptions, pctx: PipelineContext
   }
 
   return pipelineResult(renderSkillScanReport(report), "skill-scan", []);
+}
+
+export async function runSkillRecommend(opts: RepoSkillOptions, pctx: PipelineContext) {
+  const command = opts.command ? (isSkillCommand(opts.command) ? opts.command : undefined) : "implement";
+  if (opts.command && !command) {
+    return pipelineResult(`Unknown command for skill recommendation: ${opts.command}`, "skill-recommend", [], true);
+  }
+  if (opts.limit !== undefined && (!Number.isInteger(opts.limit) || opts.limit < 0)) {
+    return pipelineResult(`Invalid --limit for skill recommendation: ${opts.limit}`, "skill-recommend", [], true);
+  }
+
+  const changedFiles =
+    command === "review" || command === "review-lite" ? await resolveReviewChangedFiles(opts.target ?? "", pctx) : [];
+  const [input] = buildSelectionInputs(command, opts, changedFiles);
+  if (!input) return pipelineResult("No skill recommendation input available.", "skill-recommend", [], true);
+
+  const provider = createSkillsCliRecommendationProvider(pctx.execSafeFn, pctx.cwd);
+  const report = await buildSkillRecommendationReport(pctx.cwd, pctx.skillsConfig, input, provider, opts.limit);
+
+  if (opts.json) {
+    return pipelineResult(JSON.stringify(report, null, 2), "skill-recommend", []);
+  }
+
+  return pipelineResult(renderSkillRecommendationReport(report), "skill-recommend", []);
 }
