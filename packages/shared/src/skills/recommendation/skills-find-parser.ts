@@ -34,6 +34,11 @@ function skillSlugFromId(id: string): string {
   return at >= 0 ? id.slice(at + 1) : id;
 }
 
+function repositoryFromId(id: string): string | undefined {
+  const at = id.indexOf("@");
+  return at >= 0 ? id.slice(0, at) : undefined;
+}
+
 export function parseSkillsFindOutput(output: string): ExternalSkillCandidate[] {
   const lines = stripAnsi(output)
     .split("\n")
@@ -61,6 +66,7 @@ export function parseSkillsFindOutput(output: string): ExternalSkillCandidate[] 
     pending = {
       id,
       slug: skillSlugFromId(id),
+      repository: repositoryFromId(id),
       url: "",
       installs: parseCompactNumber(match?.[2]?.replace(/,/g, "").replace(/\s+/g, "")),
       installsLabel: match?.[2] ? `${match[2].trim()} installs` : undefined,

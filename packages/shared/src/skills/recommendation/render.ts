@@ -113,6 +113,11 @@ export function renderSkillRecommendationReport(report: SkillRecommendationRepor
     for (const diagnostic of report.providerDiagnostics) lines.push(`- ${diagnostic}`);
   }
 
+  if (report.judgeDiagnostics && report.judgeDiagnostics.length > 0) {
+    lines.push("", "Judge diagnostics:");
+    for (const diagnostic of report.judgeDiagnostics) lines.push(`- ${diagnostic}`);
+  }
+
   if (report.diagnostics.length > 0) {
     lines.push("", "Diagnostics:");
     for (const diagnostic of report.diagnostics) lines.push(`- ${diagnostic}`);
