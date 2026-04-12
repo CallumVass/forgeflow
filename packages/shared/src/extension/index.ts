@@ -15,6 +15,8 @@ import type { ExtensionConfig } from "./types.js";
 
 export { registerAtlassianCommands } from "./atlassian.js";
 export { buildSendMessage } from "./message.js";
+export type { PackageExtensionConfig, PackagePipelineDefinition } from "./package-extension.js";
+export { createForgeflowPackageExtension } from "./package-extension.js";
 export type {
   CommandAutocompleteItem,
   CommandDefinition,
