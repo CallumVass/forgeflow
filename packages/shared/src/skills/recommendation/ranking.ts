@@ -1,11 +1,6 @@
 import { containsAlias, normaliseText, uniqueStrings } from "../text.js";
 import type { QueriedExternalSkillCandidate, RecommendedExternalSkill, SkillCommand, SkillSignal } from "../types.js";
-
-const STAGE_QUERY_SUFFIX: Partial<Record<SkillCommand, string>> = {
-  review: "review",
-  "review-lite": "review",
-  architecture: "architecture",
-};
+import { STAGE_QUERY_SUFFIX } from "./stage-query-suffix.js";
 
 export function scoreRecommendedExternalSkill(input: {
   candidate: QueriedExternalSkillCandidate;

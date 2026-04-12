@@ -1,5 +1,6 @@
 import { aliasesForTerm, extractSearchPhrases, normaliseText, uniqueStrings } from "../text.js";
 import type { SkillCommand, SkillSearchQuery, SkillSignal } from "../types.js";
+import { STAGE_QUERY_SUFFIX } from "./stage-query-suffix.js";
 
 const GENERIC_QUERY_WORDS = new Set([
   "app",
@@ -39,12 +40,6 @@ const GENERIC_QUERY_WORDS = new Set([
   "web",
   "workspace",
 ]);
-
-const STAGE_QUERY_SUFFIX: Partial<Record<SkillCommand, string>> = {
-  review: "review",
-  "review-lite": "review",
-  architecture: "architecture",
-};
 
 function queryWordCount(value: string): number {
   return normaliseText(value).split(" ").filter(Boolean).length;
