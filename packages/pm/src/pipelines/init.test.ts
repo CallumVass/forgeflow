@@ -1,20 +1,16 @@
 import { mockForgeflowContext, mockPipelineContext, mockRunAgent } from "@callumvass/forgeflow-shared/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../prd/document.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../prd/document.js")>();
+vi.mock("../prd/index.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../prd/index.js")>();
   return {
     ...actual,
     prdExists: vi.fn(() => false),
+    promptBootstrapPrd: vi.fn(async () => false),
   };
 });
 
-vi.mock("../prd/bootstrap.js", () => ({
-  promptBootstrapPrd: vi.fn(async () => false),
-}));
-
-import { promptBootstrapPrd } from "../prd/bootstrap.js";
-import { prdExists } from "../prd/document.js";
+import { prdExists, promptBootstrapPrd } from "../prd/index.js";
 import { runInit } from "./init.js";
 
 function execSafeFnForCreatedIssue(body: string, issueNumber = 101) {

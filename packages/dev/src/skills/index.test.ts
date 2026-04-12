@@ -1,18 +1,25 @@
 import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const provider = {
   name: "skills.sh",
   search: vi.fn(),
 };
 
+vi.mock("../pipelines/review/index.js", () => ({
+  resolveReviewChangedFiles: vi.fn(async () => ["src/foo.ts", "src/bar.ts"]),
+}));
+
 vi.mock("@callumvass/forgeflow-shared/skills", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@callumvass/forgeflow-shared/skills")>();
   return {
     ...actual,
+    buildSkillScanReport: vi.fn(async () => ({ analyses: [{ command: "review" }] })),
+    renderSkillScanReport: vi.fn(() => "rendered skill scan report"),
+    renderSkillSelectionReport: vi.fn(() => "rendered skill selection report"),
     createSkillsCliRecommendationProvider: vi.fn(() => provider),
     buildSkillRecommendationReport: vi.fn(async () => ({
-      command: "implement",
+      command: "review",
       repoRoot: "/repo",
       provider: "skills.sh",
       recommendedSkills: [{ id: "community/skills@vitest" }],
@@ -25,26 +32,57 @@ vi.mock("@callumvass/forgeflow-shared/skills", async (importOriginal) => {
 
 import {
   buildSkillRecommendationReport,
+  buildSkillScanReport,
   createSkillsCliRecommendationProvider,
   renderSkillRecommendationReport,
 } from "@callumvass/forgeflow-shared/skills";
-import { runSkillRecommend } from "./index.js";
+import { resolveReviewChangedFiles } from "../pipelines/review/index.js";
+import { runSkillRecommend, runSkillScan } from "./index.js";
 
-describe("runSkillRecommend", () => {
-  it("returns JSON for --json and rendered text otherwise without changing the call-site contract", async () => {
+describe("repo skill pipelines", () => {
+  beforeEach(() => {
+    vi.mocked(resolveReviewChangedFiles).mockClear();
+    vi.mocked(buildSkillScanReport).mockClear();
+    vi.mocked(buildSkillRecommendationReport).mockClear();
+    vi.mocked(createSkillsCliRecommendationProvider).mockClear();
+    vi.mocked(renderSkillRecommendationReport).mockClear();
+  });
+
+  it("uses the review public entry point for review-target skill scans and forwards the resolved changed files", async () => {
     const pctx = mockPipelineContext({ cwd: "/repo" });
 
-    const jsonResult = await runSkillRecommend({ issue: "tailwind", limit: 5, json: true }, pctx);
-    const textResult = await runSkillRecommend({ issue: "tailwind", limit: 5 }, pctx);
+    const result = await runSkillScan({ command: "review", target: "5" }, pctx);
 
+    expect(resolveReviewChangedFiles).toHaveBeenCalledWith("5", pctx);
+    expect(buildSkillScanReport).toHaveBeenCalledWith("/repo", pctx.skillsConfig, [
+      {
+        command: "review",
+        issueText: undefined,
+        changedFiles: ["src/foo.ts", "src/bar.ts"],
+        focusPaths: [],
+      },
+    ]);
+    expect(result.content[0]?.text).toBe("rendered skill selection report");
+  });
+
+  it("uses the review public entry point for review-target skill recommendations without changing the call-site contract", async () => {
+    const pctx = mockPipelineContext({ cwd: "/repo" });
+
+    const jsonResult = await runSkillRecommend(
+      { command: "review", target: "5", issue: "tailwind", limit: 5, json: true },
+      pctx,
+    );
+    const textResult = await runSkillRecommend({ command: "review", target: "5", issue: "tailwind", limit: 5 }, pctx);
+
+    expect(resolveReviewChangedFiles).toHaveBeenCalledWith("5", pctx);
     expect(createSkillsCliRecommendationProvider).toHaveBeenCalledWith(pctx.execSafeFn, "/repo");
     expect(buildSkillRecommendationReport).toHaveBeenCalledWith(
       "/repo",
       pctx.skillsConfig,
       {
-        command: "implement",
+        command: "review",
         issueText: "tailwind",
-        changedFiles: [],
+        changedFiles: ["src/foo.ts", "src/bar.ts"],
         focusPaths: [],
       },
       provider,

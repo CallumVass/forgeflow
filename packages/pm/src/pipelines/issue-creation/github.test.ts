@@ -1,15 +1,15 @@
 import { mockPipelineContext, mockRunAgent } from "@callumvass/forgeflow-shared/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../prd/document.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../prd/document.js")>();
+vi.mock("../../prd/index.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../prd/index.js")>();
   return {
     ...actual,
     prdExists: vi.fn(() => true),
   };
 });
 
-import { prdExists } from "../../prd/document.js";
+import { prdExists } from "../../prd/index.js";
 import { runCreateIssue, runCreateIssues } from "./github.js";
 
 const VALID_ISSUE_BODY = `## Context

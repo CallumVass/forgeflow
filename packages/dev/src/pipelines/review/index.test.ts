@@ -20,10 +20,66 @@ vi.mock("./comments.js", () => ({
 
 import { proposeAndPostComments } from "./comments.js";
 import { resolveDiffTarget } from "./diff.js";
-import { runReview } from "./index.js";
+import { resolveReviewChangedFiles, runReview } from "./index.js";
 import { runReviewPipeline, runStandaloneReviewPipeline } from "./orchestrator.js";
 
 describe("runReview composition root", () => {
+  it("resolves changed files for PR targets via the review boundary and falls back when main...HEAD is empty", async () => {
+    vi.mocked(resolveDiffTarget).mockResolvedValueOnce({
+      diffCmd: "gh pr diff 5",
+      prNumber: "5",
+      setupCmds: ["gh pr checkout 5"],
+    });
+    const execFn = mockExecFn({ "gh pr checkout 5": "" });
+    const execSafeFn = mockExecFn({
+      "git diff --name-only main...HEAD": "",
+      "git diff --name-only HEAD~1...HEAD": "src/foo.ts\nsrc/bar.ts\n",
+    });
+    const pctx = mockPipelineContext({ cwd: "/tmp", execFn, execSafeFn });
+
+    const changedFiles = await resolveReviewChangedFiles("5", pctx);
+
+    expect(changedFiles).toEqual(["src/foo.ts", "src/bar.ts"]);
+    expect(resolveDiffTarget).toHaveBeenCalledWith("/tmp", "5", pctx.execSafeFn);
+    expect(execFn).toHaveBeenCalledWith("gh pr checkout 5", "/tmp");
+    expect(execSafeFn).toHaveBeenCalledWith("git diff --name-only main...HEAD", "/tmp");
+    expect(execSafeFn).toHaveBeenCalledWith("git diff --name-only HEAD~1...HEAD", "/tmp");
+  });
+
+  it("resolves changed files for branch targets via the review boundary", async () => {
+    vi.mocked(resolveDiffTarget).mockResolvedValueOnce({
+      diffCmd: "git diff main...HEAD",
+      setupCmds: ['git checkout "feat/foo"'],
+    });
+    const execFn = mockExecFn({ 'git checkout "feat/foo"': "" });
+    const execSafeFn = mockExecFn({ "git diff --name-only main...HEAD": "src/branch.ts\n" });
+    const pctx = mockPipelineContext({ cwd: "/tmp", execFn, execSafeFn });
+
+    const changedFiles = await resolveReviewChangedFiles("--branch feat/foo", pctx);
+
+    expect(changedFiles).toEqual(["src/branch.ts"]);
+    expect(execFn).toHaveBeenCalledWith('git checkout "feat/foo"', "/tmp");
+    expect(execSafeFn).toHaveBeenCalledWith("git diff --name-only main...HEAD", "/tmp");
+    expect(execSafeFn).not.toHaveBeenCalledWith("git diff --name-only HEAD~1...HEAD", "/tmp");
+  });
+
+  it("resolves changed files for the current branch without running setup commands", async () => {
+    vi.mocked(resolveDiffTarget).mockResolvedValueOnce({
+      diffCmd: "git diff main...HEAD",
+      prNumber: "17",
+      setupCmds: [],
+    });
+    const execFn = mockExecFn({});
+    const execSafeFn = mockExecFn({ "git diff --name-only main...HEAD": "src/current.ts\n" });
+    const pctx = mockPipelineContext({ cwd: "/tmp", execFn, execSafeFn });
+
+    const changedFiles = await resolveReviewChangedFiles("", pctx);
+
+    expect(changedFiles).toEqual(["src/current.ts"]);
+    expect(execFn).not.toHaveBeenCalled();
+    expect(execSafeFn).toHaveBeenCalledWith("git diff --name-only main...HEAD", "/tmp");
+  });
+
   it("wires checkout → diff → standalone review → comment proposal and returns findings with isError on blocking findings", async () => {
     const execFn = mockExecFn({
       "gh pr checkout 5": "",
