@@ -145,6 +145,11 @@ export interface SkillScanReport {
   analyses: SkillSelectionReport[];
 }
 
+export interface SkillRecommendationScanReport {
+  repoRoot: string;
+  reports: SkillRecommendationReport[];
+}
+
 export interface SkillLandscape {
   rootsScanned: SkillRoot[];
   diagnostics: string[];

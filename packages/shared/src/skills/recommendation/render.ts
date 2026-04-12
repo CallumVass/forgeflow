@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import { uniqueStrings } from "../text.js";
-import type { RecommendedExternalSkill, SkillRecommendationReport } from "../types.js";
+import type { RecommendedExternalSkill, SkillRecommendationReport, SkillRecommendationScanReport } from "../types.js";
 
 function formatInstallCount(skill: RecommendedExternalSkill): string {
   return skill.installsLabel ?? (skill.installs ? `${skill.installs.toLocaleString()} installs` : "installs unknown");
@@ -57,6 +57,51 @@ export function renderCompactSkillRecommendationReport(report: SkillRecommendati
 
   lines.push("", "Use --verbose for queries, scanned roots, repo signals, and diagnostics.");
   return lines.join("\n");
+}
+
+function renderCompactRecommendationLines(report: SkillRecommendationReport): string[] {
+  if (report.recommendedSkills.length === 0) {
+    return ["- No strong external skill recommendations for this stage."];
+  }
+
+  return report.recommendedSkills.map((skill, index) => {
+    const reasonSummary = formatReasonSummary(skill.reasons, 2);
+    const summary = reasonSummary ? ` — ${reasonSummary}` : "";
+    return `${index + 1}) ${skill.id} — useful for ${report.command}${summary}`;
+  });
+}
+
+export function renderCompactSkillRecommendationScanReport(report: SkillRecommendationScanReport): string {
+  const lines: string[] = [
+    "Skill recommendations summary",
+    "",
+    `Repo: ${report.repoRoot}`,
+    `Stages analysed: ${report.reports.length}`,
+    "",
+    "Recommended by stage:",
+  ];
+
+  for (const stageReport of report.reports) {
+    lines.push(`- ${stageReport.command}:`);
+    for (const line of renderCompactRecommendationLines(stageReport)) {
+      lines.push(`  ${line}`);
+    }
+    if (stageReport.selectedSkills.length > 0) {
+      lines.push("  installed:");
+      for (const skill of stageReport.selectedSkills) {
+        const reasonSummary = formatReasonSummary(skill.reasons, 1);
+        lines.push(`    - ${skill.name}`);
+        if (reasonSummary) lines.push(`      why: ${reasonSummary}`);
+      }
+    }
+  }
+
+  lines.push("", "Use --verbose for per-stage queries, roots, signals, and diagnostics.");
+  return lines.join("\n");
+}
+
+export function renderSkillRecommendationScanReport(report: SkillRecommendationScanReport): string {
+  return report.reports.map((stageReport) => renderSkillRecommendationReport(stageReport)).join("\n\n---\n\n");
 }
 
 export function renderSkillRecommendationReport(report: SkillRecommendationReport): string {
