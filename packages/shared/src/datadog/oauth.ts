@@ -1,4 +1,11 @@
-import type { LoginCallbacks, McpAuthState, McpConfig, McpLoginResult, McpOauthDeps } from "../mcp/index.js";
+import type {
+  LoginCallbacks,
+  McpAuthState,
+  McpAuthStatus,
+  McpConfig,
+  McpLoginResult,
+  McpOauthDeps,
+} from "../mcp/index.js";
 import { datadogMcpService } from "./service.js";
 
 export interface DatadogMcpConfig extends McpConfig {}
@@ -82,15 +89,6 @@ export async function loginWithDatadogMcpOauth(
   return datadogMcpService.login(callbacks, deps);
 }
 
-export async function getDatadogMcpAuthStatus(): Promise<
-  | {
-      configured: true;
-      authenticated: boolean;
-      serverUrl: string;
-      hasRefreshToken: boolean;
-      tokenType?: string;
-    }
-  | string
-> {
+export async function getDatadogMcpAuthStatus(): Promise<McpAuthStatus | string> {
   return datadogMcpService.getAuthStatus();
 }

@@ -1,5 +1,5 @@
+import type { McpService } from "../mcp/index.js";
 import { createMcpService } from "../mcp/index.js";
-import type { McpService } from "../mcp/service.js";
 import { getDatadogMcpConfig } from "./oauth.js";
 
 export const datadogMcpService: McpService = createMcpService({

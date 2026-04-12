@@ -2,6 +2,7 @@ import {
   createMcpService,
   type LoginCallbacks,
   type McpAuthState,
+  type McpAuthStatus,
   type McpConfig,
   type McpLoginResult,
   type McpOauthDeps,
@@ -118,16 +119,7 @@ export async function loginWithAtlassianMcpOauth(
   return atlassianMcpService.login(callbacks, deps);
 }
 
-export async function getAtlassianMcpAuthStatus(): Promise<
-  | {
-      configured: true;
-      authenticated: boolean;
-      serverUrl: string;
-      hasRefreshToken: boolean;
-      tokenType?: string;
-    }
-  | string
-> {
+export async function getAtlassianMcpAuthStatus(): Promise<McpAuthStatus | string> {
   return atlassianMcpService.getAuthStatus();
 }
 
