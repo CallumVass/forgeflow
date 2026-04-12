@@ -1,4 +1,4 @@
-import type { PipelineContext } from "../../runtime/context.js";
+import type { PipelineSessionLifecycleRuntime } from "../../runtime/pipeline-context/index.js";
 import type { RunAgentFn } from "../../runtime/stages.js";
 import { archiveRunDir, gcArchive } from "./archive.js";
 import { createRunDir } from "./create.js";
@@ -17,10 +17,10 @@ interface LifecycleResult {
  * housekeeping, create the run dir, patch `runAgentFn` to auto-allocate
  * session files, then archive the run based on the result.
  */
-export async function withRunLifecycle<T extends LifecycleResult>(
-  pctx: PipelineContext,
+export async function withRunLifecycle<P extends PipelineSessionLifecycleRuntime, T extends LifecycleResult>(
+  pctx: P,
   runId: string,
-  run: (pctx: PipelineContext) => Promise<T>,
+  run: (pctx: P) => Promise<T>,
 ): Promise<T> {
   if (pctx.runDir) return run(pctx);
 
@@ -40,11 +40,11 @@ export async function withRunLifecycle<T extends LifecycleResult>(
     return baseRunAgent(agent, prompt, { ...opts, sessionPath });
   };
 
-  const innerPctx: PipelineContext = {
+  const innerPctx = {
     ...pctx,
     runDir: handle,
     runAgentFn: wrappedRunAgent,
-  };
+  } as P;
 
   try {
     const result = await run(innerPctx);

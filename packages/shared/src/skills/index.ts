@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import type { PipelineContext } from "../runtime/index.js";
+import type { PipelineSkillRuntime, PipelineSkillSelectionRuntime } from "../runtime/pipeline-context/index.js";
 import { analyseSkillSelection } from "./analysis.js";
 import { detectSkillSignals } from "./detectors/index.js";
 import { scanRepository } from "./inventory.js";
@@ -52,7 +52,7 @@ const DEFAULT_SCAN_COMMANDS: SkillSelectionInput["command"][] = [
 
 export async function buildSkillSelectionReport(
   cwd: string,
-  config: PipelineContext["skillsConfig"],
+  config: PipelineSkillRuntime["skillsConfig"],
   input: SkillSelectionInput,
 ): Promise<SkillSelectionReport> {
   const { landscape, analysed, selectedSkills } = await analyseSkillSelection(cwd, config, input);
@@ -73,7 +73,7 @@ export async function buildSkillSelectionReport(
 
 export async function buildSkillScanReport(
   cwd: string,
-  config: PipelineContext["skillsConfig"],
+  config: PipelineSkillRuntime["skillsConfig"],
   inputs: SkillSelectionInput[],
 ): Promise<SkillScanReport> {
   const landscape = await discoverSkillLandscape(cwd, config);
@@ -106,10 +106,10 @@ export async function buildSkillScanReport(
   };
 }
 
-export async function prepareSkillContext(
-  pctx: PipelineContext,
+export async function prepareSkillContext<T extends PipelineSkillSelectionRuntime>(
+  pctx: T,
   input: SkillSelectionInput,
-): Promise<{ pctx: PipelineContext; report: SkillSelectionReport }> {
+): Promise<{ pctx: T; report: SkillSelectionReport }> {
   const report = await buildSkillSelectionReport(pctx.cwd, pctx.skillsConfig, input);
   return {
     pctx: {

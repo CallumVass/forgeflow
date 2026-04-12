@@ -1,4 +1,9 @@
-import { emptyStage, type PipelineContext, type StageResult } from "@callumvass/forgeflow-shared/pipeline";
+import {
+  emptyStage,
+  type PipelineAgentRuntime,
+  type PipelineSessionRuntime,
+  type StageResult,
+} from "@callumvass/forgeflow-shared/pipeline";
 
 /**
  * A single sub-agent invocation in a chain. Chains are linear lists of
@@ -109,7 +114,11 @@ interface ChainResult {
  * and calling `runChain` again with `initialForkFrom: result.lastSessionPath`.
  * Keeping the chain-builder pure makes testing and reasoning simpler.
  */
-export async function runChain(phases: Phase[], pctx: PipelineContext, options: RunChainOptions): Promise<ChainResult> {
+export async function runChain(
+  phases: Phase[],
+  pctx: PipelineAgentRuntime & PipelineSessionRuntime,
+  options: RunChainOptions,
+): Promise<ChainResult> {
   const { pipeline, stages, customPrompt, plan, initialForkFrom } = options;
 
   let forkFrom: string | undefined = initialForkFrom;

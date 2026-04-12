@@ -1,5 +1,6 @@
 import {
   type PipelineContext,
+  type PipelineExecRuntime,
   pipelineResult,
   type StageResult,
   withRunLifecycle,
@@ -37,7 +38,7 @@ async function prepareReviewSkillContext(changedFiles: string[], strict: boolean
 
 type ReviewTarget = Awaited<ReturnType<typeof resolveDiffTarget>>;
 
-async function resolvePrBaseChangedFiles(target: ReviewTarget, pctx: PipelineContext): Promise<string> {
+async function resolvePrBaseChangedFiles(target: ReviewTarget, pctx: PipelineExecRuntime): Promise<string> {
   if (!target.prNumber) return "";
 
   const baseRef = (
@@ -52,7 +53,7 @@ async function resolvePrBaseChangedFiles(target: ReviewTarget, pctx: PipelineCon
   return pctx.execSafeFn(`git diff --name-only ${quotedRemoteBaseRef}...HEAD`, pctx.cwd);
 }
 
-async function resolveChangedFilesForTarget(target: ReviewTarget, pctx: PipelineContext): Promise<string[]> {
+async function resolveChangedFilesForTarget(target: ReviewTarget, pctx: PipelineExecRuntime): Promise<string[]> {
   for (const cmd of target.setupCmds) {
     await pctx.execFn(cmd, pctx.cwd);
   }
@@ -74,7 +75,7 @@ export async function runReview(target: string, pctx: PipelineContext, opts: Run
   return withRunLifecycle(pctx, reviewRunId(target, strict), (innerPctx) => runReviewInner(target, innerPctx, strict));
 }
 
-export async function resolveReviewChangedFiles(target: string, pctx: PipelineContext): Promise<string[]> {
+export async function resolveReviewChangedFiles(target: string, pctx: PipelineExecRuntime): Promise<string[]> {
   const reviewTarget = await resolveDiffTarget(pctx.cwd, target, pctx.execSafeFn);
   return resolveChangedFilesForTarget(reviewTarget, pctx);
 }
