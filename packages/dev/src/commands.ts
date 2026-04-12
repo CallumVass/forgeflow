@@ -131,11 +131,11 @@ const baseCommands: CommandDefinition[] = [
   {
     name: "skill-scan",
     description:
-      "Scan common skill locations, inspect repo signals, and explain which skills forgeflow would recommend. Usage: /skill-scan [--command <implement|review|architecture|...>] [--path <path>] [--issue <text>] [--target <review-target>] [--json]",
+      "Scan common skill locations and show which skills forgeflow would use at each stage. Usage: /skill-scan [--command <implement|review|architecture|...>] [--path <path>] [--issue <text>] [--target <review-target>] [--verbose] [--json]",
     pipeline: "skill-scan",
     parseArgs: (args) => {
       const { flags } = extractFlags(args, {
-        boolean: ["--json"],
+        boolean: ["--json", "--verbose"],
         value: ["--command", "--path", "--issue", "--target", "--branch"],
       });
       return {
@@ -146,6 +146,7 @@ const baseCommands: CommandDefinition[] = [
           ...(flags["--branch"] ? { target: `--branch ${flags["--branch"] as string}` } : {}),
           ...(flags["--target"] ? { target: flags["--target"] as string } : {}),
           ...(flags["--json"] ? { json: true } : {}),
+          ...(flags["--verbose"] ? { verbose: true } : {}),
         },
         suffix: "Do not interpret the command, path, issue text, or target — pass them as-is.",
       };
@@ -154,11 +155,11 @@ const baseCommands: CommandDefinition[] = [
   {
     name: "skill-recommend",
     description:
-      "Recommend missing skills from skills.sh for the current repo and stage. Usage: /skill-recommend [--for <implement|review|architecture|...>] [--path <path>] [--issue <text>] [--target <review-target>] [--limit <n>] [--json]",
+      "Recommend missing skills from skills.sh for the current repo and stage. Usage: /skill-recommend [--for <implement|review|architecture|...>] [--path <path>] [--issue <text>] [--target <review-target>] [--limit <n>] [--verbose] [--json]",
     pipeline: "skill-recommend",
     parseArgs: (args) => {
       const { flags } = extractFlags(args, {
-        boolean: ["--json"],
+        boolean: ["--json", "--verbose"],
         value: ["--for", "--command", "--path", "--issue", "--target", "--branch", "--limit"],
       });
       const command = (flags["--for"] as string | undefined) ?? (flags["--command"] as string | undefined);
@@ -173,6 +174,7 @@ const baseCommands: CommandDefinition[] = [
           ...(flags["--target"] ? { target: flags["--target"] as string } : {}),
           ...(limit !== undefined ? { limit } : {}),
           ...(flags["--json"] ? { json: true } : {}),
+          ...(flags["--verbose"] ? { verbose: true } : {}),
         },
         suffix: "Do not interpret the command, path, issue text, target, or limit — pass them as-is.",
       };

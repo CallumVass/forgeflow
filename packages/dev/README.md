@@ -167,16 +167,18 @@ Selection is repo-aware. Forgeflow looks at things like:
 - `mix.exs`, `pyproject.toml`, `go.mod`, `Cargo.toml`
 - changed files for review runs
 
-Use `/skill-scan` to inspect what was discovered and why forgeflow would pick particular installed skills for a command. After the deterministic scan, forgeflow now runs a strict `skill-judge` pass that rejects weak matches driven only by broad stack overlap.
+Use `/skill-scan` to inspect what was discovered and which skills forgeflow would use at each stage. The default output is now concise and human-readable; add `--verbose` when you want scanned roots, signals, collisions, and other diagnostics. After the deterministic scan, forgeflow runs a strict `skill-judge` pass that rejects weak matches driven only by broad stack overlap.
 
-Use `/skill-recommend` to look beyond the repo and query [skills.sh](https://skills.sh/) for missing skills worth adding. Forgeflow generates repo-aware search queries from the detected stack, dedupes the results locally, enriches shortlisted external candidates with descriptions from `skills add --list`, ranks them against the same repo signals it uses for auto-loading, then lets the same strict `skill-judge` distil the final list down to genuinely relevant installs. Recommendations include install commands so you can add the skill and let future forgeflow runs auto-load it. The human-readable report now puts top installs first and, if a discovered local skill is malformed, diagnostics include the exact `SKILL.md` path so you can fix the offending file directly.
+Use `/skill-recommend` to look beyond the repo and query [skills.sh](https://skills.sh/) for missing skills worth adding. The default output is a concise shortlist for the current stage; add `--verbose` when you want queries, roots, signals, and diagnostics. Forgeflow generates repo-aware search queries from the detected stack, dedupes the results locally, enriches shortlisted external candidates with descriptions from `skills add --list`, ranks them against the same repo signals it uses for auto-loading, then lets the same strict `skill-judge` distil the final list down to genuinely relevant installs. Recommendations include install commands so you can add the skill and let future forgeflow runs auto-load it. The human-readable report now puts top installs first and, if a discovered local skill is malformed, diagnostics include the exact `SKILL.md` path so you can fix the offending file directly.
 
 Examples:
 
 ```text
+/skill-scan
+/skill-scan --verbose
 /skill-recommend
 /skill-recommend --for review --branch feat/ui
-/skill-recommend --for architecture --path apps/web --limit 5
+/skill-recommend --for architecture --path apps/web --limit 5 --verbose
 ```
 
 ## Configuration

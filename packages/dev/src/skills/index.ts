@@ -11,6 +11,9 @@ import {
   createSkillsCliRecommendationProvider,
   defaultSkillScanInputs,
   prepareSkillContext,
+  renderCompactSkillRecommendationReport,
+  renderCompactSkillScanReport,
+  renderCompactSkillSelectionReport,
   renderSkillRecommendationReport,
   renderSkillScanReport,
   renderSkillSelectionReport,
@@ -36,6 +39,7 @@ interface RepoSkillOptions {
   issue?: string;
   target?: string;
   json?: boolean;
+  verbose?: boolean;
   limit?: number;
 }
 
@@ -99,13 +103,21 @@ export async function runSkillScan(
   if (command) {
     const analysis = finalReport.analyses[0];
     return pipelineResult(
-      analysis ? renderSkillSelectionReport(analysis) : "No skill analysis available.",
+      analysis
+        ? opts.verbose
+          ? renderSkillSelectionReport(analysis)
+          : renderCompactSkillSelectionReport(analysis)
+        : "No skill analysis available.",
       "skill-scan",
       judged.stages,
     );
   }
 
-  return pipelineResult(renderSkillScanReport(finalReport), "skill-scan", judged.stages);
+  return pipelineResult(
+    opts.verbose ? renderSkillScanReport(finalReport) : renderCompactSkillScanReport(finalReport),
+    "skill-scan",
+    judged.stages,
+  );
 }
 
 export async function runSkillRecommend(
@@ -133,5 +145,11 @@ export async function runSkillRecommend(
     return pipelineResult(JSON.stringify(judged.report, null, 2), "skill-recommend", judged.stages);
   }
 
-  return pipelineResult(renderSkillRecommendationReport(judged.report), "skill-recommend", judged.stages);
+  return pipelineResult(
+    opts.verbose
+      ? renderSkillRecommendationReport(judged.report)
+      : renderCompactSkillRecommendationReport(judged.report),
+    "skill-recommend",
+    judged.stages,
+  );
 }

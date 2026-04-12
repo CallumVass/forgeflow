@@ -24,8 +24,10 @@ vi.mock("@callumvass/forgeflow-shared/skills", async (importOriginal) => {
   return {
     ...actual,
     buildSkillScanReport: vi.fn(async () => ({ analyses: [{ command: "review" }] })),
-    renderSkillScanReport: vi.fn(() => "rendered skill scan report"),
-    renderSkillSelectionReport: vi.fn(() => "rendered skill selection report"),
+    renderCompactSkillScanReport: vi.fn(() => "rendered compact skill scan report"),
+    renderCompactSkillSelectionReport: vi.fn(() => "rendered compact skill selection report"),
+    renderSkillScanReport: vi.fn(() => "rendered verbose skill scan report"),
+    renderSkillSelectionReport: vi.fn(() => "rendered verbose skill selection report"),
     createSkillsCliRecommendationProvider: vi.fn(() => provider),
     buildSkillRecommendationReport: vi.fn(async () => ({
       command: "review",
@@ -35,7 +37,8 @@ vi.mock("@callumvass/forgeflow-shared/skills", async (importOriginal) => {
       searchQueries: [{ query: "vitest", weight: 10, reasons: [] }],
       skippedInstalledSkillNames: ["tailwind"],
     })),
-    renderSkillRecommendationReport: vi.fn(() => "rendered recommendation report"),
+    renderCompactSkillRecommendationReport: vi.fn(() => "rendered compact recommendation report"),
+    renderSkillRecommendationReport: vi.fn(() => "rendered verbose recommendation report"),
   };
 });
 
@@ -43,7 +46,12 @@ import {
   buildSkillRecommendationReport,
   buildSkillScanReport,
   createSkillsCliRecommendationProvider,
+  renderCompactSkillRecommendationReport,
+  renderCompactSkillScanReport,
+  renderCompactSkillSelectionReport,
   renderSkillRecommendationReport,
+  renderSkillScanReport,
+  renderSkillSelectionReport,
 } from "@callumvass/forgeflow-shared/skills";
 import { resolveReviewChangedFiles } from "../pipelines/review/index.js";
 import { runSkillRecommend, runSkillScan } from "./index.js";
@@ -63,7 +71,12 @@ describe("repo skill pipelines", () => {
     vi.mocked(buildSkillScanReport).mockClear();
     vi.mocked(buildSkillRecommendationReport).mockClear();
     vi.mocked(createSkillsCliRecommendationProvider).mockClear();
+    vi.mocked(renderCompactSkillSelectionReport).mockClear();
+    vi.mocked(renderCompactSkillScanReport).mockClear();
+    vi.mocked(renderCompactSkillRecommendationReport).mockClear();
     vi.mocked(renderSkillRecommendationReport).mockClear();
+    vi.mocked(renderSkillSelectionReport).mockClear();
+    vi.mocked(renderSkillScanReport).mockClear();
     vi.mocked(judgeSkillScanReport).mockClear();
     vi.mocked(judgeSkillRecommendationReport).mockClear();
   });
@@ -72,6 +85,7 @@ describe("repo skill pipelines", () => {
     const pctx = skillRuntime();
 
     const result = await runSkillScan({ command: "review", target: "5" }, pctx);
+    const verboseResult = await runSkillScan({ command: "review", target: "5", verbose: true }, pctx);
 
     expect(resolveReviewChangedFiles).toHaveBeenCalledWith("5", pctx);
     expect(buildSkillScanReport).toHaveBeenCalledWith("/repo", pctx.skillsConfig, [
@@ -82,8 +96,11 @@ describe("repo skill pipelines", () => {
         focusPaths: [],
       },
     ]);
-    expect(judgeSkillScanReport).toHaveBeenCalled();
-    expect(result.content[0]?.text).toBe("rendered skill selection report");
+    expect(judgeSkillScanReport).toHaveBeenCalledTimes(2);
+    expect(renderCompactSkillSelectionReport).toHaveBeenCalled();
+    expect(renderSkillSelectionReport).toHaveBeenCalled();
+    expect(result.content[0]?.text).toBe("rendered compact skill selection report");
+    expect(verboseResult.content[0]?.text).toBe("rendered verbose skill selection report");
   });
 
   it("uses the review public entry point for review-target skill recommendations without changing the call-site contract", async () => {
@@ -94,6 +111,10 @@ describe("repo skill pipelines", () => {
       pctx,
     );
     const textResult = await runSkillRecommend({ command: "review", target: "5", issue: "tailwind", limit: 5 }, pctx);
+    const verboseTextResult = await runSkillRecommend(
+      { command: "review", target: "5", issue: "tailwind", limit: 5, verbose: true },
+      pctx,
+    );
 
     expect(resolveReviewChangedFiles).toHaveBeenCalledWith("5", pctx);
     expect(createSkillsCliRecommendationProvider).toHaveBeenCalledWith(pctx.execSafeFn, "/repo");
@@ -109,9 +130,11 @@ describe("repo skill pipelines", () => {
       provider,
       5,
     );
-    expect(judgeSkillRecommendationReport).toHaveBeenCalledTimes(2);
+    expect(judgeSkillRecommendationReport).toHaveBeenCalledTimes(3);
     expect(jsonResult.content[0]?.text).toContain('"provider": "skills.sh"');
-    expect(textResult.content[0]?.text).toBe("rendered recommendation report");
+    expect(textResult.content[0]?.text).toBe("rendered compact recommendation report");
+    expect(verboseTextResult.content[0]?.text).toBe("rendered verbose recommendation report");
+    expect(renderCompactSkillRecommendationReport).toHaveBeenCalled();
     expect(renderSkillRecommendationReport).toHaveBeenCalled();
   });
 });
