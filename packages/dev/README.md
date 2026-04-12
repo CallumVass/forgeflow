@@ -30,8 +30,11 @@ This works best after the PM package has already produced good greenfield issues
 | Command | What it does |
 |---|---|
 | `/implement` | Implement one issue using plan → TDD → refactor → review |
+| `/implement-last` | Repeat the last `/implement` target and flags |
 | `/implement-all` | Loop through all open `auto-generated` and `architecture` issues |
 | `/review` | Review a PR or branch: blocking defects plus advisory architecture and refactor notes |
+| `/review-last` | Repeat the last `/review` target and strictness |
+| `/review-current-pr` | Review the current PR without typing its number |
 | `/review-lite` | Review a PR or branch in strict mode: blocking defects only |
 | `/architecture` | Analyse the repo for structural friction and create RFC issues |
 | `/skill-scan` | Scan common skill locations and explain which installed skills forgeflow would recommend |
@@ -56,6 +59,19 @@ On greenfield projects, that usually means the issue already tells the agent thi
 - persistence approach if relevant
 
 The planner and implementor now treat those choices as binding rather than improvising a different stack.
+
+## Pi UX improvements
+
+The Pi extension now exposes a more guided workflow around the core dev pipelines.
+
+Highlights:
+- `/implement`, `/review`, and `/review-lite` open guided pickers when you run them without args
+- `/implement-last`, `/review-last`, and `/review-current-pr` cover the common repeat flows
+- live runs show richer status, footer, elapsed time, stage descriptions, and cost
+- `/stages` and `Ctrl+Shift+S` open a drill-down view of the latest pipeline
+- completed `/implement` and `/review` runs offer follow-up actions such as opening the PR, copying output into the editor, or queueing the next review command
+
+These UX helpers do not change `/implement-all` behaviour. It still runs autonomously once started.
 
 ## `/implement` in plain English
 
