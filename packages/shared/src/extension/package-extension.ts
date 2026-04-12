@@ -55,7 +55,9 @@ export function createForgeflowPackageExtension(config: PackageExtensionConfig):
     const extensionConfig = toExtensionConfig(config);
     registerForgeflowTool(pi, extensionConfig, buildSchema(extensionConfig));
     registerForgeflowCommands(pi, extensionConfig);
-    registerAtlassianCommands(pi, { toolName: config.toolName });
+    if (config.pipelines.some((pipeline) => pipeline.name === "atlassian-read")) {
+      registerAtlassianCommands(pi, { toolName: config.toolName });
+    }
     config.registerExtraCommands?.(pi);
     if (config.onSessionStart) {
       pi.on("session_start", async (_event, ctx) => {

@@ -21,7 +21,7 @@ function getSessionStartHandler(pi: ReturnType<typeof mockPi>) {
 }
 
 describe("createForgeflowPackageExtension", () => {
-  it("registers the tool, package commands, Atlassian commands, extra commands, and an optional session_start hook", async () => {
+  it("registers the tool, package commands, extra commands, and an optional session_start hook without Atlassian commands when no atlassian-read pipeline is exposed", async () => {
     const pi = mockPi();
     const registerExtraCommands = vi.fn((api: typeof pi) => {
       api.registerCommand("extra-cmd", {
@@ -55,15 +55,10 @@ describe("createForgeflowPackageExtension", () => {
 
     expect(pi.registerTool).toHaveBeenCalledTimes(1);
     expect(pi.registerCommand.mock.calls.map((call: unknown[]) => call[0])).toEqual(
-      expect.arrayContaining([
-        "alpha-cmd",
-        "stages",
-        "atlassian-login",
-        "atlassian-status",
-        "atlassian-logout",
-        "atlassian-read",
-        "extra-cmd",
-      ]),
+      expect.arrayContaining(["alpha-cmd", "stages", "extra-cmd"]),
+    );
+    expect(pi.registerCommand.mock.calls.map((call: unknown[]) => call[0])).not.toEqual(
+      expect.arrayContaining(["atlassian-login", "atlassian-status", "atlassian-logout", "atlassian-read"]),
     );
     expect(registerExtraCommands).toHaveBeenCalledWith(pi);
 
@@ -107,7 +102,7 @@ describe("createForgeflowPackageExtension", () => {
     );
   });
 
-  it("registers shared /stages and Atlassian commands once across two package extensions while both tools remain callable", async () => {
+  it("registers shared /stages once across two package extensions without wiring Atlassian commands for packages that do not expose atlassian-read", async () => {
     const piA = mockPi();
     const piB = mockPi();
     const runPm = vi.fn(async () => ({
@@ -141,7 +136,7 @@ describe("createForgeflowPackageExtension", () => {
 
     expect(piA.registerCommand.mock.calls.filter((call: unknown[]) => call[0] === "stages")).toHaveLength(1);
     expect(piB.registerCommand.mock.calls.filter((call: unknown[]) => call[0] === "stages")).toHaveLength(0);
-    expect(piA.registerCommand.mock.calls.filter((call: unknown[]) => call[0] === "atlassian-login")).toHaveLength(1);
+    expect(piA.registerCommand.mock.calls.filter((call: unknown[]) => call[0] === "atlassian-login")).toHaveLength(0);
     expect(piB.registerCommand.mock.calls.filter((call: unknown[]) => call[0] === "atlassian-login")).toHaveLength(0);
     expect(piA.registerTool).toHaveBeenCalledTimes(1);
     expect(piB.registerTool).toHaveBeenCalledTimes(1);
