@@ -1,27 +1,27 @@
-import { spawn } from "node:child_process";
 import * as fs from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
-import { SessionManager, withFileMutationQueue } from "@mariozechner/pi-coding-agent";
+import type { Message } from "@mariozechner/pi-ai";
+import {
+  AuthStorage,
+  createAgentSession,
+  createBashTool,
+  createEditTool,
+  createFindTool,
+  createGrepTool,
+  createLsTool,
+  createReadTool,
+  createWriteTool,
+  DefaultResourceLoader,
+  ModelRegistry,
+  SessionManager,
+  SettingsManager,
+} from "@mariozechner/pi-coding-agent";
 import { loadAgent } from "../agents/loader.js";
-import type { SelectedSkill } from "../skills/index.js";
-import { applyMessageToStage, extractFinalOutput, parseMessageLine } from "./message-parser.js";
 import { emitUpdate } from "./progress.js";
+import { appendStageHandoffMessage, type StageToolObservation } from "./session-notes.js";
 import { emptyStage, type RunAgentOpts, type StageResult } from "./stages.js";
 
-function getPiInvocation(args: string[]): { command: string; args: string[] } {
-  const currentScript = process.argv[1];
-  if (currentScript && fs.existsSync(currentScript)) {
-    return { command: process.execPath, args: [currentScript, ...args] };
-  }
-  const execName = path.basename(process.execPath).toLowerCase();
-  if (!/^(node|bun)(\.exe)?$/.test(execName)) {
-    return { command: process.execPath, args };
-  }
-  return { command: "pi", args };
-}
-
-function buildSelectedSkillsPrompt(selectedSkills: SelectedSkill[] | undefined): string {
+function buildSelectedSkillsPrompt(selectedSkills: RunAgentOpts["selectedSkills"]): string {
   if (!selectedSkills || selectedSkills.length === 0) return "";
   const lines = [
     "## Preselected cross-agent skills",
@@ -37,26 +37,46 @@ function buildSelectedSkillsPrompt(selectedSkills: SelectedSkill[] | undefined):
     lines.push(`- ${skill.name}: ${skill.filePath}`);
     for (const reason of skill.reasons.slice(0, 2)) lines.push(`  - ${reason}`);
   }
-  return `${lines.join("\n")}\n\n`;
+  return lines.join("\n");
 }
 
-async function writePromptToTempFile(name: string, prompt: string): Promise<{ dir: string; filePath: string }> {
-  const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "forgeflow-"));
-  const filePath = path.join(tmpDir, `prompt-${name}.md`);
-  await withFileMutationQueue(filePath, async () => {
-    await fs.promises.writeFile(filePath, prompt, { encoding: "utf-8", mode: 0o600 });
+function buildTools(toolNames: string[], cwd: string) {
+  return toolNames.map((toolName) => {
+    switch (toolName) {
+      case "read":
+        return createReadTool(cwd);
+      case "write":
+        return createWriteTool(cwd);
+      case "edit":
+        return createEditTool(cwd);
+      case "bash":
+        return createBashTool(cwd);
+      case "grep":
+        return createGrepTool(cwd);
+      case "find":
+        return createFindTool(cwd);
+      case "ls":
+        return createLsTool(cwd);
+      default:
+        throw new Error(`Unsupported tool in agent frontmatter: ${toolName}`);
+    }
   });
-  return { dir: tmpDir, filePath };
+}
+
+function materialiseFreshSession(sessionPath: string, cwd: string): void {
+  const dir = path.dirname(sessionPath);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(sessionPath, "", { mode: 0o600 });
+  fs.chmodSync(sessionPath, 0o600);
+
+  const sessionManager = SessionManager.create(cwd, dir);
+  sessionManager.setSessionFile(sessionPath);
 }
 
 /**
  * Materialise a forked session at a caller-chosen path.
  *
- * Pi's CLI rejects `--fork` together with `--session`, but forgeflow needs
- * both semantics: inherit an earlier phase's history *and* keep deterministic
- * per-stage session files under `.forgeflow/run/<runId>/`. To bridge that, we
- * fork via the SDK into the target directory, then rename the generated file to
- * the requested `sessionPath` and invoke pi with `--session <sessionPath>`.
+ * Kept for deterministic per-stage files under `.forgeflow/run/<runId>/`.
  */
 function materialiseForkedSession(sessionPath: string, forkFrom: string, cwd: string): void {
   const dir = path.dirname(sessionPath);
@@ -68,7 +88,6 @@ function materialiseForkedSession(sessionPath: string, forkFrom: string, cwd: st
     throw new Error(`Failed to materialise forked session from ${forkFrom}`);
   }
 
-  // Replace the pre-created empty target file from the run-dir allocator.
   try {
     fs.rmSync(sessionPath, { force: true });
   } catch {}
@@ -76,10 +95,91 @@ function materialiseForkedSession(sessionPath: string, forkFrom: string, cwd: st
   fs.chmodSync(sessionPath, 0o600);
 }
 
-/** Run a forgeflow agent as a sub-process with streaming updates. */
+function createSessionManager(options: RunAgentOpts): SessionManager {
+  if (options.sessionPath && options.forkFrom) {
+    materialiseForkedSession(options.sessionPath, options.forkFrom, options.cwd);
+    return SessionManager.open(options.sessionPath, path.dirname(options.sessionPath));
+  }
+
+  if (options.sessionPath) {
+    materialiseFreshSession(options.sessionPath, options.cwd);
+    return SessionManager.open(options.sessionPath, path.dirname(options.sessionPath));
+  }
+
+  if (options.forkFrom) {
+    return SessionManager.forkFrom(options.forkFrom, options.cwd);
+  }
+
+  return SessionManager.inMemory(options.cwd);
+}
+
+function pushStageMessage(stage: StageResult, message: Message): void {
+  stage.messages.push(message);
+  if (message.role !== "assistant") return;
+
+  stage.usage.turns++;
+  const usage = message.usage;
+  if (usage) {
+    stage.usage.input += usage.input || 0;
+    stage.usage.output += usage.output || 0;
+    stage.usage.cacheRead += usage.cacheRead || 0;
+    stage.usage.cacheWrite += usage.cacheWrite || 0;
+    stage.usage.cost += usage.cost?.total || 0;
+  }
+  if (!stage.model && message.model) stage.model = message.model;
+}
+
+function extractFinalOutput(stage: StageResult): void {
+  for (let i = stage.messages.length - 1; i >= 0; i--) {
+    const message = stage.messages[i];
+    if (!message || message.role !== "assistant") continue;
+    for (const part of message.content) {
+      if (typeof part === "object" && "type" in part && part.type === "text" && "text" in part) {
+        stage.output = part.text;
+        return;
+      }
+    }
+  }
+  stage.output = "";
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
+
+type ResolvedModel = NonNullable<ReturnType<ModelRegistry["find"]>>;
+
+function resolveModelOverride(
+  modelPattern: string,
+  modelRegistry: ModelRegistry,
+): { model?: ResolvedModel; error?: string } {
+  const available = modelRegistry.getAvailable();
+  const trimmed = modelPattern.trim();
+  if (!trimmed) return { error: "Empty model override." };
+
+  const slashIdx = trimmed.indexOf("/");
+  if (slashIdx > 0 && slashIdx < trimmed.length - 1) {
+    const provider = trimmed.slice(0, slashIdx);
+    const modelId = trimmed.slice(slashIdx + 1);
+    const model = modelRegistry.find(provider, modelId);
+    return model ? { model } : { error: `Unable to resolve model override: ${modelPattern}` };
+  }
+
+  const exact = available.find((candidate) => candidate.id === trimmed || candidate.name === trimmed);
+  if (exact) return { model: exact };
+
+  const lowered = trimmed.toLowerCase();
+  const partials = available.filter(
+    (candidate) => candidate.id.toLowerCase().includes(lowered) || candidate.name.toLowerCase().includes(lowered),
+  );
+  if (partials.length === 1) return { model: partials[0] };
+  if (partials.length > 1) return { error: `Ambiguous model override: ${modelPattern}` };
+  return { error: `Unable to resolve model override: ${modelPattern}` };
+}
+
+/** Run a forgeflow agent in-process via the Pi SDK with streaming updates. */
 export async function runAgent(agentName: string, task: string, options: RunAgentOpts): Promise<StageResult> {
-  // Single source of truth: the agent's own .md frontmatter. Pipelines never
-  // supply a tool list — it is read here from disk via `loadAgent`.
   const agent = await loadAgent(options.agentsDir, agentName);
   const lookupName = options.stageName ?? agentName;
   const stage =
@@ -87,121 +187,116 @@ export async function runAgent(agentName: string, task: string, options: RunAgen
     options.stages.find((s) => s.name === lookupName);
 
   if (!stage) {
-    const s = emptyStage(agentName);
-    s.status = "failed";
-    s.output = "Stage not found in pipeline";
-    return s;
+    const missing = emptyStage(agentName);
+    missing.status = "failed";
+    missing.output = "Stage not found in pipeline";
+    return missing;
   }
 
   stage.status = "running";
   emitUpdate(options);
 
-  const args: string[] = ["--mode", "json", "-p", "--tools", agent.tools.join(",")];
-
-  // Session wiring. Four cases in order of precedence:
-  //   1. sessionPath + forkFrom   → materialise fork into <target>, then
-  //      invoke pi with --session <target>
-  //   2. sessionPath only         → --session <target>
-  //      (auto-allocated by `withRunLifecycle` for cold-start phases)
-  //   3. forkFrom only            → --fork <source>
-  //      (caller wants inherited context but not a deterministic file path)
-  //   4. neither                  → --no-session
-  //      (persistence disabled, or caller explicitly opted out)
-  if (options.sessionPath && options.forkFrom) {
-    materialiseForkedSession(options.sessionPath, options.forkFrom, options.cwd);
-    args.push("--session", options.sessionPath);
-  } else if (options.sessionPath) {
-    args.push("--session", options.sessionPath);
-  } else if (options.forkFrom) {
-    args.push("--fork", options.forkFrom);
-  } else {
-    args.push("--no-session");
-  }
-
-  // Per-agent overrides are keyed by the raw agent file stem (not `stageName`),
-  // so a pipeline that spawns the same agent under a disambiguating stage name
-  // (e.g. `fix-findings` → `implementor`) still picks up the override.
+  const settingsManager = SettingsManager.create(options.cwd);
+  const authStorage = AuthStorage.create();
+  const modelRegistry = ModelRegistry.create(authStorage);
   const override = options.agentOverrides?.[agentName];
-  if (override?.model) args.push("--model", override.model);
-  if (override?.thinkingLevel) args.push("--thinking", override.thinkingLevel);
-
-  let tmpDir: string | null = null;
-  let tmpFile: string | null = null;
 
   try {
-    const promptBody = `${buildSelectedSkillsPrompt(options.selectedSkills)}${agent.systemPrompt}`;
-    const tmp = await writePromptToTempFile(agentName, promptBody);
-    tmpDir = tmp.dir;
-    tmpFile = tmp.filePath;
-    for (const skill of options.selectedSkills ?? []) {
-      args.push("--skill", skill.filePath);
-    }
-    args.push("--append-system-prompt", tmpFile);
-    args.push(`Task: ${task}`);
+    const sessionManager = createSessionManager(options);
+    const loader = new DefaultResourceLoader({
+      cwd: options.cwd,
+      settingsManager,
+      additionalSkillPaths: (options.selectedSkills ?? []).map((skill) => skill.filePath),
+      appendSystemPromptOverride: (base) => {
+        const appended = [buildSelectedSkillsPrompt(options.selectedSkills), agent.systemPrompt]
+          .filter(Boolean)
+          .join("\n\n");
+        return appended ? [...base, appended] : base;
+      },
+    });
+    await loader.reload();
 
-    const exitCode = await new Promise<number>((resolve) => {
-      const invocation = getPiInvocation(args);
-      const proc = spawn(invocation.command, invocation.args, {
-        cwd: options.cwd,
-        shell: false,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-
-      let buffer = "";
-
-      const processLine = (line: string) => {
-        const event = parseMessageLine(line);
-        if (!event) return;
-        if (applyMessageToStage(event, stage)) {
-          emitUpdate(options);
-        }
-      };
-
-      proc.stdout.on("data", (data: Buffer) => {
-        buffer += data.toString();
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-        for (const line of lines) processLine(line);
-      });
-
-      proc.stderr.on("data", (data: Buffer) => {
-        stage.stderr += data.toString();
-      });
-
-      proc.on("close", (code) => {
-        if (buffer.trim()) processLine(buffer);
-        resolve(code ?? 0);
-      });
-
-      proc.on("error", () => resolve(1));
-
-      if (options.signal) {
-        const kill = () => {
-          proc.kill("SIGTERM");
-          setTimeout(() => {
-            if (!proc.killed) proc.kill("SIGKILL");
-          }, 5000);
-        };
-        if (options.signal.aborted) kill();
-        else options.signal.addEventListener("abort", kill, { once: true });
+    let model: ResolvedModel | undefined;
+    const thinkingLevel = override?.thinkingLevel;
+    if (override?.model) {
+      const resolved = resolveModelOverride(override.model, modelRegistry);
+      if (resolved.error || !resolved.model) {
+        throw new Error(resolved.error ?? `Unable to resolve model override: ${override.model}`);
       }
+      model = resolved.model;
+    }
+
+    const { session } = await createAgentSession({
+      cwd: options.cwd,
+      authStorage,
+      modelRegistry,
+      resourceLoader: loader,
+      sessionManager,
+      settingsManager,
+      tools: buildTools(agent.tools, options.cwd),
+      ...(model ? { model } : {}),
+      ...(thinkingLevel ? { thinkingLevel } : {}),
     });
 
-    stage.exitCode = exitCode;
-    stage.status = exitCode === 0 ? "done" : "failed";
+    const observedTools: StageToolObservation[] = [];
+    const unsubscribe = session.subscribe((event) => {
+      if (event.type === "tool_execution_start") {
+        observedTools.push({ toolName: event.toolName, input: toRecord(event.args) });
+        emitUpdate(options);
+        return;
+      }
 
+      if (event.type !== "message_end") return;
+      const message = event.message;
+      if (message.role !== "assistant" && message.role !== "toolResult") return;
+      pushStageMessage(stage, message as Message);
+      emitUpdate(options);
+    });
+
+    const abort = () => {
+      void session.abort();
+    };
+
+    if (options.signal?.aborted) abort();
+    else options.signal?.addEventListener("abort", abort, { once: true });
+
+    try {
+      await session.prompt(`Task: ${task}`);
+    } finally {
+      try {
+        unsubscribe();
+      } catch {}
+      try {
+        options.signal?.removeEventListener("abort", abort);
+      } catch {}
+      try {
+        session.dispose();
+      } catch {}
+    }
+
+    stage.exitCode = 0;
+    stage.status = "done";
     extractFinalOutput(stage);
+
+    const persistedSessionPath = sessionManager.getSessionFile();
+    if (persistedSessionPath) {
+      try {
+        appendStageHandoffMessage(persistedSessionPath, stage, observedTools);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        stage.stderr += `${stage.stderr ? "\n" : ""}Failed to append stage handoff: ${msg}`;
+      }
+    }
 
     emitUpdate(options);
     return stage;
-  } finally {
-    if (tmpFile)
-      try {
-        fs.unlinkSync(tmpFile);
-      } catch {}
-    if (tmpDir)
-      try {
-        fs.rmdirSync(tmpDir);
-      } catch {}
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    stage.exitCode = 1;
+    stage.status = "failed";
+    stage.stderr += `${stage.stderr ? "\n" : ""}${msg}`;
+    if (!stage.output) stage.output = msg;
+    emitUpdate(options);
+    return stage;
   }
 }

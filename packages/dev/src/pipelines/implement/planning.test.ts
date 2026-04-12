@@ -1,6 +1,7 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import type { ForgeflowContext } from "@callumvass/forgeflow-shared/pipeline";
 import {
-  mockExecFn,
   mockForgeflowContext,
   mockPipelineContext,
   mockRunAgent,
@@ -40,6 +41,7 @@ function mockCtx(
       editor: vi.fn(async () => opts.editorResult ?? undefined),
       select: vi.fn(async () => opts.selectResult ?? undefined),
       input: vi.fn(async () => inputAnswers.shift() ?? undefined),
+      notify: vi.fn(),
     },
   });
 }
@@ -227,30 +229,73 @@ describe("runPlanning", () => {
     expect(runAgentFn).toHaveBeenCalledTimes(2);
   });
 
-  it("persists edited plans with a supported pi CLI command", async () => {
+  it("persists edited plans as hidden session context without spawning a second pi process", async () => {
     const ctx = mockCtx({ editorResult: "## Plan\n- Edited step", selectResult: "Approve and implement" });
     const runAgentFn = sequencedRunAgent([
       { output: "## Plan\n- Original step" },
       { output: "No architectural recommendations" },
     ]);
-    const execFn = mockExecFn();
+    const runDir = fakeRunDir();
+
+    fs.mkdirSync(runDir.dir, { recursive: true });
+    for (const filePath of [
+      path.join(runDir.dir, "01-planner.jsonl"),
+      path.join(runDir.dir, "02-architecture-reviewer.jsonl"),
+    ]) {
+      fs.writeFileSync(
+        filePath,
+        `${[
+          {
+            type: "session",
+            version: 3,
+            id: filePath.includes("01-")
+              ? "11111111-1111-1111-1111-111111111111"
+              : "22222222-2222-2222-2222-222222222222",
+            timestamp: new Date().toISOString(),
+            cwd: "/tmp/test",
+          },
+          {
+            type: "message",
+            id: filePath.includes("01-") ? "aaaaaaaa" : "bbbbbbbb",
+            parentId: null,
+            timestamp: new Date().toISOString(),
+            message: {
+              role: "assistant",
+              content: [{ type: "text", text: "Existing stage output" }],
+              api: "anthropic-messages",
+              provider: "anthropic",
+              model: "claude-sonnet",
+              usage: {
+                input: 1,
+                output: 1,
+                cacheRead: 0,
+                cacheWrite: 0,
+                totalTokens: 2,
+                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+              },
+              stopReason: "stop",
+              timestamp: Date.now(),
+            },
+          },
+        ]
+          .map((entry) => JSON.stringify(entry))
+          .join("\n")}\n`,
+        { mode: 0o600 },
+      );
+    }
 
     await runPlanning("Issue context", undefined, {
-      ...mockPipelineContext({ ctx, runAgentFn, execFn, runDir: fakeRunDir() }),
+      ...mockPipelineContext({ ctx, runAgentFn, runDir }),
       interactive: true,
       stages: [],
     });
 
-    expect(execFn).toHaveBeenCalledTimes(1);
-    const call = execFn.mock.calls[0];
-    expect(call).toBeDefined();
-    const cmd = call?.[0] ?? "";
-    const cwd = call?.[1];
-    expect(cwd).toBe("/tmp/test");
-    expect(cmd).toContain('pi --session "/tmp/test-run/02-architecture-reviewer.jsonl" -p --mode json');
-    expect(cmd).not.toContain("--no-exit");
-    expect(cmd).toContain("Updated implementation plan (user edits applied):");
-    expect(cmd).toContain("Edited step");
+    expect(ctx.ui.notify).not.toHaveBeenCalled();
+
+    const contents = fs.readFileSync(path.join(runDir.dir, "02-architecture-reviewer.jsonl"), "utf-8");
+    expect(contents).toContain('"customType":"forgeflow-context-note"');
+    expect(contents).toContain("Updated implementation plan (user edits applied):");
+    expect(contents).toContain("Edited step");
   });
 });
 

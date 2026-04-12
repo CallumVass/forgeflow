@@ -1,4 +1,5 @@
 import {
+  appendHiddenContextMessage,
   emptyStage,
   type ForgeflowContext,
   type PipelineContext,
@@ -54,22 +55,17 @@ export async function resolveQuestions(plan: string, ctx: ForgeflowContext): Pro
 }
 
 /**
- * Append a user turn to an existing pi session file by invoking
- * `pi --session <path> -p "<message>"`. Used to persist an interactive
- * plan edit (and unresolved-question answers) as a real conversation
- * turn in the planner's session, so the implementor inherits the
- * edited plan via fork rather than via a prompt blob.
+ * Append hidden context to an existing session file via the Pi SDK.
+ * Used to persist interactive plan edits and unresolved-question
+ * answers so the implementor inherits them via fork without needing a
+ * second Pi subprocess.
  *
- * Fail-soft: any shell error is caught and reported via the UI — the
- * pipeline continues using the edited plan text even if the append
- * failed, so the user's work is never silently lost.
+ * Fail-soft: any write error is surfaced via the UI and the pipeline
+ * continues using the edited plan text in-memory.
  */
 async function appendUserTurnToSession(sessionPath: string, message: string, pctx: PipelineContext): Promise<void> {
-  // `-p "<msg>"` runs pi non-interactively; we ignore stdout because the
-  // side effect is the on-disk session file, not the return value.
-  const quoted = message.replace(/'/g, `'\\''`);
   try {
-    await pctx.execFn(`pi --session "${sessionPath}" -p --mode json '${quoted}'`, pctx.cwd);
+    appendHiddenContextMessage(sessionPath, message, { kind: "plan-update" });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     pctx.ctx.ui.notify(
@@ -142,7 +138,7 @@ export async function runPlanning(
     stages.push(emptyStage("architecture-reviewer"));
   }
   const archSessionPath = runDir?.allocSessionPath("architecture-reviewer");
-  const reviewerPrompt = `Review this implementation plan against the existing codebase. Focus ONLY on what the plan touches — this is not a full architecture audit.\n\nISSUE CONTEXT:\n${issueContext}\n\nIMPLEMENTATION PLAN:\n${plan}\n\nLook for:\n- Existing shared utilities or patterns in the codebase the plan should reuse instead of creating new ones\n- Modules the plan would push over 300 lines\n- Duplication the plan would create across packages\n- Type safety concerns (any escape hatches, missing interfaces)\n- Opportunities to use or extend existing shared abstractions\n\nPresent numbered recommendations in candidate format. If the plan already follows good patterns, say "No architectural recommendations" and stop.`;
+  const reviewerPrompt = `Review this implementation plan against the existing codebase. Focus ONLY on what the plan touches — this is not a full architecture audit.\n\nUse any inherited Forgeflow stage handoff before re-reading files. Re-read only when you need to verify a detail or inspect code the planner did not cover.\n\nISSUE CONTEXT:\n${issueContext}\n\nIMPLEMENTATION PLAN:\n${plan}\n\nLook for:\n- Existing shared utilities or patterns in the codebase the plan should reuse instead of creating new ones\n- Modules the plan would push over 300 lines\n- Duplication the plan would create across packages\n- Type safety concerns (any escape hatches, missing interfaces)\n- Opportunities to use or extend existing shared abstractions\n\nPresent numbered recommendations in candidate format. If the plan already follows good patterns, say "No architectural recommendations" and stop.`;
 
   const reviewResult = await runAgentFn("architecture-reviewer", reviewerPrompt, {
     agentsDir: opts.agentsDir,
