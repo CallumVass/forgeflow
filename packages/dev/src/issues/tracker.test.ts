@@ -3,11 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 setupIsolatedHomeFixture("resolve-issue");
 
-const ghIssueResponse = JSON.stringify({ number: 42, title: "GH issue", body: "GH body" });
-
 afterEach(() => {
   vi.resetModules();
   vi.restoreAllMocks();
+  vi.doUnmock("@callumvass/forgeflow-shared/repository");
+  vi.doUnmock("@callumvass/forgeflow-shared/atlassian/jira");
 });
 
 async function importTrackerWithJiraResult(result: unknown) {
@@ -17,15 +17,28 @@ async function importTrackerWithJiraResult(result: unknown) {
   return import("./index.js");
 }
 
+async function importTrackerWithGitHubIssue(result: { number: number; title: string; body: string } | null) {
+  const readGitHubIssue = vi.fn(async () => result);
+  vi.doMock("@callumvass/forgeflow-shared/repository", () => ({
+    readGitHubIssue,
+  }));
+  const tracker = await import("./index.js");
+  return { ...tracker, readGitHubIssue };
+}
+
 describe("resolveIssue", () => {
-  it("uses execSafeFn for `gh issue view` and returns a GitHub-shaped ResolvedIssue", async () => {
-    const { resolveIssue } = await import("./index.js");
-    const execSafeFn = mockExecFn({ "gh issue view": ghIssueResponse });
+  it("reads GitHub issues through the shared repository boundary and returns a GitHub-shaped ResolvedIssue", async () => {
+    const { resolveIssue, readGitHubIssue } = await importTrackerWithGitHubIssue({
+      number: 42,
+      title: "GH issue",
+      body: "GH body",
+    });
+    const execSafeFn = mockExecFn();
     const execFn = mockExecFn();
 
     const result = await resolveIssue("/tmp", "42", { execFn, execSafeFn });
 
-    expect(execSafeFn).toHaveBeenCalledWith(expect.stringContaining("gh issue view 42"), "/tmp");
+    expect(readGitHubIssue).toHaveBeenCalledWith(42, expect.objectContaining({ cwd: "/tmp", execSafeFn }));
     expect(result).toEqual({
       source: "github",
       key: "42",
@@ -103,7 +116,7 @@ describe("resolveIssue", () => {
     expect(execSafeFn).not.toHaveBeenCalled();
   });
 
-  it("returns an error string for malformed GitHub issue JSON", async () => {
+  it("returns an error string when the repository boundary cannot read the GitHub issue", async () => {
     const { resolveIssue } = await import("./index.js");
     const result = await resolveIssue("/tmp", "42", {
       execFn: mockExecFn(),
@@ -111,7 +124,7 @@ describe("resolveIssue", () => {
     });
 
     expect(typeof result).toBe("string");
-    expect(result).toContain("Could not parse issue #42");
+    expect(result).toContain("Could not fetch issue #42");
   });
 
   it("returns an error string when the current branch is unrecognised", async () => {

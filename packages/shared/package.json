@@ -14,7 +14,8 @@
     "./testing": "./dist/testing/index.js",
     "./extension": "./dist/extension/index.js",
     "./arg-parsing": "./dist/arg-parsing.js",
-    "./skills": "./dist/skills/index.js"
+    "./skills": "./dist/skills/index.js",
+    "./repository": "./dist/repository/index.js"
   },
   "typesVersions": {
     "*": {
@@ -27,7 +28,8 @@
       "testing": ["dist/testing/index.d.ts"],
       "extension": ["dist/extension/index.d.ts"],
       "arg-parsing": ["dist/arg-parsing.d.ts"],
-      "skills": ["dist/skills/index.d.ts"]
+      "skills": ["dist/skills/index.d.ts"],
+      "repository": ["dist/repository/index.d.ts"]
     }
   },
   "scripts": {
