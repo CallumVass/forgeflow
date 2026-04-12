@@ -70,4 +70,59 @@ describe("buildSkillRecommendationReport", () => {
     expect(report.skippedInstalledSkillNames).toEqual(["tailwind"]);
     expect(report.searchQueries.map((query) => query.query)).toContain("react");
   });
+
+  it("diversifies recommendations so one library family does not dominate the list", async () => {
+    fs.writeFileSync(
+      path.join(fixture.cwdDir, "package.json"),
+      JSON.stringify({ dependencies: { react: "19.0.0", vitest: "3.0.0" } }),
+      "utf-8",
+    );
+
+    const provider: SkillRecommendationProvider = {
+      name: "skills.sh",
+      search: vi.fn(async () => ({
+        provider: "skills.sh",
+        diagnostics: [],
+        candidates: [
+          {
+            id: "community/skills@vitest-mocking",
+            slug: "vitest-mocking",
+            url: "https://skills.sh/community/skills/vitest-mocking",
+            installs: 5000,
+            installsLabel: "5K installs",
+            matchedQueries: ["vitest"],
+          },
+          {
+            id: "community/skills@vitest-config",
+            slug: "vitest-config",
+            url: "https://skills.sh/community/skills/vitest-config",
+            installs: 4000,
+            installsLabel: "4K installs",
+            matchedQueries: ["vitest"],
+          },
+          {
+            id: "vercel-labs/agent-skills@vercel-react-best-practices",
+            slug: "vercel-react-best-practices",
+            url: "https://skills.sh/vercel-labs/agent-skills/vercel-react-best-practices",
+            installs: 229800,
+            installsLabel: "229.8K installs",
+            matchedQueries: ["react"],
+          },
+        ],
+      })),
+    };
+
+    const report = await buildSkillRecommendationReport(
+      fixture.cwdDir,
+      DEFAULT_SKILLS,
+      { command: "implement" },
+      provider,
+      5,
+    );
+
+    expect(report.recommendedSkills.map((skill) => skill.id)).toEqual([
+      "vercel-labs/agent-skills@vercel-react-best-practices",
+      "community/skills@vitest-mocking",
+    ]);
+  });
 });

@@ -8,10 +8,12 @@ import type {
   SkillRecommendationReport,
   SkillSelectionInput,
 } from "../types.js";
+import { diversifyRecommendedSkills } from "./diversity.js";
 import { scoreRecommendedExternalSkill } from "./ranking.js";
 import { buildSkillSearchQueries } from "./search-queries.js";
 
 const DEFAULT_RECOMMENDATION_LIMIT = 8;
+const DEFAULT_RECOMMENDATION_FAMILY_LIMIT = 1;
 
 function candidateKey(value: string): string {
   return normaliseText(value).replace(/\s+/g, "");
@@ -46,7 +48,7 @@ export async function buildSkillRecommendationReport(
   }
 
   const queryWeights = new Map(searchQueries.map((query) => [query.query, query.weight]));
-  const recommendedSkills = sortRecommendedSkills(
+  const rankedRecommendations = sortRecommendedSkills(
     providerResult.candidates
       .map((candidate) =>
         scoreRecommendedExternalSkill({
@@ -63,7 +65,15 @@ export async function buildSkillRecommendationReport(
         if (installed) skippedInstalled.add(candidate.slug);
         return !installed;
       }),
-  ).slice(0, Math.max(0, maxRecommended));
+  );
+
+  const recommendedSkills = diversifyRecommendedSkills(
+    rankedRecommendations,
+    analysed.signals,
+    queryWeights,
+    maxRecommended,
+    DEFAULT_RECOMMENDATION_FAMILY_LIMIT,
+  );
 
   return {
     command: input.command,
