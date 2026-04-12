@@ -100,7 +100,9 @@ describe("repo skill pipelines", () => {
     expect(renderCompactSkillSelectionReport).toHaveBeenCalled();
     expect(renderSkillSelectionReport).toHaveBeenCalled();
     expect(result.content[0]?.text).toBe("rendered compact skill selection report");
+    expect(result.details.stages).toEqual([]);
     expect(verboseResult.content[0]?.text).toBe("rendered verbose skill selection report");
+    expect(verboseResult.details.stages).toEqual([]);
   });
 
   it("uses the review public entry point for review-target skill recommendations without changing the call-site contract", async () => {
@@ -132,8 +134,11 @@ describe("repo skill pipelines", () => {
     );
     expect(judgeSkillRecommendationReport).toHaveBeenCalledTimes(3);
     expect(jsonResult.content[0]?.text).toContain('"provider": "skills.sh"');
+    expect(jsonResult.details.stages).toEqual([]);
     expect(textResult.content[0]?.text).toBe("rendered compact recommendation report");
+    expect(textResult.details.stages).toEqual([]);
     expect(verboseTextResult.content[0]?.text).toBe("rendered verbose recommendation report");
+    expect(verboseTextResult.details.stages).toEqual([]);
     expect(renderCompactSkillRecommendationReport).toHaveBeenCalled();
     expect(renderSkillRecommendationReport).toHaveBeenCalled();
   });
