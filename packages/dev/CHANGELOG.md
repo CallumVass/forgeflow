@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.29.1...forgeflow-dev-v0.30.0) (2026-04-12)
+
+
+### Features
+
+* move stage execution to pi sdk with explicit handoffs ([#223](https://github.com/CallumVass/forgeflow/issues/223)) ([3c1b2d0](https://github.com/CallumVass/forgeflow/commit/3c1b2d004c34fb5684f1e0d43c3716ac6cd40872))
+
 ## [0.29.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.29.0...forgeflow-dev-v0.29.1) (2026-04-12)
 
 
