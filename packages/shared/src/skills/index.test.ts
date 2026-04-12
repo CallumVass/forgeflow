@@ -251,4 +251,17 @@ describe("skills", () => {
     if (!firstAnalysis) throw new Error("expected first analysis");
     expect(renderSkillSelectionReport(firstAnalysis)).toContain("Recommended skills");
   });
+
+  it("includes malformed skill paths in diagnostics", async () => {
+    const globalClaude = path.join(fixture.homeDir, ".claude", "skills", "stitch");
+    fs.mkdirSync(globalClaude, { recursive: true });
+    fs.writeFileSync(path.join(globalClaude, "SKILL.md"), "# Stitch without frontmatter\n", "utf-8");
+
+    const report = await buildSkillSelectionReport(fixture.cwdDir, DEFAULT_SKILLS, {
+      command: "implement",
+      issueText: "Build the UI",
+    });
+
+    expect(report.diagnostics).toContain(`warning: description is required (${path.join(globalClaude, "SKILL.md")})`);
+  });
 });

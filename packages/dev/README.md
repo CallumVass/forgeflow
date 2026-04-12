@@ -152,7 +152,7 @@ Selection is repo-aware. Forgeflow looks at things like:
 
 Use `/skill-scan` to inspect what was discovered and why forgeflow would pick particular installed skills for a command.
 
-Use `/skill-recommend` to look beyond the repo and query [skills.sh](https://skills.sh/) for missing skills worth adding. Forgeflow generates repo-aware search queries from the detected stack, dedupes the results locally, and ranks them against the same repo signals it uses for auto-loading. Recommendations include install commands so you can add the skill and let future forgeflow runs auto-load it.
+Use `/skill-recommend` to look beyond the repo and query [skills.sh](https://skills.sh/) for missing skills worth adding. Forgeflow generates repo-aware search queries from the detected stack, dedupes the results locally, and ranks them against the same repo signals it uses for auto-loading. Recommendations include install commands so you can add the skill and let future forgeflow runs auto-load it. The human-readable report now puts top installs first and, if a discovered local skill is malformed, diagnostics include the exact `SKILL.md` path so you can fix the offending file directly.
 
 Examples:
 
