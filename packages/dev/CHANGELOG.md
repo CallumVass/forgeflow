@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.33.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.32.0...forgeflow-dev-v0.33.0) (2026-04-12)
+
+
+### Features
+
+* consolidate repository transport boundary ([#235](https://github.com/CallumVass/forgeflow/issues/235)) ([aded7d4](https://github.com/CallumVass/forgeflow/commit/aded7d49c0137e47700c770d0d037d6f92d83130))
+* extract shared package extension bootstrap ([#234](https://github.com/CallumVass/forgeflow/issues/234)) ([371baab](https://github.com/CallumVass/forgeflow/commit/371baab398a44400f71f35e2de90ec6592e7af26))
+* split pipeline runtime capabilities ([#232](https://github.com/CallumVass/forgeflow/issues/232)) ([24f7f13](https://github.com/CallumVass/forgeflow/commit/24f7f135d1f4cb0b6cc4bd709c407e860767c8e9))
+
 ## [0.32.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.31.0...forgeflow-dev-v0.32.0) (2026-04-12)
 
 
