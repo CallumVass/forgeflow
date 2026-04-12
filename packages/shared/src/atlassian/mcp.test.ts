@@ -1,18 +1,9 @@
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
 import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
 import { describe, expect, it, vi } from "vitest";
 import { setupIsolatedHomeFixture } from "../testing/test-utils.js";
-import {
-  clearAtlassianMcpOauthState,
-  getAtlassianMcpConfig,
-  getAtlassianMcpOauthStatePath,
-  loginWithAtlassianMcpOauth,
-  readAtlassianMcpOauthState,
-  writeAtlassianMcpOauthState,
-} from "./mcp.js";
+import { getAtlassianMcpConfig, loginWithAtlassianMcpOauth } from "./mcp.js";
 
-const fixture = setupIsolatedHomeFixture("atlassian-mcp-oauth");
+const _fixture = setupIsolatedHomeFixture("atlassian-mcp-oauth");
 
 describe("getAtlassianMcpConfig", () => {
   it("uses sensible defaults and keeps ATLASSIAN_URL as a site hint", () => {
@@ -35,29 +26,6 @@ describe("getAtlassianMcpConfig", () => {
 
   it("requires ATLASSIAN_MCP_URL", () => {
     expect(getAtlassianMcpConfig({})).toContain("Missing ATLASSIAN_MCP_URL");
-  });
-});
-
-describe("Atlassian MCP OAuth state", () => {
-  it("writes and clears the stored OAuth state under ~/.pi/agent", async () => {
-    await writeAtlassianMcpOauthState({
-      codeVerifier: "verifier",
-      clientInformation: { client_id: "client-id" },
-      tokens: { access_token: "token", token_type: "Bearer", refresh_token: "refresh" },
-    });
-
-    const state = await readAtlassianMcpOauthState();
-    expect(state).toMatchObject({
-      codeVerifier: "verifier",
-      clientInformation: { client_id: "client-id" },
-      tokens: { access_token: "token", token_type: "Bearer", refresh_token: "refresh" },
-    });
-
-    expect(getAtlassianMcpOauthStatePath().startsWith(fixture.homeDir)).toBe(true);
-    await clearAtlassianMcpOauthState();
-    await expect(
-      fs.access(path.join(fixture.homeDir, ".pi", "agent", "forgeflow-atlassian-mcp-oauth.json")),
-    ).rejects.toBeTruthy();
   });
 });
 

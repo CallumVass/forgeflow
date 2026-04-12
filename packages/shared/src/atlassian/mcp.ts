@@ -1,21 +1,13 @@
 import {
-  callMcpTool,
-  clearMcpOauthState,
-  getMcpAuthStatus,
-  getMcpOauthStatePath,
+  createMcpService,
   type LoginCallbacks,
-  loginWithMcpOauth,
   type McpAuthState,
+  type McpAuthStatus,
   type McpConfig,
   type McpLoginResult,
   type McpOauthDeps,
   type McpSession,
   type McpTool,
-  parseMcpJson,
-  readMcpOauthState,
-  resolveMcpTool,
-  withMcpSession,
-  writeMcpOauthState,
 } from "../mcp/index.js";
 
 export interface AtlassianMcpConfig extends McpConfig {
@@ -32,6 +24,14 @@ export interface AtlassianMcpSession extends McpSession {}
 
 const DEFAULT_REDIRECT_URI = "http://127.0.0.1:33389/callback";
 const DEFAULT_CLIENT_NAME = "Forgeflow Atlassian MCP";
+const atlassianMcpService = createMcpService({
+  integration: "atlassian",
+  serviceLabel: "Atlassian MCP",
+  loginCommand: "atlassian-login",
+  loginClientName: "forgeflow-atlassian-login",
+  sessionClientName: "forgeflow-atlassian-mcp",
+  getConfig: () => getAtlassianMcpConfig(),
+});
 
 function normaliseOrigin(input: string): string {
   return new URL(input).origin;
@@ -97,80 +97,44 @@ export function getAtlassianMcpConfig(env: NodeJS.ProcessEnv = process.env): Atl
 }
 
 export function getAtlassianMcpOauthStatePath(): string {
-  return getMcpOauthStatePath("atlassian");
+  return atlassianMcpService.getOauthStatePath();
 }
 
 export async function readAtlassianMcpOauthState(): Promise<AtlassianMcpAuthState | null> {
-  return readMcpOauthState(getAtlassianMcpOauthStatePath());
+  return atlassianMcpService.readOauthState();
 }
 
 export async function writeAtlassianMcpOauthState(state: AtlassianMcpAuthState): Promise<void> {
-  await writeMcpOauthState(getAtlassianMcpOauthStatePath(), state);
+  await atlassianMcpService.writeOauthState(state);
 }
 
 export async function clearAtlassianMcpOauthState(): Promise<void> {
-  await clearMcpOauthState(getAtlassianMcpOauthStatePath());
+  await atlassianMcpService.clearOauthState();
 }
 
 export async function loginWithAtlassianMcpOauth(
   callbacks: LoginCallbacks = {},
   deps?: McpOauthDeps,
 ): Promise<AtlassianMcpLoginResult | string> {
-  const config = getAtlassianMcpConfig();
-  if (typeof config === "string") return config;
-
-  return loginWithMcpOauth(
-    config,
-    {
-      statePath: getAtlassianMcpOauthStatePath(),
-      serviceLabel: "Atlassian MCP",
-      loginClientName: "forgeflow-atlassian-login",
-    },
-    callbacks,
-    deps,
-  );
+  return atlassianMcpService.login(callbacks, deps);
 }
 
-export async function getAtlassianMcpAuthStatus(): Promise<
-  | {
-      configured: true;
-      authenticated: boolean;
-      serverUrl: string;
-      hasRefreshToken: boolean;
-      tokenType?: string;
-    }
-  | string
-> {
-  const config = getAtlassianMcpConfig();
-  if (typeof config === "string") return config;
-
-  return getMcpAuthStatus(config, getAtlassianMcpOauthStatePath());
+export async function getAtlassianMcpAuthStatus(): Promise<McpAuthStatus | string> {
+  return atlassianMcpService.getAuthStatus();
 }
 
 export async function withAtlassianMcpSession<T>(
   fn: (session: AtlassianMcpSession) => Promise<T>,
 ): Promise<T | string> {
-  const config = getAtlassianMcpConfig();
-  if (typeof config === "string") return config;
-
-  return withMcpSession(
-    config,
-    getAtlassianMcpOauthStatePath(),
-    {
-      serviceLabel: "Atlassian MCP",
-      loginCommand: "atlassian-login",
-      sessionClientName: "forgeflow-atlassian-mcp",
-    },
-    fn,
-  );
+  return atlassianMcpService.withSession((session) => fn(session as AtlassianMcpSession));
 }
 
 export async function callAtlassianMcpTool(session: AtlassianMcpSession, name: string, args: Record<string, unknown>) {
-  return callMcpTool(session, name, args, "Atlassian MCP");
+  return atlassianMcpService.callTool(session, name, args);
 }
 
 export function parseAtlassianMcpJson(result: unknown): unknown | string {
-  return parseMcpJson(result, "Atlassian MCP");
+  return atlassianMcpService.parseJson(result);
 }
 
 type AtlassianToolCapability = "jiraGetIssue" | "confluenceGetPage" | "jiraCreateIssue" | "accessibleResources";
@@ -226,7 +190,7 @@ export function resolveAtlassianMcpTool(
     },
   };
 
-  return resolveMcpTool(
+  return atlassianMcpService.resolveTool(
     session,
     exactAliases[capability],
     heuristics[capability].requiredTerms,
