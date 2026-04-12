@@ -1,16 +1,5 @@
-import {
-  clearMcpOauthState,
-  getMcpAuthStatus,
-  getMcpOauthStatePath,
-  type LoginCallbacks,
-  loginWithMcpOauth,
-  type McpAuthState,
-  type McpConfig,
-  type McpLoginResult,
-  type McpOauthDeps,
-  readMcpOauthState,
-  writeMcpOauthState,
-} from "../mcp/index.js";
+import type { LoginCallbacks, McpAuthState, McpConfig, McpLoginResult, McpOauthDeps } from "../mcp/index.js";
+import { datadogMcpService } from "./service.js";
 
 export interface DatadogMcpConfig extends McpConfig {}
 
@@ -71,38 +60,26 @@ export function getDatadogMcpConfig(env: NodeJS.ProcessEnv = process.env): Datad
 }
 
 export function getDatadogMcpOauthStatePath(): string {
-  return getMcpOauthStatePath("datadog");
+  return datadogMcpService.getOauthStatePath();
 }
 
 export async function readDatadogMcpOauthState(): Promise<DatadogMcpAuthState | null> {
-  return readMcpOauthState(getDatadogMcpOauthStatePath());
+  return datadogMcpService.readOauthState();
 }
 
 export async function writeDatadogMcpOauthState(state: DatadogMcpAuthState): Promise<void> {
-  await writeMcpOauthState(getDatadogMcpOauthStatePath(), state);
+  await datadogMcpService.writeOauthState(state);
 }
 
 export async function clearDatadogMcpOauthState(): Promise<void> {
-  await clearMcpOauthState(getDatadogMcpOauthStatePath());
+  await datadogMcpService.clearOauthState();
 }
 
 export async function loginWithDatadogMcpOauth(
   callbacks: LoginCallbacks = {},
   deps?: McpOauthDeps,
 ): Promise<DatadogMcpLoginResult | string> {
-  const config = getDatadogMcpConfig();
-  if (typeof config === "string") return config;
-
-  return loginWithMcpOauth(
-    config,
-    {
-      statePath: getDatadogMcpOauthStatePath(),
-      serviceLabel: "Datadog MCP",
-      loginClientName: "forgeflow-datadog-login",
-    },
-    callbacks,
-    deps,
-  );
+  return datadogMcpService.login(callbacks, deps);
 }
 
 export async function getDatadogMcpAuthStatus(): Promise<
@@ -115,8 +92,5 @@ export async function getDatadogMcpAuthStatus(): Promise<
     }
   | string
 > {
-  const config = getDatadogMcpConfig();
-  if (typeof config === "string") return config;
-
-  return getMcpAuthStatus(config, getDatadogMcpOauthStatePath());
+  return datadogMcpService.getAuthStatus();
 }

@@ -1,12 +1,5 @@
-import {
-  callMcpTool,
-  type McpSession,
-  type McpTool,
-  parseMcpJson,
-  resolveMcpTool,
-  withMcpSession,
-} from "../mcp/index.js";
-import { getDatadogMcpConfig, getDatadogMcpOauthStatePath } from "./oauth.js";
+import type { McpSession, McpTool } from "../mcp/index.js";
+import { datadogMcpService } from "./service.js";
 
 export interface DatadogMcpTool extends McpTool {}
 
@@ -15,27 +8,15 @@ export interface DatadogMcpSession extends McpSession {}
 type DatadogToolCapability = "metricsQuery" | "logsSearch" | "metricsCatalog" | "metricContext" | "spansSearch";
 
 export async function withDatadogMcpSession<T>(fn: (session: DatadogMcpSession) => Promise<T>): Promise<T | string> {
-  const config = getDatadogMcpConfig();
-  if (typeof config === "string") return config;
-
-  return withMcpSession(
-    config,
-    getDatadogMcpOauthStatePath(),
-    {
-      serviceLabel: "Datadog MCP",
-      loginCommand: "datadog-login",
-      sessionClientName: "forgeflow-datadog-mcp",
-    },
-    fn,
-  );
+  return datadogMcpService.withSession((session) => fn(session as DatadogMcpSession));
 }
 
 export async function callDatadogMcpTool(session: DatadogMcpSession, name: string, args: Record<string, unknown>) {
-  return callMcpTool(session, name, args, "Datadog MCP");
+  return datadogMcpService.callTool(session, name, args);
 }
 
 export function parseDatadogMcpJson(result: unknown): unknown | string {
-  return parseMcpJson(result, "Datadog MCP");
+  return datadogMcpService.parseJson(result);
 }
 
 export function resolveDatadogMcpTool(
@@ -67,7 +48,7 @@ export function resolveDatadogMcpTool(
   const requireOptionalMatch =
     capability === "metricsCatalog" || capability === "metricContext" || capability === "spansSearch";
 
-  return resolveMcpTool(
+  return datadogMcpService.resolveTool(
     session,
     exactAliases[capability],
     heuristics[capability].requiredTerms,
