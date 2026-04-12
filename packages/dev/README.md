@@ -230,6 +230,8 @@ Then run:
 /atlassian-status
 ```
 
+If the browser callback completes but you need to retry straight away, you can rerun `/atlassian-login` immediately without waiting for the local OAuth callback port to drain.
+
 ## Datadog MCP
 
 Forgeflow can route freeform runtime investigations through an OAuth-enabled Datadog MCP server.
@@ -253,6 +255,8 @@ Then run:
 /datadog "investigate why the billing lambda is slow in prod"
 /datadog "give me p50 p95 and p99 for the billing lambda over the last 24h"
 ```
+
+If the browser callback completes but you need to retry straight away, you can rerun `/datadog-login` immediately without waiting for the local OAuth callback port to drain.
 
 Forgeflow works best with a Datadog MCP server that exposes metric query, metric search/context, and log search tools. The `/datadog` pipeline now discovers likely metric names and tag keys before reporting `no data`, rather than assuming only AWS Lambda runtime metric shapes. It also understands Datadog MCP text responses that wrap results in `<JSON_DATA>` / `<YAML_DATA>` blocks.
 

@@ -22,10 +22,15 @@ export async function waitForOauthCallback(
       if (settled) return;
       settled = true;
       if (timeout) clearTimeout(timeout);
-      server.close(() => undefined);
-      if (err) reject(err);
-      else if (code) resolve(code);
-      else reject(new Error(`${serviceLabel} OAuth callback completed without an authorisation code.`));
+      server.close((closeErr) => {
+        if (closeErr) {
+          reject(closeErr);
+          return;
+        }
+        if (err) reject(err);
+        else if (code) resolve(code);
+        else reject(new Error(`${serviceLabel} OAuth callback completed without an authorisation code.`));
+      });
     };
     const server = createServer((req, res) => {
       if (!req.url) {
@@ -44,25 +49,32 @@ export async function waitForOauthCallback(
       const error = incoming.searchParams.get("error");
       if (error) {
         res.statusCode = 400;
-        res.end(`${serviceLabel} OAuth failed. You can close this tab.`);
-        settle(new Error(`${serviceLabel} OAuth failed: ${error}`));
+        res.setHeader("Connection", "close");
+        res.end(`${serviceLabel} OAuth failed. You can close this tab.`, () => {
+          settle(new Error(`${serviceLabel} OAuth failed: ${error}`));
+        });
         return;
       }
 
       const code = incoming.searchParams.get("code");
       if (!code) {
         res.statusCode = 400;
-        res.end(`${serviceLabel} OAuth callback did not include a code.`);
-        settle(new Error(`${serviceLabel} OAuth callback did not include a code.`));
+        res.setHeader("Connection", "close");
+        res.end(`${serviceLabel} OAuth callback did not include a code.`, () => {
+          settle(new Error(`${serviceLabel} OAuth callback did not include a code.`));
+        });
         return;
       }
 
       res.statusCode = 200;
       res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Connection", "close");
       res.end(
         `<html><body><h1>Forgeflow connected to ${serviceLabel}.</h1><p>You can close this tab and return to Pi.</p></body></html>`,
+        () => {
+          settle(undefined, code);
+        },
       );
-      settle(undefined, code);
     });
     timeout = setTimeout(
       () => {
