@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.35.1...forgeflow-dev-v0.36.0) (2026-04-12)
+
+
+### Features
+
+* **dev:** default skill recommendations to all stages ([#244](https://github.com/CallumVass/forgeflow/issues/244)) ([253989d](https://github.com/CallumVass/forgeflow/commit/253989d26c1190e126bafaa951fde746ea0bf2b1))
+
 ## [0.35.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.35.0...forgeflow-dev-v0.35.1) (2026-04-12)
 
 
