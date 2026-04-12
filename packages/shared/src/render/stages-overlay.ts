@@ -1,7 +1,13 @@
 import type { SessionEntry } from "@mariozechner/pi-coding-agent";
 import { Container, Key, matchesKey, type SelectItem, SelectList, Spacer, Text } from "@mariozechner/pi-tui";
-import type { ForgeflowContext, ForgeflowCustomComponent, ForgeflowTheme, ForgeflowTui } from "../context.js";
-import type { PipelineDetails, StageResult } from "../stages.js";
+import type {
+  ForgeflowContext,
+  ForgeflowCustomComponent,
+  ForgeflowTheme,
+  ForgeflowTui,
+  PipelineDetails,
+  StageResult,
+} from "../runtime/index.js";
 import { formatUsage } from "./display.js";
 import { appendStageDetail, stageIcon } from "./stage-renderer.js";
 

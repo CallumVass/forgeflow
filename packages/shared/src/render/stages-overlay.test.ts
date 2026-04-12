@@ -1,9 +1,9 @@
 import type { SessionEntry } from "@mariozechner/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ExtensionConfig } from "../extension/index.js";
+import { createForgeflowExtension } from "../extension/index.js";
 import { resetStagesOverlayRegistry } from "../extension/registry.js";
-import type { ExtensionConfig } from "../extension/types.js";
-import { createForgeflowExtension } from "../extension.js";
-import type { PipelineDetails, StageResult } from "../pipeline.js";
+import type { PipelineDetails, StageResult } from "../runtime/index.js";
 import {
   getRegisteredCommandHandler,
   getRegisteredShortcutHandler,
@@ -11,7 +11,7 @@ import {
   mockExtensionConfig,
   mockForgeflowContext,
   mockPi,
-} from "../test-utils.js";
+} from "../testing/index.js";
 import { findLatestPipelineDetails, openStagesOverlay } from "./stages-overlay.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────

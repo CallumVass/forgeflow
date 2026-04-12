@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getRegisteredShortcutHandler, mockExtensionConfig, mockForgeflowContext, mockPi } from "../test-utils.js";
+import { getRegisteredShortcutHandler, mockExtensionConfig, mockForgeflowContext, mockPi } from "../testing/index.js";
 import { registerForgeflowCommands } from "./commands.js";
 import { resetStagesOverlayRegistry } from "./registry.js";
 

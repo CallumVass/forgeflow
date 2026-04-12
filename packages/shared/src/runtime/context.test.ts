@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { exec, execSafe } from "../exec.js";
-import { mockForgeflowContext, setupIsolatedHomeFixture } from "../test-utils.js";
+import { exec, execSafe } from "../io/index.js";
+import { mockForgeflowContext, setupIsolatedHomeFixture } from "../testing/index.js";
 import type { PipelineContext } from "./context.js";
 import { toAgentOpts, toPipelineContext } from "./context.js";
 import { runAgent } from "./run-agent.js";

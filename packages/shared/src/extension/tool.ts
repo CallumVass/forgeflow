@@ -1,10 +1,9 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
-import type { ForgeflowContext } from "../pipeline.js";
-import { type OnUpdate, type PipelineDetails, pipelineResult } from "../pipeline.js";
-import { renderResult as sharedRenderResult } from "../render/stage-renderer.js";
-import { buildWidgetLines } from "../render/widget.js";
+import { buildWidgetLines, renderResult as sharedRenderResult } from "../render/index.js";
+import type { ForgeflowContext } from "../runtime/index.js";
+import { type OnUpdate, type PipelineDetails, pipelineResult } from "../runtime/index.js";
 import type { buildSchema } from "./schema.js";
 import type { ExtensionConfig } from "./types.js";
 

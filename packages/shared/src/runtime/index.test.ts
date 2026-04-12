@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import * as barrel from "./pipeline.js";
+import * as barrel from "./index.js";
 
-describe("pipeline barrel re-exports", () => {
-  it("exposes all 14 value exports", () => {
+describe("runtime public entry point", () => {
+  it("exposes the current runtime value exports", () => {
     const valueExports = [
       "SIGNALS",
       "signalPath",
@@ -22,5 +22,6 @@ describe("pipeline barrel re-exports", () => {
     for (const name of valueExports) {
       expect(barrel).toHaveProperty(name);
     }
+    expect(barrel).toHaveProperty("withRunLifecycle");
   });
 });

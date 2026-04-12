@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import type { ForgeflowContext } from "../pipeline.js";
-import { openStagesOverlay } from "../render/stages-overlay.js";
+import { openStagesOverlay } from "../render/index.js";
+import type { ForgeflowContext } from "../runtime/index.js";
 import { buildSendMessage } from "./message.js";
 import { getStagesOverlayRegistry } from "./registry.js";
 import type { ExtensionConfig } from "./types.js";

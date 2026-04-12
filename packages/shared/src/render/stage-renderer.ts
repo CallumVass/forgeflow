@@ -1,9 +1,7 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import { getMarkdownTheme, keyHint } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
-import type { ForgeflowTheme } from "../context.js";
-import { getFinalOutput } from "../message-parser.js";
-import type { PipelineDetails, StageResult } from "../stages.js";
+import { type ForgeflowTheme, getFinalOutput, type PipelineDetails, type StageResult } from "../runtime/index.js";
 import { formatToolCall, formatUsage, getDisplayItems } from "./display.js";
 
 /** Maximum preview lines shown per completed stage in the collapsed view. */

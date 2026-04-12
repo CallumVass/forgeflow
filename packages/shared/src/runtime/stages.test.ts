@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import { makeStage } from "../test-utils.js";
+import { makeStage } from "../testing/index.js";
 import { emptyStage, resolveAgentsDir, sumUsage } from "./stages.js";
 
 describe("emptyStage", () => {

@@ -1,11 +1,14 @@
 import {
+  type ConfluencePage,
+  fetchConfluencePageViaOauth as fetchConfluencePage,
+} from "@callumvass/forgeflow-shared/atlassian/confluence";
+import {
   createJiraIssueViaOauth,
   extractJiraKey,
   extractProjectKey,
   fetchJiraIssueFromUrl,
   getJiraCreationDefaults,
 } from "@callumvass/forgeflow-shared/atlassian/jira";
-import { type ConfluencePage, fetchConfluencePage } from "@callumvass/forgeflow-shared/confluence";
 import {
   emitUpdate,
   emptyStage,
@@ -45,7 +48,7 @@ async function runJiraIssuesInner(docUrls: string[], exampleUrl: string, pctx: P
 
   const docs: ConfluencePage[] = [];
   for (const url of docUrls) {
-    const result = await fetchConfluencePage(url, pctx.execSafeFn);
+    const result = await fetchConfluencePage(url);
     if (typeof result === "string") {
       return pipelineResult(`Failed to fetch doc: ${result}`, "create-jira-issues", [], true);
     }
@@ -73,7 +76,7 @@ async function runOauthJiraIssueCreation(docs: ConfluencePage[], exampleUrl: str
     projectKey = projectKey ?? extractProjectKey(exampleIssue.key);
     defaultIssueType = exampleIssue.issueType ?? defaultIssueType;
   } else if (exampleUrl) {
-    const result = await fetchConfluencePage(exampleUrl, pctx.execSafeFn);
+    const result = await fetchConfluencePage(exampleUrl);
     if (typeof result === "string") {
       return pipelineResult(`Failed to fetch example: ${result}`, "create-jira-issues", [], true);
     }
