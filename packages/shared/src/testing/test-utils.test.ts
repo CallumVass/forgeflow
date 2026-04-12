@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RunAgentOpts } from "../pipeline.js";
+import type { RunAgentOpts } from "../runtime/index.js";
 import { mockExecFn, mockPipelineContext, mockRunAgent } from "./test-utils.js";
 
 const stubOpts: RunAgentOpts = {

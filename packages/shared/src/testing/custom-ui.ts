@@ -1,5 +1,5 @@
 import { type Mock, vi } from "vitest";
-import type { ForgeflowCustomFactory, ForgeflowCustomOptions, ForgeflowUI } from "../pipeline.js";
+import type { ForgeflowCustomFactory, ForgeflowCustomOptions, ForgeflowUI } from "../runtime/index.js";
 
 export interface CustomCapture<T> {
   factory: ForgeflowCustomFactory<T>;

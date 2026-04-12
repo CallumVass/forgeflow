@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SKILLS } from "../config/forgeflow-config.js";
-import { mockPipelineContext, setupIsolatedHomeFixture } from "../test-utils.js";
+import { mockPipelineContext, setupIsolatedHomeFixture } from "../testing/index.js";
 import {
   buildSkillScanReport,
   buildSkillSelectionReport,

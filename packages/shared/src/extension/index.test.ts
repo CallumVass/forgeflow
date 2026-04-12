@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { mockExtensionConfig, mockPi } from "../test-utils.js";
+import { mockExtensionConfig, mockPi } from "../testing/index.js";
 import { createForgeflowExtension } from "./index.js";
 import { resetStagesOverlayRegistry } from "./registry.js";
 

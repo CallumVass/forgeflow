@@ -2,10 +2,10 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, type Mock, vi } from "vitest";
-import type { ExecFn } from "../exec.js";
-import type { ExtensionConfig } from "../extension/types.js";
-import type { ForgeflowContext, ForgeflowTheme, ForgeflowUI, PipelineContext } from "../pipeline.js";
-import { emptyStage, type PipelineDetails, type RunAgentFn, type StageResult } from "../pipeline.js";
+import type { ExtensionConfig } from "../extension/index.js";
+import type { ExecFn } from "../io/index.js";
+import type { ForgeflowContext, ForgeflowTheme, ForgeflowUI, PipelineContext } from "../runtime/index.js";
+import { emptyStage, type PipelineDetails, type RunAgentFn, type StageResult } from "../runtime/index.js";
 
 export type { CustomCapture } from "./custom-ui.js";
 export { firstCustomCapture, makeCustomUiMock } from "./custom-ui.js";

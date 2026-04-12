@@ -1,5 +1,5 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-import type { ForgeflowContext, ForgeflowTheme, OnUpdate, PipelineDetails } from "../pipeline.js";
+import type { ForgeflowContext, ForgeflowTheme, OnUpdate, PipelineDetails } from "../runtime/index.js";
 
 // ─── Public type definitions for forgeflow extensions ────────────────
 

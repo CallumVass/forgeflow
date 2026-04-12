@@ -1,8 +1,6 @@
 import type { Message } from "@mariozechner/pi-ai";
 
-export type DisplayItem =
-  | { type: "text"; text: string }
-  | { type: "toolCall"; name: string; args: Record<string, unknown> };
+type DisplayItem = { type: "text"; text: string } | { type: "toolCall"; name: string; args: Record<string, unknown> };
 
 export function getDisplayItems(messages: Message[]): DisplayItem[] {
   const items: DisplayItem[] = [];

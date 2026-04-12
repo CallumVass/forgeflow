@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { mockPipelineContext, mockRunAgent, setupIsolatedHomeFixture } from "../../test-utils.js";
+import { mockPipelineContext, mockRunAgent, setupIsolatedHomeFixture } from "../../testing/index.js";
 import { RUN_DIR_GITIGNORE_LINE, withRunLifecycle } from "./index.js";
 
 const fixture = setupIsolatedHomeFixture("run-dir-lifecycle-persisted");

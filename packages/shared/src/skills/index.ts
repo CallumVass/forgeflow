@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import type { PipelineContext } from "../pipeline.js";
+import type { PipelineContext } from "../runtime/index.js";
 import { detectSkillSignals } from "./detectors/index.js";
 import { scanRepository } from "./inventory.js";
 import { selectSkills } from "./matcher.js";

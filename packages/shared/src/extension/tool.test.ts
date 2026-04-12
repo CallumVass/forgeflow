@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { OnUpdate, PipelineDetails } from "../pipeline.js";
-import { makeStage, mockExtensionConfig, mockForgeflowContext, mockPi, mockTheme } from "../test-utils.js";
+import type { OnUpdate, PipelineDetails } from "../runtime/index.js";
+import { makeStage, mockExtensionConfig, mockForgeflowContext, mockPi, mockTheme } from "../testing/index.js";
 import { buildSchema } from "./schema.js";
 import { registerForgeflowTool } from "./tool.js";
 

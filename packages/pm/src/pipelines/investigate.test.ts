@@ -12,12 +12,13 @@ afterEach(() => {
 
 describe("runInvestigate", () => {
   it("prefetches extra Atlassian URLs mentioned in the investigation description", async () => {
-    vi.doMock("@callumvass/forgeflow-shared/confluence", () => ({
-      fetchConfluencePage: vi.fn(async (url: string) => {
-        if (url.includes("/pages/100/")) return { id: "100", title: "Investigation Template", body: "Template body" };
-        if (url.includes("/pages/200/")) return { id: "200", title: "Reference Page", body: "Reference body" };
-        return `Unexpected URL ${url}`;
-      }),
+    const fetchConfluencePageViaOauth = vi.fn(async (url: string) => {
+      if (url.includes("/pages/100/")) return { id: "100", title: "Investigation Template", body: "Template body" };
+      if (url.includes("/pages/200/")) return { id: "200", title: "Reference Page", body: "Reference body" };
+      return `Unexpected URL ${url}`;
+    });
+    vi.doMock("@callumvass/forgeflow-shared/atlassian/confluence", () => ({
+      fetchConfluencePageViaOauth,
     }));
     vi.doMock("@callumvass/forgeflow-shared/atlassian/jira", () => ({
       extractJiraKey: (input: string) => {
@@ -82,6 +83,9 @@ describe("runInvestigate", () => {
     );
 
     expect(result.isError).toBeUndefined();
+    expect(fetchConfluencePageViaOauth).toHaveBeenCalledWith(
+      "https://example.atlassian.net/wiki/spaces/X/pages/100/Template",
+    );
     expect(runAgentFn).toHaveBeenCalledWith("investigator", expect.any(String), expect.any(Object));
 
     const prompt = String(runAgentFn.mock.calls[0]?.[1] ?? "");

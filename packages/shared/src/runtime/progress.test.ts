@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { makeAssistantMessage, makeStage } from "../test-utils.js";
+import { makeAssistantMessage, makeStage } from "../testing/index.js";
 import { emitUpdate, getLastToolCall, pipelineResult } from "./progress.js";
 
 describe("pipelineResult", () => {

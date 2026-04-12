@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makeAssistantMessage, makeStage } from "../test-utils.js";
+import { makeAssistantMessage, makeStage } from "../testing/index.js";
 import { applyMessageToStage, extractFinalOutput, parseMessageLine } from "./message-parser.js";
 
 describe("parseMessageLine", () => {

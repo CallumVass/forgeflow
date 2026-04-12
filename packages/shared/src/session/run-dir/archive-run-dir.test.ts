@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SESSIONS } from "../../config/forgeflow-config.js";
-import { setupIsolatedHomeFixture } from "../../test-utils.js";
+import { setupIsolatedHomeFixture } from "../../testing/index.js";
 import { archiveRunDir, createRunDir } from "./index.js";
 
 const fixture = setupIsolatedHomeFixture("run-dir-archive");

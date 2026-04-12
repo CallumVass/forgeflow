@@ -1,6 +1,9 @@
+import {
+  type ConfluencePage,
+  fetchConfluencePageViaOauth as fetchConfluencePage,
+} from "@callumvass/forgeflow-shared/atlassian/confluence";
 import { fetchAtlassianContentFromUrl, formatAtlassianContent } from "@callumvass/forgeflow-shared/atlassian/content";
 import { extractJiraKey } from "@callumvass/forgeflow-shared/atlassian/jira";
-import { type ConfluencePage, fetchConfluencePage } from "@callumvass/forgeflow-shared/confluence";
 import {
   emptyStage,
   type PipelineContext,
@@ -86,7 +89,7 @@ async function runInvestigateInner(description: string, templateUrl: string, pct
 
   let templateSection = "";
   if (templateUrl) {
-    const result = await fetchConfluencePage(templateUrl, pctx.execSafeFn);
+    const result = await fetchConfluencePage(templateUrl);
     if (typeof result === "string") {
       return pipelineResult(result, "investigate", [], true);
     }

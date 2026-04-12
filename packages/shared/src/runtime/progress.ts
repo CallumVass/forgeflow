@@ -1,5 +1,5 @@
 import type { Message } from "@mariozechner/pi-ai";
-import { formatToolCall, getLastToolCalls } from "../render/display.js";
+import { formatToolCall, getLastToolCalls } from "../render/index.js";
 import type { OnUpdate, PipelineDetails, StageResult } from "./stages.js";
 
 // ─── Pipeline result builder ──────────────────────────────────────────

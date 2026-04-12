@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { PipelineDetails } from "../pipeline.js";
-import { makeStage, mockTheme } from "../test-utils.js";
+import type { PipelineDetails } from "../runtime/index.js";
+import { makeStage, mockTheme } from "../testing/index.js";
 import { previewLines, renderCollapsed, renderExpanded, stageIcon } from "./stage-renderer.js";
 
 describe("stageIcon", () => {

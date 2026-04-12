@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { setupIsolatedHomeFixture } from "../../test-utils.js";
+import { setupIsolatedHomeFixture } from "../../testing/index.js";
 import { ensureGitignore, gcArchive, RUN_DIR_GITIGNORE_LINE } from "./index.js";
 
 const fixture = setupIsolatedHomeFixture("run-dir-housekeeping");

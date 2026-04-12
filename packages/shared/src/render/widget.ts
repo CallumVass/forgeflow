@@ -1,5 +1,4 @@
-import type { ForgeflowTheme } from "../context.js";
-import type { StageResult } from "../stages.js";
+import type { ForgeflowTheme, StageResult } from "../runtime/index.js";
 import { formatToolCall, getLastToolCalls } from "./display.js";
 
 // ─── Live widget content builder ──────────────────────────────────────

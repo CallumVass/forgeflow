@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getRegisteredCommandHandler, mockPi } from "../test-utils.js";
+import { getRegisteredCommandHandler, mockPi } from "../testing/index.js";
 import { registerAtlassianCommands } from "./atlassian.js";
 import { resetAtlassianCommandRegistry } from "./registry.js";
 

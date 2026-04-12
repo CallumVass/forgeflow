@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makeAssistantMessage, makeStage, mockTheme } from "../test-utils.js";
+import { makeAssistantMessage, makeStage, mockTheme } from "../testing/index.js";
 import { buildWidgetLines } from "./widget.js";
 
 // ─── buildWidgetLines (validation group) ──────────────────────────────

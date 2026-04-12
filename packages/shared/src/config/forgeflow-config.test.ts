@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { setupIsolatedHomeFixture } from "../test-utils.js";
+import { setupIsolatedHomeFixture } from "../testing/index.js";
 import {
   DEFAULT_SESSIONS,
   DEFAULT_SKILLS,

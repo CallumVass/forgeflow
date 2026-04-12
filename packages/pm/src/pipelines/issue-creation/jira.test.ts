@@ -11,12 +11,13 @@ afterEach(() => {
 
 describe("runJiraIssues", () => {
   it("plans Jira issue drafts then publishes them via Atlassian MCP", async () => {
-    vi.doMock("@callumvass/forgeflow-shared/confluence", () => ({
-      fetchConfluencePage: vi.fn(async () => ({
-        id: "999",
-        title: "Product requirements",
-        body: "Users need dashboard filtering and saved views.",
-      })),
+    const fetchConfluencePageViaOauth = vi.fn(async () => ({
+      id: "999",
+      title: "Product requirements",
+      body: "Users need dashboard filtering and saved views.",
+    }));
+    vi.doMock("@callumvass/forgeflow-shared/atlassian/confluence", () => ({
+      fetchConfluencePageViaOauth,
     }));
 
     const createJiraIssueViaOauth = vi
@@ -61,7 +62,71 @@ describe("runJiraIssues", () => {
 
     expect(result.isError).toBeUndefined();
     expect(result.content[0]?.text).toContain("PROJ-101, PROJ-102");
+    expect(fetchConfluencePageViaOauth).toHaveBeenCalledWith(
+      "https://example.atlassian.net/wiki/spaces/PM/pages/999/Product-Requirements",
+    );
     expect(runAgentFn).toHaveBeenCalledWith("jira-issue-planner", expect.any(String), expect.any(Object));
     expect(createJiraIssueViaOauth).toHaveBeenCalledTimes(2);
+  });
+
+  it("fetches a Confluence example URL through the Atlassian boundary and includes it in the planner prompt", async () => {
+    const fetchConfluencePageViaOauth = vi.fn(async (url: string) => {
+      if (url.includes("/pages/999/")) {
+        return {
+          id: "999",
+          title: "Product requirements",
+          body: "Users need dashboard filtering and saved views.",
+        };
+      }
+      if (url.includes("/pages/123/")) {
+        return {
+          id: "123",
+          title: "Story template",
+          body: "## Acceptance Criteria\n- Example body",
+        };
+      }
+      throw new Error(`Unexpected URL ${url}`);
+    });
+    vi.doMock("@callumvass/forgeflow-shared/atlassian/confluence", () => ({
+      fetchConfluencePageViaOauth,
+    }));
+
+    const createJiraIssueViaOauth = vi
+      .fn()
+      .mockResolvedValueOnce({ id: "10001", key: "PROJ-101", url: "https://example.atlassian.net/browse/PROJ-101" });
+
+    vi.doMock("@callumvass/forgeflow-shared/atlassian/jira", () => ({
+      createJiraIssueViaOauth,
+      extractJiraKey: (input: string) => {
+        const match = input.match(/\b[A-Z][A-Z0-9]+-\d+\b/);
+        return match?.[0] ?? null;
+      },
+      extractProjectKey: (issueKey: string) => issueKey.split("-")[0] ?? issueKey,
+      fetchJiraIssueFromUrl: vi.fn(),
+      getJiraCreationDefaults: () => ({ projectKey: "PROJ", issueType: "Story" }),
+    }));
+
+    const { runJiraIssues } = await import("./jira.js");
+    const runAgentFn = mockRunAgent('```json\n[{"summary":"Add dashboard filters","description":"From example"}]\n```');
+    const pctx = mockPipelineContext({ cwd: fixture.cwdDir, runAgentFn });
+
+    const result = await runJiraIssues(
+      ["https://example.atlassian.net/wiki/spaces/PM/pages/999/Product-Requirements"],
+      "https://example.atlassian.net/wiki/spaces/PM/pages/123/Story-Template",
+      pctx,
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(fetchConfluencePageViaOauth).toHaveBeenNthCalledWith(
+      1,
+      "https://example.atlassian.net/wiki/spaces/PM/pages/999/Product-Requirements",
+    );
+    expect(fetchConfluencePageViaOauth).toHaveBeenNthCalledWith(
+      2,
+      "https://example.atlassian.net/wiki/spaces/PM/pages/123/Story-Template",
+    );
+    const prompt = String(runAgentFn.mock.calls[0]?.[1] ?? "");
+    expect(prompt).toContain("EXAMPLE TICKET (match this format):\nTitle: Story template");
+    expect(prompt).toContain("## Acceptance Criteria\n- Example body");
   });
 });
