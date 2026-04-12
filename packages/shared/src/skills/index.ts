@@ -5,6 +5,7 @@ import { detectSkillSignals } from "./detectors/index.js";
 import { scanRepository } from "./inventory.js";
 import { selectSkills } from "./matcher.js";
 import { discoverSkillLandscape } from "./roots.js";
+import { uniqueStrings } from "./text.js";
 import type { SkillScanReport, SkillSelectionInput, SkillSelectionReport } from "./types.js";
 
 export { DEFAULT_DETECTORS, detectSkillSignals } from "./detectors/index.js";
@@ -15,6 +16,7 @@ export {
   enrichSkillsCliCandidates,
   parseSkillsFindOutput,
   parseSkillsListOutput,
+  renderCompactSkillRecommendationReport,
   renderSkillRecommendationReport,
 } from "./recommendation/index.js";
 export type {
@@ -135,6 +137,42 @@ function formatSkillLine(
   return `- ${skill.name} — ${path.relative(repoRoot, skill.filePath) || skill.filePath}`;
 }
 
+function formatReasonSummary(reasons: string[], max = 2): string | undefined {
+  const uniqueReasons = uniqueStrings(reasons.map((reason) => reason.trim()).filter(Boolean));
+  if (uniqueReasons.length === 0) return undefined;
+  const visible = uniqueReasons.slice(0, Math.max(0, max));
+  const hidden = uniqueReasons.length - visible.length;
+  return hidden > 0 ? `${visible.join("; ")}; +${hidden} more` : visible.join("; ");
+}
+
+function renderCompactSelectedSkills(report: SkillSelectionReport): string[] {
+  if (report.selectedSkills.length === 0) {
+    return ["- No relevant skills for this stage."];
+  }
+
+  return report.selectedSkills.flatMap((skill) => {
+    const lines = [`- ${skill.name} — used during ${report.command}`];
+    const reasonSummary = formatReasonSummary(skill.reasons, 1);
+    if (reasonSummary) lines.push(`  why: ${reasonSummary}`);
+    lines.push(`  skill: ${path.relative(report.repoRoot, skill.filePath) || skill.filePath}`);
+    return lines;
+  });
+}
+
+export function renderCompactSkillSelectionReport(report: SkillSelectionReport): string {
+  const lines: string[] = [`Skill scan (${report.command})`, "", `Stage: ${report.command}`, "", "Relevant skills:"];
+
+  lines.push(...renderCompactSelectedSkills(report));
+
+  if (report.judgeDiagnostics && report.judgeDiagnostics.length > 0) {
+    lines.push("", "Judge diagnostics:");
+    for (const diagnostic of report.judgeDiagnostics) lines.push(`- ${diagnostic}`);
+  }
+
+  lines.push("", "Use --verbose for scanned roots, signals, collisions, and diagnostics.");
+  return lines.join("\n");
+}
+
 export function renderSkillSelectionReport(report: SkillSelectionReport): string {
   const lines: string[] = [
     `## Skill scan for ${report.command}`,
@@ -194,6 +232,33 @@ export function renderSkillSelectionReport(report: SkillSelectionReport): string
     for (const diagnostic of report.diagnostics) lines.push(`- ${diagnostic}`);
   }
 
+  return lines.join("\n");
+}
+
+export function renderCompactSkillScanReport(report: SkillScanReport): string {
+  const lines: string[] = [
+    "Skill scan summary",
+    "",
+    `Repo: ${report.repoRoot}`,
+    `Stages analysed: ${report.analyses.length}`,
+    "",
+    "Recommended by stage:",
+  ];
+
+  for (const analysis of report.analyses) {
+    lines.push(`- ${analysis.command}:`);
+    for (const line of renderCompactSelectedSkills(analysis)) {
+      lines.push(`  ${line}`);
+    }
+  }
+
+  const diagnostics = uniqueStrings(report.analyses.flatMap((analysis) => analysis.judgeDiagnostics ?? []));
+  if (diagnostics.length > 0) {
+    lines.push("", "Judge diagnostics:");
+    for (const diagnostic of diagnostics) lines.push(`- ${diagnostic}`);
+  }
+
+  lines.push("", "Use --verbose for scanned roots, signals, collisions, and diagnostics.");
   return lines.join("\n");
 }
 

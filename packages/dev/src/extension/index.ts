@@ -45,6 +45,10 @@ export default function createDevExtension(moduleUrl: string) {
         type: "boolean",
         description: "Emit machine-readable JSON from the skill-scan / skill-recommend pipelines",
       },
+      verbose: {
+        type: "boolean",
+        description: "Show verbose diagnostics for the skill-scan / skill-recommend pipelines",
+      },
       limit: { type: "number", description: "Maximum remote skills to return for the skill-recommend pipeline" },
     },
     pipelines: [
@@ -80,6 +84,7 @@ export default function createDevExtension(moduleUrl: string) {
               issue: params.issue as string | undefined,
               target: params.target as string | undefined,
               json: (params.json as boolean) ?? false,
+              verbose: (params.verbose as boolean) ?? false,
             },
             pctx,
           ),
@@ -94,6 +99,7 @@ export default function createDevExtension(moduleUrl: string) {
               issue: params.issue as string | undefined,
               target: params.target as string | undefined,
               json: (params.json as boolean) ?? false,
+              verbose: (params.verbose as boolean) ?? false,
               limit: typeof params.limit === "number" ? params.limit : undefined,
             },
             pctx,
@@ -119,6 +125,7 @@ export default function createDevExtension(moduleUrl: string) {
       if (args.command) text += theme.fg("dim", ` --command ${args.command}`);
       if (args.path) text += theme.fg("dim", ` --path ${args.path}`);
       if (args.json) text += theme.fg("dim", " --json");
+      if (args.verbose) text += theme.fg("dim", " --verbose");
       if (args.limit !== undefined) text += theme.fg("dim", ` --limit ${args.limit}`);
       if (args.strict) text += theme.fg("dim", " --strict");
       return text;

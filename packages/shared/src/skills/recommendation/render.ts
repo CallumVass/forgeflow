@@ -20,6 +20,45 @@ function formatReasonSummary(reasons: string[], max = 3): string | undefined {
 
 const MAX_RENDERED_SIGNALS = 12;
 
+export function renderCompactSkillRecommendationReport(report: SkillRecommendationReport): string {
+  const lines: string[] = [
+    `Skill recommendations (${report.command})`,
+    "",
+    `Stage: ${report.command}`,
+    "",
+    "Worth installing:",
+  ];
+
+  if (report.recommendedSkills.length === 0) {
+    lines.push("- No strong external skill recommendations for this stage.");
+  } else {
+    report.recommendedSkills.forEach((skill, index) => {
+      lines.push(`${index + 1}) ${skill.id}`);
+      lines.push(`   useful for: ${report.command}`);
+      const reasonSummary = formatReasonSummary(skill.reasons, 2);
+      if (reasonSummary) lines.push(`   why: ${reasonSummary}`);
+      lines.push(`   add: ${skill.installCommand}`);
+    });
+  }
+
+  if (report.selectedSkills.length > 0) {
+    lines.push("", "Already relevant installed skills:");
+    for (const skill of report.selectedSkills) {
+      lines.push(`- ${skill.name} — already useful during ${report.command}`);
+      const reasonSummary = formatReasonSummary(skill.reasons, 1);
+      if (reasonSummary) lines.push(`  why: ${reasonSummary}`);
+    }
+  }
+
+  if (report.judgeDiagnostics && report.judgeDiagnostics.length > 0) {
+    lines.push("", "Judge diagnostics:");
+    for (const diagnostic of report.judgeDiagnostics) lines.push(`- ${diagnostic}`);
+  }
+
+  lines.push("", "Use --verbose for queries, scanned roots, repo signals, and diagnostics.");
+  return lines.join("\n");
+}
+
 export function renderSkillRecommendationReport(report: SkillRecommendationReport): string {
   const lines: string[] = [
     `Skill recommendations (${report.command})`,

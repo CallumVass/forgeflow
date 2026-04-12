@@ -28,22 +28,25 @@ describe("implement parseArgs", () => {
 });
 
 describe("skill-scan parseArgs", () => {
-  it("passes command, path, issue, target, and json flags through verbatim", () => {
-    const { params } = skillScanParseArgs("--command review --path apps/web --issue tailwind --branch feat/ui --json");
+  it("passes command, path, issue, target, verbose, and json flags through verbatim", () => {
+    const { params } = skillScanParseArgs(
+      "--command review --path apps/web --issue tailwind --branch feat/ui --verbose --json",
+    );
     expect(params).toEqual({
       command: "review",
       path: "apps/web",
       issue: "tailwind",
       target: "--branch feat/ui",
+      verbose: true,
       json: true,
     });
   });
 });
 
 describe("skill-recommend parseArgs", () => {
-  it("passes stage, path, issue, target, limit, and json flags through verbatim", () => {
+  it("passes stage, path, issue, target, limit, verbose, and json flags through verbatim", () => {
     const { params } = skillRecommendParseArgs(
-      "--for review --path apps/web --issue tailwind --branch feat/ui --limit 5 --json",
+      "--for review --path apps/web --issue tailwind --branch feat/ui --limit 5 --verbose --json",
     );
     expect(params).toEqual({
       command: "review",
@@ -51,6 +54,7 @@ describe("skill-recommend parseArgs", () => {
       issue: "tailwind",
       target: "--branch feat/ui",
       limit: 5,
+      verbose: true,
       json: true,
     });
   });
