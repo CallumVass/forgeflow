@@ -1,10 +1,10 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_SKILLS } from "../config/forgeflow-config.js";
-import { setupIsolatedHomeFixture } from "../testing/index.js";
-import { buildSkillRecommendationReport, renderSkillRecommendationReport } from "./index.js";
-import type { SkillRecommendationProvider } from "./types.js";
+import { DEFAULT_SKILLS } from "../../config/forgeflow-config.js";
+import { setupIsolatedHomeFixture } from "../../testing/index.js";
+import type { SkillRecommendationProvider } from "../types.js";
+import { buildSkillRecommendationReport } from "./report.js";
 
 function writeSkill(root: string, name: string, description: string): void {
   const dir = path.join(root, name);
@@ -16,10 +16,10 @@ function writeSkill(root: string, name: string, description: string): void {
   );
 }
 
-describe("skill recommendation barrel", () => {
-  const fixture = setupIsolatedHomeFixture("skills-recommend-barrel");
+describe("buildSkillRecommendationReport", () => {
+  const fixture = setupIsolatedHomeFixture("skills-recommend-report");
 
-  it("keeps the shared skills barrel wired to the extracted recommendation boundary", async () => {
+  it("omits already installed matches while preserving search queries and recommendation ordering", async () => {
     const projectAgents = path.join(fixture.cwdDir, ".agents", "skills");
     fs.mkdirSync(projectAgents, { recursive: true });
     writeSkill(projectAgents, "tailwind", "Tailwind CSS guidance.");
@@ -62,13 +62,12 @@ describe("skill recommendation barrel", () => {
       provider,
       5,
     );
-    const rendered = renderSkillRecommendationReport(report);
 
+    expect(report.selectedSkills.map((skill) => skill.name)).toEqual(["tailwind"]);
     expect(report.recommendedSkills.map((skill) => skill.id)).toEqual([
       "vercel-labs/agent-skills@vercel-react-best-practices",
     ]);
     expect(report.skippedInstalledSkillNames).toEqual(["tailwind"]);
-    expect(rendered).toContain("Skill recommendations (implement)");
-    expect(rendered).toContain("Top recommendations:");
+    expect(report.searchQueries.map((query) => query.query)).toContain("react");
   });
 });

@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import type { PipelineContext } from "../runtime/index.js";
+import { analyseSkillSelection } from "./analysis.js";
 import { detectSkillSignals } from "./detectors/index.js";
 import { scanRepository } from "./inventory.js";
 import { selectSkills } from "./matcher.js";
@@ -13,7 +14,7 @@ export {
   createSkillsCliRecommendationProvider,
   parseSkillsFindOutput,
   renderSkillRecommendationReport,
-} from "./recommend.js";
+} from "./recommendation/index.js";
 export type {
   DiscoveredSkill,
   ExternalSkillCandidate,
@@ -54,9 +55,7 @@ export async function buildSkillSelectionReport(
   config: PipelineContext["skillsConfig"],
   input: SkillSelectionInput,
 ): Promise<SkillSelectionReport> {
-  const landscape = await discoverSkillLandscape(cwd, config);
-  const inventory = scanRepository(cwd);
-  const analysed = detectSkillSignals(cwd, inventory, input);
+  const { landscape, analysed, selectedSkills } = await analyseSkillSelection(cwd, config, input);
 
   return {
     command: input.command,
@@ -68,9 +67,7 @@ export async function buildSkillSelectionReport(
     changedFiles: analysed.changedFiles,
     focusPaths: analysed.focusPaths,
     signals: analysed.signals,
-    selectedSkills: config.enabled
-      ? selectSkills(landscape.discoveredSkills, analysed.signals, input.maxSelected ?? config.maxSelected)
-      : [],
+    selectedSkills,
   };
 }
 
