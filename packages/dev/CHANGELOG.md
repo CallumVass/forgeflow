@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.35.0...forgeflow-dev-v0.35.1) (2026-04-12)
+
+
+### Bug Fixes
+
+* **dev:** hide internal skill judge stages from results ([#242](https://github.com/CallumVass/forgeflow/issues/242)) ([175a908](https://github.com/CallumVass/forgeflow/commit/175a9082094ef85dbdffa67e151c2ed90f759d7d))
+
 ## [0.35.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.34.0...forgeflow-dev-v0.35.0) (2026-04-12)
 
 
