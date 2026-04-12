@@ -62,6 +62,51 @@ export function extractGhCommands(text: string): string[] {
   return commands;
 }
 
+function summariseGhCommand(command: string): string {
+  const pathMatch = command.match(/--field path="([^"]+)"/);
+  const lineMatch = command.match(/--field line=(\d+)/);
+  if (pathMatch?.[1] && lineMatch?.[1]) return `${pathMatch[1]}:${lineMatch[1]}`;
+  if (command.startsWith("gh pr review")) return "Submit review decision";
+  return command.slice(0, 80);
+}
+
+async function reviewCommandsInteractively(
+  commands: string[],
+  opts: { select: PipelineContext["ctx"]["ui"]["select"]; editor: PipelineContext["ctx"]["ui"]["editor"] },
+): Promise<string[] | undefined> {
+  const approved: string[] = [];
+  for (let index = 0; index < commands.length; index++) {
+    let command = commands[index];
+    if (!command) continue;
+
+    const summary = summariseGhCommand(command);
+    const action = await opts.select(`Comment ${index + 1}/${commands.length}: ${summary}`, [
+      "Post this",
+      "Skip this",
+      "Edit this",
+      "Post this and remaining",
+      "Cancel",
+    ]);
+
+    if (action == null || action === "Cancel") return undefined;
+    if (action === "Skip this") continue;
+    if (action === "Edit this") {
+      const edited = await opts.editor(`Edit comment command ${index + 1}`, command);
+      if (edited == null) return undefined;
+      command = edited.trim();
+    }
+
+    approved.push(command);
+    if (action === "Post this and remaining") {
+      for (const rest of commands.slice(index + 1)) {
+        if (rest) approved.push(rest);
+      }
+      return approved;
+    }
+  }
+  return approved;
+}
+
 /**
  * Propose PR review comments via an agent call, let the user review/edit,
  * and execute approved `gh api` commands.
@@ -98,11 +143,24 @@ export async function proposeAndPostComments(
 
   if (reviewed == null) return;
 
-  const action = await ctx.ui.select("Post these review comments?", ["Post comments", "Skip"]);
-  if (action !== "Post comments") return;
+  const action = await ctx.ui.select("Post these review comments?", [
+    "Post comments",
+    "Review comment by comment",
+    "Skip",
+  ]);
+  if (!action || action === "Skip") return;
 
   const commands = extractGhCommands(reviewed);
-  for (const cmd of commands) {
+  const approved =
+    action === "Review comment by comment"
+      ? await reviewCommandsInteractively(commands, {
+          select: ctx.ui.select.bind(ctx.ui),
+          editor: ctx.ui.editor.bind(ctx.ui),
+        })
+      : commands;
+  if (!approved || approved.length === 0) return;
+
+  for (const cmd of approved) {
     await execFn(cmd, cwd);
   }
 }

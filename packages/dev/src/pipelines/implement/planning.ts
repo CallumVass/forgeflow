@@ -173,36 +173,65 @@ export async function runPlanning(
   // in one go).
   const tailSessionPath = archSessionPath ?? plannerSessionPath;
 
-  // Interactive mode: let user review/edit the plan before proceeding
+  // Interactive mode: let user review/edit the plan before proceeding.
+  // Keep this as one guided loop rather than forcing editor + question
+  // prompts every time.
   if (interactive && plan) {
-    const edited = await ctx.ui.editor("Review implementation plan", plan);
-    const editApplied = edited != null && edited !== plan;
-    if (editApplied && edited) {
-      plan = edited;
+    let changed = false;
+
+    const initialEdited = await ctx.ui.editor(
+      "Review implementation plan",
+      `${plan}\n\n<!-- Tip: answer unresolved questions inline by adding '**Answer:** ...' under each item. -->`,
+    );
+    if (initialEdited != null) {
+      const cleaned = initialEdited.replace(/\n\n<!-- Tip:[\s\S]*?-->$/, "");
+      if (cleaned !== plan) {
+        plan = cleaned;
+        changed = true;
+      }
     }
 
-    // Surface unresolved questions one-by-one for user answers
-    const planBeforeAnswers = plan;
-    plan = await resolveQuestions(plan, ctx);
-    const answersApplied = plan !== planBeforeAnswers;
+    while (true) {
+      const action = await ctx.ui.select("Plan ready. What next?", [
+        "Approve and implement",
+        "Edit plan",
+        "Guide unresolved questions",
+        "Cancel",
+      ]);
 
-    // Persist the edited plan as a user turn on the planning chain's
-    // tail session so the implementor, when it forks, inherits the
-    // revised plan in its actual conversation history rather than
-    // receiving a prompt blob. No-op when persistence is disabled.
-    if ((editApplied || answersApplied) && tailSessionPath) {
-      await appendUserTurnToSession(
-        tailSessionPath,
-        `Updated implementation plan (user edits applied):\n\n${plan}`,
-        opts,
-      );
-      // After the append, the tail session is still the same file —
-      // it just has an extra user turn appended. No new allocation.
-    }
+      if (action === "Cancel" || action == null) {
+        return { plan, cancelled: true, stages, lastSessionPath: tailSessionPath };
+      }
 
-    const action = await ctx.ui.select("Plan ready. What next?", ["Approve and implement", "Cancel"]);
-    if (action === "Cancel" || action == null) {
-      return { plan, cancelled: true, stages, lastSessionPath: tailSessionPath };
+      if (action === "Edit plan") {
+        const edited = await ctx.ui.editor(
+          "Review implementation plan",
+          `${plan}\n\n<!-- Tip: answer unresolved questions inline by adding '**Answer:** ...' under each item. -->`,
+        );
+        if (edited != null) {
+          plan = edited.replace(/\n\n<!-- Tip:[\s\S]*?-->$/, "");
+          changed = true;
+        }
+        continue;
+      }
+
+      if (action === "Guide unresolved questions") {
+        const nextPlan = await resolveQuestions(plan, ctx);
+        if (nextPlan !== plan) {
+          plan = nextPlan;
+          changed = true;
+        }
+        continue;
+      }
+
+      if (changed && tailSessionPath) {
+        await appendUserTurnToSession(
+          tailSessionPath,
+          `Updated implementation plan (user edits applied):\n\n${plan}`,
+          opts,
+        );
+      }
+      break;
     }
   }
 

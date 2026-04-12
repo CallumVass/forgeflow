@@ -194,6 +194,8 @@ export async function runAgent(agentName: string, task: string, options: RunAgen
   }
 
   stage.status = "running";
+  stage.startedAt ??= Date.now();
+  stage.completedAt = undefined;
   emitUpdate(options);
 
   const settingsManager = SettingsManager.create(options.cwd);
@@ -276,6 +278,7 @@ export async function runAgent(agentName: string, task: string, options: RunAgen
 
     stage.exitCode = 0;
     stage.status = "done";
+    stage.completedAt = Date.now();
     extractFinalOutput(stage);
 
     const persistedSessionPath = sessionManager.getSessionFile();
@@ -294,6 +297,7 @@ export async function runAgent(agentName: string, task: string, options: RunAgen
     const msg = err instanceof Error ? err.message : String(err);
     stage.exitCode = 1;
     stage.status = "failed";
+    stage.completedAt = Date.now();
     stage.stderr += `${stage.stderr ? "\n" : ""}${msg}`;
     if (!stage.output) stage.output = msg;
     emitUpdate(options);

@@ -31,6 +31,8 @@ export interface StageResult {
   output: string;
   usage: UsageStats;
   model?: string;
+  startedAt?: number;
+  completedAt?: number;
 }
 
 export interface UsageStats {

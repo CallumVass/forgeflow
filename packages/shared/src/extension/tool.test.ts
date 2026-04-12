@@ -156,11 +156,11 @@ describe("registerForgeflowTool", () => {
     expect(liveCalls.length).toBeGreaterThanOrEqual(2);
 
     const firstFrame = (liveCalls[0]?.[1] as string[]).join("\n");
-    expect(firstFrame).toContain("planner");
+    expect(firstFrame).toContain("Plan implementation");
     expect(firstFrame).toContain("0/3");
 
     const secondFrame = (liveCalls[1]?.[1] as string[]).join("\n");
-    expect(secondFrame).toContain("implementor");
+    expect(secondFrame).toContain("Implement changes");
     expect(secondFrame).toContain("1/3");
 
     // Final clear from the finally block.
@@ -198,6 +198,25 @@ describe("registerForgeflowTool", () => {
     const toolDef = getToolDef(pi);
     await expect(toolDef.execute("c1", { pipeline: "alpha" }, undefined, vi.fn(), ctx)).resolves.toBeDefined();
     expect(setWidget).not.toHaveBeenCalled();
+  });
+
+  it("invokes the optional onResult hook with helper actions after a successful run", async () => {
+    const onResult = vi.fn(async () => {});
+    const pi = mockPi();
+    const config = mockExtensionConfig({ onResult });
+    registerForgeflowTool(pi as never, config, buildSchema(config));
+
+    const toolDef = getToolDef(pi);
+    const ctx = mockForgeflowContext({ hasUI: true, ui: { notify: vi.fn() } });
+
+    await toolDef.execute("c1", { pipeline: "alpha" }, undefined, undefined, ctx);
+
+    expect(onResult).toHaveBeenCalledWith(
+      { pipeline: "alpha" },
+      expect.objectContaining({ details: { pipeline: "alpha", stages: [] } }),
+      ctx,
+      expect.objectContaining({ openStages: expect.any(Function), queueFollowUp: expect.any(Function) }),
+    );
   });
 
   it("renderCall returns a Text node with bold tool name, accent pipeline, and renderCallExtra output", () => {

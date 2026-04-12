@@ -49,15 +49,15 @@ describe("buildWidgetLines", () => {
     expect(body).toContain("a.ts");
     expect(body).toContain("b.ts");
     expect(body).toContain("c.ts");
-    // Stage name shows.
-    expect(body).toContain("implementor");
+    // Human-friendly stage title shows.
+    expect(body).toContain("Implement changes");
   });
 
   it("running stage with no tool calls yet includes a (starting…) placeholder", () => {
     const stage = makeStage({ name: "planner", status: "running", messages: [] });
     const lines = buildWidgetLines("implement", [stage], mockTheme());
     const body = lines.join("\n");
-    expect(body).toContain("planner");
+    expect(body).toContain("Plan implementation");
     expect(body).toContain("starting…");
   });
 

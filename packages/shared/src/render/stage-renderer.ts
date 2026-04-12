@@ -3,6 +3,7 @@ import { getMarkdownTheme, keyHint } from "@mariozechner/pi-coding-agent";
 import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { type ForgeflowTheme, getFinalOutput, type PipelineDetails, type StageResult } from "../runtime/index.js";
 import { formatToolCall, formatUsage, getDisplayItems } from "./display.js";
+import { stageDescription, stageTitle } from "./stage-meta.js";
 
 /** Maximum preview lines shown per completed stage in the collapsed view. */
 const PREVIEW_LINE_CAP = 3;
@@ -41,7 +42,12 @@ export function stageIcon(stage: StageResult, theme: ForgeflowTheme): string {
  */
 export function appendStageDetail(container: Container, stage: StageResult, theme: ForgeflowTheme) {
   const icon = stageIcon(stage, theme);
-  container.addChild(new Text(`${icon} ${theme.fg("toolTitle", theme.bold(stage.name))}`, 0, 0));
+  container.addChild(new Text(`${icon} ${theme.fg("toolTitle", theme.bold(stageTitle(stage.name)))}`, 0, 0));
+
+  const description = stageDescription(stage.name);
+  if (description) {
+    container.addChild(new Text(theme.fg("muted", description), 0, 0));
+  }
 
   const items = getDisplayItems(stage.messages);
   for (const item of items) {
@@ -115,7 +121,9 @@ export function renderCollapsed(details: PipelineDetails, theme: ForgeflowTheme,
   // tool-call detail lives in the widget above the editor, so repeating
   // either here would duplicate information the user already sees.
   if (anyActive) {
-    const liveLines = details.stages.map((stage) => `${stageIcon(stage, theme)} ${theme.fg("toolTitle", stage.name)}`);
+    const liveLines = details.stages.map(
+      (stage) => `${stageIcon(stage, theme)} ${theme.fg("toolTitle", stageTitle(stage.name))}`,
+    );
     return new Text(liveLines.join("\n"), 0, 0);
   }
 
@@ -125,7 +133,7 @@ export function renderCollapsed(details: PipelineDetails, theme: ForgeflowTheme,
   let text = theme.fg("toolTitle", theme.bold(`${toolLabel} `)) + theme.fg("accent", details.pipeline);
   for (const stage of details.stages) {
     const icon = stageIcon(stage, theme);
-    text += `\n  ${icon} ${theme.fg("toolTitle", stage.name)}`;
+    text += `\n  ${icon} ${theme.fg("toolTitle", stageTitle(stage.name))}`;
 
     if (stage.status === "done" || stage.status === "failed") {
       // Keep usage stats on the same line as the stage header.

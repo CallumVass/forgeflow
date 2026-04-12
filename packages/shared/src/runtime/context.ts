@@ -76,6 +76,18 @@ export interface ForgeflowUI {
   select(title: string, options: string[]): Promise<string | undefined>;
   setStatus(key: string, text: string | undefined): void;
   setWidget(key: string, content: string[] | undefined): void;
+  /** Replace the footer while a pipeline is active. */
+  setFooter?: (
+    factory:
+      | ((
+          tui: ForgeflowTui,
+          theme: ForgeflowTheme,
+          footerData: { getGitBranch?: () => string | null; onBranchChange?: (cb: () => void) => () => void },
+        ) => ForgeflowCustomComponent & { dispose?(): void })
+      | undefined,
+  ) => void;
+  /** Prefill the editor with follow-up text. */
+  setEditorText?(text: string): void;
   /** Show a transient notification. */
   notify(message: string, level?: ForgeflowNotifyLevel): void;
   /** Show a custom component (optionally as an overlay) and await its result. */

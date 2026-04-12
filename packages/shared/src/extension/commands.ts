@@ -18,11 +18,30 @@ import type { ExtensionConfig } from "./types.js";
  */
 export function registerForgeflowCommands(pi: ExtensionAPI, config: ExtensionConfig): void {
   for (const cmd of config.commands) {
+    const getArgumentCompletions = cmd.getArgumentCompletions;
     pi.registerCommand(cmd.name, {
       description: cmd.description,
-      handler: async (args) => {
-        const { params, suffix } = cmd.parseArgs?.(args) ?? {};
-        pi.sendUserMessage(buildSendMessage(config.toolName, cmd.pipeline, params ?? {}, suffix));
+      getArgumentCompletions: getArgumentCompletions ? (prefix) => getArgumentCompletions(prefix) ?? null : undefined,
+      handler: async (args, ctx) => {
+        let invocation = cmd.parseArgs?.(args) ?? {};
+        if (!args.trim() && cmd.launch && ctx.hasUI) {
+          const launched = await cmd.launch(ctx as unknown as ForgeflowContext, {
+            exec: (command, argv = [], options) => pi.exec(command, argv, options),
+          });
+          if (!launched) return;
+          invocation = launched;
+        }
+        const params = (invocation.params ?? {}) as Record<string, unknown>;
+        config.onCommandInvoked?.(cmd.name, params);
+        pi.appendEntry("forgeflow-command", { toolName: config.toolName, command: cmd.name, params });
+        pi.sendUserMessage(
+          buildSendMessage(
+            config.toolName,
+            cmd.pipeline,
+            params as Record<string, string | number | boolean | undefined>,
+            invocation.suffix,
+          ),
+        );
       },
     });
   }

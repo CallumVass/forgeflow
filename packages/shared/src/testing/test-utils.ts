@@ -155,6 +155,10 @@ export function mockPi() {
     registerCommand: vi.fn(),
     registerShortcut: vi.fn(),
     sendUserMessage: vi.fn(),
+    appendEntry: vi.fn(),
+    setSessionName: vi.fn(),
+    on: vi.fn(),
+    exec: vi.fn(async () => ({ stdout: "", stderr: "", code: 0, killed: false })),
   };
 }
 
@@ -247,6 +251,8 @@ export function mockForgeflowContext(overrides?: {
       select: async () => undefined,
       setStatus: () => {},
       setWidget: () => {},
+      setFooter: () => {},
+      setEditorText: () => {},
       notify: () => {},
       custom: (async () => undefined as never) as ForgeflowUI["custom"],
       theme: mockTheme(),

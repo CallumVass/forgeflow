@@ -5,7 +5,7 @@ import {
   withRunLifecycle,
 } from "@callumvass/forgeflow-shared/pipeline";
 import { prepareSkillContext } from "@callumvass/forgeflow-shared/skills";
-import { askCustomPrompt } from "../../ui/index.js";
+import { askCustomPrompt, setForgeflowStatus } from "../../ui/index.js";
 import { proposeAndPostComments } from "./comments.js";
 import { resolveDiffTarget } from "./diff.js";
 import { runReviewPipeline, runStandaloneReviewPipeline } from "./orchestrator.js";
@@ -14,6 +14,14 @@ export { runReviewPipeline };
 
 interface RunReviewOptions {
   strict?: boolean;
+}
+
+function describeReviewTarget(target: string, prNumber?: string): string {
+  const trimmed = target.trim();
+  if (prNumber) return `PR #${prNumber}`;
+  if (!trimmed) return "current branch";
+  if (trimmed.startsWith("--branch")) return trimmed.replace("--branch", "branch").trim();
+  return trimmed;
 }
 
 function parseChangedFiles(output: string): string[] {
@@ -78,13 +86,28 @@ async function runReviewInner(target: string, pctx: PipelineContext, strict: boo
   const { diffCmd, prNumber } = reviewTarget;
 
   const changedFiles = await resolveChangedFilesForTarget(reviewTarget, pctx);
+  if (ctx.hasUI) {
+    const fileSummary =
+      changedFiles.length > 0 ? ` · ${changedFiles.length} file${changedFiles.length === 1 ? "" : "s"}` : "";
+    setForgeflowStatus(
+      ctx,
+      `review · ${describeReviewTarget(target, prNumber)}${strict ? " · strict" : ""}${fileSummary}`,
+    );
+  }
+
   const skillPrepared = await prepareReviewSkillContext(changedFiles, strict, pctx);
   pctx = skillPrepared.pctx;
 
   const customPrompt = await askCustomPrompt(ctx, ctx.hasUI);
 
   const diff = await execFn(diffCmd, cwd);
-  if (!diff) return pipelineResult("No changes to review.", "review", stages);
+  if (!diff) {
+    return pipelineResult(
+      `No changes to review for ${describeReviewTarget(target, prNumber)} against main.`,
+      "review",
+      stages,
+    );
+  }
 
   if (strict) {
     const result = await runReviewPipeline(diff, { ...pctx, stages, pipeline: "review", customPrompt });

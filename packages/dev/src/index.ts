@@ -5,6 +5,7 @@ import {
   resolveAgentsDir,
   toPipelineContext,
 } from "@callumvass/forgeflow-shared/pipeline";
+import { hydrateRememberedInvocations, rememberCommandInvocation } from "./command-launchers/index.js";
 import { commands } from "./commands.js";
 import { registerDatadogCommands } from "./datadog/commands.js";
 import { runArchitecture } from "./pipelines/architecture/index.js";
@@ -13,6 +14,7 @@ import { runDatadog } from "./pipelines/datadog/index.js";
 import { runImplement } from "./pipelines/implement/index.js";
 import { runImplementAll } from "./pipelines/implement-all/index.js";
 import { runReview } from "./pipelines/review/index.js";
+import { handleDevResult } from "./result-actions/index.js";
 import { runSkillRecommend, runSkillScan } from "./skills/index.js";
 
 const AGENTS_DIR = resolveAgentsDir(import.meta.url);
@@ -119,6 +121,8 @@ const registerForgeflow = createForgeflowExtension({
     },
   ],
   commands,
+  onCommandInvoked: rememberCommandInvocation,
+  onResult: handleDevResult,
   renderCallExtra: (args, theme) => {
     let text = "";
     if (args.issue) {
@@ -141,4 +145,16 @@ export default (pi: Parameters<typeof registerForgeflow>[0]) => {
   registerForgeflow(pi);
   registerAtlassianCommands(pi, { toolName: "forgeflow-dev" });
   registerDatadogCommands(pi);
+
+  pi.on("session_start", async (_event, ctx) => {
+    const entries = "getEntries" in ctx.sessionManager ? ctx.sessionManager.getEntries() : [];
+    const rememberedEntries = entries
+      .filter((entry) => entry.type === "custom" && entry.customType === "forgeflow-command")
+      .map((entry) =>
+        entry.type === "custom" ? (entry.data as { command?: unknown; params?: unknown; toolName?: unknown }) : {},
+      )
+      .filter((entry) => entry.toolName === "forgeflow-dev")
+      .map((entry) => ({ command: entry.command, params: entry.params }));
+    hydrateRememberedInvocations(rememberedEntries);
+  });
 };
