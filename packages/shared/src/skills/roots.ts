@@ -1,8 +1,10 @@
+import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { loadSkills, type Skill } from "@mariozechner/pi-coding-agent";
 import type { SkillsConfig } from "../config/forgeflow-config.js";
 import { collectAncestors, expandHome, fileExists, findRepoRoot, safeRealpath } from "./fs.js";
+import { scanRepository } from "./inventory.js";
 import type { DiscoveredSkill, SkillDuplicate, SkillLandscape, SkillRoot } from "./types.js";
 
 const PROJECT_ROOTS: Array<{ rel: string; harness: SkillRoot["harness"] }> = [
@@ -41,6 +43,47 @@ function toDiscoveredSkill(skill: Skill, root: SkillRoot): DiscoveredSkill {
   };
 }
 
+function parsePackageSkillPaths(packageJsonPath: string): string[] {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8")) as {
+      pi?: { skills?: unknown };
+    };
+    const skillPaths = parsed.pi?.skills;
+    if (!Array.isArray(skillPaths)) return [];
+    return skillPaths.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function packageSkillDistance(repoRoot: string, packageJsonPath: string): number {
+  const relDir = path.relative(repoRoot, path.dirname(packageJsonPath));
+  if (!relDir) return 0;
+  return relDir.split(path.sep).filter(Boolean).length;
+}
+
+function discoverWorkspacePackageRoots(repoRoot: string): SkillRoot[] {
+  return scanRepository(repoRoot)
+    .manifests.filter((manifest) => manifest.kind === "package-json")
+    .flatMap((manifest) => {
+      const skillPaths = parsePackageSkillPaths(manifest.path);
+      const distance = packageSkillDistance(repoRoot, manifest.path);
+      return skillPaths
+        .map((skillPath) => path.resolve(path.dirname(manifest.path), skillPath))
+        .filter((rootPath) => fileExists(rootPath))
+        .map(
+          (rootPath) =>
+            ({
+              path: rootPath,
+              scope: "project" as const,
+              harness: "pi" as const,
+              distance,
+              precedence: rootPrecedence("project", "pi", distance),
+            }) satisfies SkillRoot,
+        );
+    });
+}
+
 function discoverSkillRoots(cwd: string, config: SkillsConfig): SkillRoot[] {
   const repoRoot = findRepoRoot(cwd);
   const ancestors = collectAncestors(cwd, repoRoot);
@@ -59,6 +102,8 @@ function discoverSkillRoots(cwd: string, config: SkillsConfig): SkillRoot[] {
       });
     }
   });
+
+  roots.push(...discoverWorkspacePackageRoots(repoRoot));
 
   const home = os.homedir();
   GLOBAL_ROOTS.forEach((def) => {

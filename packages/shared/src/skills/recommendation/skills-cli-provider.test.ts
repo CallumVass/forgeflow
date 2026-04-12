@@ -31,6 +31,7 @@ vercel-labs/agent-skills@vercel-react-best-practices 229.8K installs
       {
         id: "vercel-labs/agent-skills@vercel-react-best-practices",
         slug: "vercel-react-best-practices",
+        repository: "vercel-labs/agent-skills",
         url: "https://skills.sh/vercel-labs/agent-skills/vercel-react-best-practices",
         installs: 229800,
         installsLabel: "229.8K installs",
@@ -39,6 +40,7 @@ vercel-labs/agent-skills@vercel-react-best-practices 229.8K installs
       {
         id: "community/skills@tailwind",
         slug: "tailwind",
+        repository: "community/skills",
         url: "https://skills.sh/community/skills/tailwind",
         installs: 1000,
         installsLabel: "1K installs",

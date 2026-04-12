@@ -26,6 +26,11 @@ export interface DiscoveredSkill {
   root: SkillRoot;
 }
 
+export interface SkillJudgement {
+  confidence: number;
+  reason: string;
+}
+
 export interface SkillDuplicate {
   name: string;
   chosen: DiscoveredSkill;
@@ -48,6 +53,7 @@ export interface SelectedSkill {
   score: number;
   reasons: string[];
   root: SkillRoot;
+  judgement?: SkillJudgement;
 }
 
 export interface SkillSelectionInput {
@@ -69,6 +75,7 @@ export interface SkillSelectionReport {
   focusPaths: string[];
   signals: SkillSignal[];
   selectedSkills: SelectedSkill[];
+  judgeDiagnostics?: string[];
 }
 
 export interface SkillSearchQuery {
@@ -83,6 +90,8 @@ export interface ExternalSkillCandidate {
   url: string;
   installs: number | null;
   installsLabel?: string;
+  repository?: string;
+  description?: string;
 }
 
 export interface QueriedExternalSkillCandidate extends ExternalSkillCandidate {
@@ -94,6 +103,7 @@ export interface RecommendedExternalSkill extends QueriedExternalSkillCandidate 
   installCommand: string;
   score: number;
   reasons: string[];
+  judgement?: SkillJudgement;
 }
 
 export interface SkillRecommendationProviderResult {
@@ -123,6 +133,7 @@ export interface SkillRecommendationReport {
   searchQueries: SkillSearchQuery[];
   recommendedSkills: RecommendedExternalSkill[];
   skippedInstalledSkillNames: string[];
+  judgeDiagnostics?: string[];
 }
 
 export interface SkillScanReport {

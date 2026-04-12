@@ -14,6 +14,7 @@ describe("parseSkillsFindOutput", () => {
       {
         id: "vercel-labs/agent-skills@vercel-react-best-practices",
         slug: "vercel-react-best-practices",
+        repository: "vercel-labs/agent-skills",
         url: "https://skills.sh/vercel-labs/agent-skills/vercel-react-best-practices",
         installs: 229800,
         installsLabel: "229.8K installs",

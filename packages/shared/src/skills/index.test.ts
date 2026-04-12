@@ -43,6 +43,30 @@ describe("skills", () => {
     expect(report.duplicates[0]?.chosen.filePath).toContain(path.join(fixture.cwdDir, ".claude", "skills", "tailwind"));
   });
 
+  it("discovers workspace package skill roots declared through package.json pi.skills", async () => {
+    const pkgDir = path.join(fixture.cwdDir, "packages", "dev");
+    const pkgSkills = path.join(pkgDir, "skills", "code-review");
+    fs.mkdirSync(pkgSkills, { recursive: true });
+    fs.writeFileSync(
+      path.join(pkgDir, "package.json"),
+      JSON.stringify({ name: "@repo/dev", pi: { skills: ["./skills"] } }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(pkgSkills, "SKILL.md"),
+      "---\nname: code-review\ndescription: Structured review guidance.\n---\n",
+      "utf-8",
+    );
+
+    const report = await buildSkillSelectionReport(fixture.cwdDir, DEFAULT_SKILLS, {
+      command: "review",
+      issueText: "Review this change",
+    });
+
+    expect(report.discoveredSkills.map((skill) => skill.name)).toContain("code-review");
+    expect(report.rootsScanned.some((root) => root.path === path.join(pkgDir, "skills"))).toBe(true);
+  });
+
   it("discovers relevant skills from code import patterns even when the issue text is generic", async () => {
     const projectAgents = path.join(fixture.cwdDir, ".agents", "skills");
     fs.mkdirSync(projectAgents, { recursive: true });

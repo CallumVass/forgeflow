@@ -1,4 +1,5 @@
 import {
+  type PipelineAgentRuntime,
   type PipelineExecRuntime,
   type PipelineSkillRuntime,
   type PipelineSkillSelectionRuntime,
@@ -16,6 +17,7 @@ import {
   type SkillCommand,
 } from "@callumvass/forgeflow-shared/skills";
 import { resolveReviewChangedFiles } from "../pipelines/review/index.js";
+import { judgeSkillRecommendationReport, judgeSkillScanReport } from "./judge.js";
 
 export async function prepareImplementSkillContext<T extends PipelineSkillSelectionRuntime>(
   issueText: string,
@@ -72,7 +74,10 @@ function buildSelectionInputs(command: SkillCommand | undefined, opts: RepoSkill
   }));
 }
 
-export async function runSkillScan(opts: RepoSkillOptions, pctx: PipelineExecRuntime & PipelineSkillRuntime) {
+export async function runSkillScan(
+  opts: RepoSkillOptions,
+  pctx: PipelineExecRuntime & PipelineSkillRuntime & PipelineAgentRuntime,
+) {
   const command = opts.command && isSkillCommand(opts.command) ? opts.command : undefined;
   if (opts.command && !command) {
     return pipelineResult(`Unknown command for skill scan: ${opts.command}`, "skill-scan", [], true);
@@ -84,24 +89,29 @@ export async function runSkillScan(opts: RepoSkillOptions, pctx: PipelineExecRun
       : [];
   const inputs = buildSelectionInputs(command, opts, changedFiles);
   const report = await buildSkillScanReport(pctx.cwd, pctx.skillsConfig, inputs);
+  const judged = await judgeSkillScanReport(report, pctx);
+  const finalReport = { ...report, analyses: judged.analyses };
 
   if (opts.json) {
-    return pipelineResult(JSON.stringify(report, null, 2), "skill-scan", []);
+    return pipelineResult(JSON.stringify(finalReport, null, 2), "skill-scan", judged.stages);
   }
 
   if (command) {
-    const analysis = report.analyses[0];
+    const analysis = finalReport.analyses[0];
     return pipelineResult(
       analysis ? renderSkillSelectionReport(analysis) : "No skill analysis available.",
       "skill-scan",
-      [],
+      judged.stages,
     );
   }
 
-  return pipelineResult(renderSkillScanReport(report), "skill-scan", []);
+  return pipelineResult(renderSkillScanReport(finalReport), "skill-scan", judged.stages);
 }
 
-export async function runSkillRecommend(opts: RepoSkillOptions, pctx: PipelineExecRuntime & PipelineSkillRuntime) {
+export async function runSkillRecommend(
+  opts: RepoSkillOptions,
+  pctx: PipelineExecRuntime & PipelineSkillRuntime & PipelineAgentRuntime,
+) {
   const command = opts.command ? (isSkillCommand(opts.command) ? opts.command : undefined) : "implement";
   if (opts.command && !command) {
     return pipelineResult(`Unknown command for skill recommendation: ${opts.command}`, "skill-recommend", [], true);
@@ -117,10 +127,11 @@ export async function runSkillRecommend(opts: RepoSkillOptions, pctx: PipelineEx
 
   const provider = createSkillsCliRecommendationProvider(pctx.execSafeFn, pctx.cwd);
   const report = await buildSkillRecommendationReport(pctx.cwd, pctx.skillsConfig, input, provider, opts.limit);
+  const judged = await judgeSkillRecommendationReport(report, pctx);
 
   if (opts.json) {
-    return pipelineResult(JSON.stringify(report, null, 2), "skill-recommend", []);
+    return pipelineResult(JSON.stringify(judged.report, null, 2), "skill-recommend", judged.stages);
   }
 
-  return pipelineResult(renderSkillRecommendationReport(report), "skill-recommend", []);
+  return pipelineResult(renderSkillRecommendationReport(judged.report), "skill-recommend", judged.stages);
 }

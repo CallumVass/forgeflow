@@ -153,6 +153,7 @@ Discovery covers common local/global roots such as:
 - `.copilot/skills/`
 - `.codex/skills/`
 - `.opencode/skills/`
+- package-local `pi.skills` roots declared in workspace `package.json` files (for example `packages/dev/skills/`)
 - `~/.agents/skills/`
 - `~/.pi/agent/skills/`
 - `~/.claude/skills/`
@@ -166,9 +167,9 @@ Selection is repo-aware. Forgeflow looks at things like:
 - `mix.exs`, `pyproject.toml`, `go.mod`, `Cargo.toml`
 - changed files for review runs
 
-Use `/skill-scan` to inspect what was discovered and why forgeflow would pick particular installed skills for a command.
+Use `/skill-scan` to inspect what was discovered and why forgeflow would pick particular installed skills for a command. After the deterministic scan, forgeflow now runs a strict `skill-judge` pass that rejects weak matches driven only by broad stack overlap.
 
-Use `/skill-recommend` to look beyond the repo and query [skills.sh](https://skills.sh/) for missing skills worth adding. Forgeflow generates repo-aware search queries from the detected stack, dedupes the results locally, ranks them against the same repo signals it uses for auto-loading, then diversifies the final list so one library or framework family does not flood the output with near-duplicate installs. Recommendations include install commands so you can add the skill and let future forgeflow runs auto-load it. The human-readable report now puts top installs first and, if a discovered local skill is malformed, diagnostics include the exact `SKILL.md` path so you can fix the offending file directly.
+Use `/skill-recommend` to look beyond the repo and query [skills.sh](https://skills.sh/) for missing skills worth adding. Forgeflow generates repo-aware search queries from the detected stack, dedupes the results locally, enriches shortlisted external candidates with descriptions from `skills add --list`, ranks them against the same repo signals it uses for auto-loading, then lets the same strict `skill-judge` distil the final list down to genuinely relevant installs. Recommendations include install commands so you can add the skill and let future forgeflow runs auto-load it. The human-readable report now puts top installs first and, if a discovered local skill is malformed, diagnostics include the exact `SKILL.md` path so you can fix the offending file directly.
 
 Examples:
 

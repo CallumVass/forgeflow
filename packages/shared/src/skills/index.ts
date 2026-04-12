@@ -12,7 +12,9 @@ export {
   buildSkillRecommendationReport,
   buildSkillSearchQueries,
   createSkillsCliRecommendationProvider,
+  enrichSkillsCliCandidates,
   parseSkillsFindOutput,
+  parseSkillsListOutput,
   renderSkillRecommendationReport,
 } from "./recommendation/index.js";
 export type {
@@ -26,6 +28,7 @@ export type {
   SkillCommand,
   SkillDetectionContext,
   SkillDuplicate,
+  SkillJudgement,
   SkillLandscape,
   SkillRecommendationProvider,
   SkillRecommendationProviderResult,
@@ -179,6 +182,11 @@ export function renderSkillSelectionReport(report: SkillSelectionReport): string
   if (report.discoveredSkills.length > 0) {
     lines.push("", "### All discovered skills");
     for (const skill of report.discoveredSkills) lines.push(formatSkillLine(skill, report.repoRoot));
+  }
+
+  if (report.judgeDiagnostics && report.judgeDiagnostics.length > 0) {
+    lines.push("", "### Judge diagnostics");
+    for (const diagnostic of report.judgeDiagnostics) lines.push(`- ${diagnostic}`);
   }
 
   if (report.diagnostics.length > 0) {

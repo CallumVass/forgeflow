@@ -2,6 +2,17 @@
 
 Project-wide rules for AI coding agents.
 
+## Prefer durable solutions
+
+When planning or implementing changes, prefer the best long-term solution
+that is reasonable for the current scope. Do not suggest "quick fixes",
+"quick wins", or other intentionally temporary patches unless the user
+explicitly asks for a stop-gap.
+
+LLM-assisted development makes implementation speed relatively cheap, so the
+default should be maintainability, architectural coherence, and avoiding
+predictable rework — not the fastest possible patch.
+
 ## No dynamic imports
 
 Do not use dynamic imports (`await import(...)` or `import(...)`) in production code. Use static `import` statements at the top of the file instead.

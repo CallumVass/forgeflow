@@ -1,4 +1,8 @@
-import { mockPipelineExecRuntime, mockPipelineSkillRuntime } from "@callumvass/forgeflow-shared/testing";
+import {
+  mockPipelineAgentRuntime,
+  mockPipelineExecRuntime,
+  mockPipelineSkillRuntime,
+} from "@callumvass/forgeflow-shared/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const provider = {
@@ -8,6 +12,11 @@ const provider = {
 
 vi.mock("../pipelines/review/index.js", () => ({
   resolveReviewChangedFiles: vi.fn(async () => ["src/foo.ts", "src/bar.ts"]),
+}));
+
+vi.mock("./judge.js", () => ({
+  judgeSkillScanReport: vi.fn(async (report) => ({ analyses: report.analyses, judgeDiagnostics: [], stages: [] })),
+  judgeSkillRecommendationReport: vi.fn(async (report) => ({ report, judgeDiagnostics: [], stages: [] })),
 }));
 
 vi.mock("@callumvass/forgeflow-shared/skills", async (importOriginal) => {
@@ -38,9 +47,14 @@ import {
 } from "@callumvass/forgeflow-shared/skills";
 import { resolveReviewChangedFiles } from "../pipelines/review/index.js";
 import { runSkillRecommend, runSkillScan } from "./index.js";
+import { judgeSkillRecommendationReport, judgeSkillScanReport } from "./judge.js";
 
 function skillRuntime() {
-  return { ...mockPipelineSkillRuntime({ cwd: "/repo" }), ...mockPipelineExecRuntime({ cwd: "/repo" }) };
+  return {
+    ...mockPipelineSkillRuntime({ cwd: "/repo" }),
+    ...mockPipelineExecRuntime({ cwd: "/repo" }),
+    ...mockPipelineAgentRuntime({ cwd: "/repo" }),
+  };
 }
 
 describe("repo skill pipelines", () => {
@@ -50,6 +64,8 @@ describe("repo skill pipelines", () => {
     vi.mocked(buildSkillRecommendationReport).mockClear();
     vi.mocked(createSkillsCliRecommendationProvider).mockClear();
     vi.mocked(renderSkillRecommendationReport).mockClear();
+    vi.mocked(judgeSkillScanReport).mockClear();
+    vi.mocked(judgeSkillRecommendationReport).mockClear();
   });
 
   it("uses the review public entry point for review-target skill scans and forwards the resolved changed files", async () => {
@@ -66,6 +82,7 @@ describe("repo skill pipelines", () => {
         focusPaths: [],
       },
     ]);
+    expect(judgeSkillScanReport).toHaveBeenCalled();
     expect(result.content[0]?.text).toBe("rendered skill selection report");
   });
 
@@ -92,6 +109,7 @@ describe("repo skill pipelines", () => {
       provider,
       5,
     );
+    expect(judgeSkillRecommendationReport).toHaveBeenCalledTimes(2);
     expect(jsonResult.content[0]?.text).toContain('"provider": "skills.sh"');
     expect(textResult.content[0]?.text).toBe("rendered recommendation report");
     expect(renderSkillRecommendationReport).toHaveBeenCalled();
