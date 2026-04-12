@@ -1,4 +1,4 @@
-import { mockPipelineContext } from "@callumvass/forgeflow-shared/testing";
+import { mockPipelineExecRuntime, mockPipelineSkillRuntime } from "@callumvass/forgeflow-shared/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const provider = {
@@ -39,6 +39,10 @@ import {
 import { resolveReviewChangedFiles } from "../pipelines/review/index.js";
 import { runSkillRecommend, runSkillScan } from "./index.js";
 
+function skillRuntime() {
+  return { ...mockPipelineSkillRuntime({ cwd: "/repo" }), ...mockPipelineExecRuntime({ cwd: "/repo" }) };
+}
+
 describe("repo skill pipelines", () => {
   beforeEach(() => {
     vi.mocked(resolveReviewChangedFiles).mockClear();
@@ -49,7 +53,7 @@ describe("repo skill pipelines", () => {
   });
 
   it("uses the review public entry point for review-target skill scans and forwards the resolved changed files", async () => {
-    const pctx = mockPipelineContext({ cwd: "/repo" });
+    const pctx = skillRuntime();
 
     const result = await runSkillScan({ command: "review", target: "5" }, pctx);
 
@@ -66,7 +70,7 @@ describe("repo skill pipelines", () => {
   });
 
   it("uses the review public entry point for review-target skill recommendations without changing the call-site contract", async () => {
-    const pctx = mockPipelineContext({ cwd: "/repo" });
+    const pctx = skillRuntime();
 
     const jsonResult = await runSkillRecommend(
       { command: "review", target: "5", issue: "tailwind", limit: 5, json: true },

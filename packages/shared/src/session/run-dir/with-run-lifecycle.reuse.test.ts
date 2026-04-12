@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { mockPipelineContext, mockRunAgent, setupIsolatedHomeFixture } from "../../testing/index.js";
+import { mockPipelineSessionLifecycleRuntime, mockRunAgent, setupIsolatedHomeFixture } from "../../testing/index.js";
 import { withRunLifecycle } from "./index.js";
 
 const fixture = setupIsolatedHomeFixture("run-dir-lifecycle-reuse");
@@ -10,7 +10,7 @@ const PERSISTED_SESSIONS = { persist: true, archiveRuns: 20, archiveMaxAge: 30 }
 
 describe("withRunLifecycle reuse and opt-out", () => {
   it("reuses the outer run lifecycle for nested calls", async () => {
-    const pctx = mockPipelineContext({
+    const pctx = mockPipelineSessionLifecycleRuntime({
       cwd: fixture.cwdDir,
       sessionsConfig: PERSISTED_SESSIONS,
     });
@@ -42,7 +42,7 @@ describe("withRunLifecycle reuse and opt-out", () => {
         pipeline: "implement",
       });
     });
-    const pctx = mockPipelineContext({
+    const pctx = mockPipelineSessionLifecycleRuntime({
       cwd: fixture.cwdDir,
       sessionsConfig: { persist: false, archiveRuns: 20, archiveMaxAge: 30 },
       runAgentFn: baseRunAgent,

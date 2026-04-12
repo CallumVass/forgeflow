@@ -1,7 +1,7 @@
 // Internal module. NOT exported from `packages/shared/package.json`'s
 // `exports` map and NOT re-exported from `pipeline.ts` on purpose: config
 // loading lives at a single boundary (see `toPipelineContext` in
-// `context.ts`). Pipelines must NOT read `forgeflow.json` themselves — they
+// `runtime/pipeline-context/context.ts`). Pipelines must NOT read `forgeflow.json` themselves — they
 // receive resolved per-agent overrides via `RunAgentOpts.agentOverrides`,
 // which `runAgent` forwards to pi's `--model` / `--thinking` flags. Keeping
 // this module physically unexported makes cross-package import a hard Node

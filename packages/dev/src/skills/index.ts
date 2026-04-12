@@ -1,4 +1,9 @@
-import { type PipelineContext, pipelineResult } from "@callumvass/forgeflow-shared/pipeline";
+import {
+  type PipelineExecRuntime,
+  type PipelineSkillRuntime,
+  type PipelineSkillSelectionRuntime,
+  pipelineResult,
+} from "@callumvass/forgeflow-shared/pipeline";
 import {
   buildSkillRecommendationReport,
   buildSkillScanReport,
@@ -12,11 +17,14 @@ import {
 } from "@callumvass/forgeflow-shared/skills";
 import { resolveReviewChangedFiles } from "../pipelines/review/index.js";
 
-export async function prepareImplementSkillContext(issueText: string, pctx: PipelineContext) {
+export async function prepareImplementSkillContext<T extends PipelineSkillSelectionRuntime>(
+  issueText: string,
+  pctx: T,
+) {
   return prepareSkillContext(pctx, { command: "implement", issueText });
 }
 
-export async function prepareArchitectureSkillContext(pctx: PipelineContext) {
+export async function prepareArchitectureSkillContext<T extends PipelineSkillSelectionRuntime>(pctx: T) {
   return prepareSkillContext(pctx, { command: "architecture" });
 }
 
@@ -64,7 +72,7 @@ function buildSelectionInputs(command: SkillCommand | undefined, opts: RepoSkill
   }));
 }
 
-export async function runSkillScan(opts: RepoSkillOptions, pctx: PipelineContext) {
+export async function runSkillScan(opts: RepoSkillOptions, pctx: PipelineExecRuntime & PipelineSkillRuntime) {
   const command = opts.command && isSkillCommand(opts.command) ? opts.command : undefined;
   if (opts.command && !command) {
     return pipelineResult(`Unknown command for skill scan: ${opts.command}`, "skill-scan", [], true);
@@ -93,7 +101,7 @@ export async function runSkillScan(opts: RepoSkillOptions, pctx: PipelineContext
   return pipelineResult(renderSkillScanReport(report), "skill-scan", []);
 }
 
-export async function runSkillRecommend(opts: RepoSkillOptions, pctx: PipelineContext) {
+export async function runSkillRecommend(opts: RepoSkillOptions, pctx: PipelineExecRuntime & PipelineSkillRuntime) {
   const command = opts.command ? (isSkillCommand(opts.command) ? opts.command : undefined) : "implement";
   if (opts.command && !command) {
     return pipelineResult(`Unknown command for skill recommendation: ${opts.command}`, "skill-recommend", [], true);
