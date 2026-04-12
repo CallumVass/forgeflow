@@ -97,7 +97,7 @@ export async function runSkillScan(
   const finalReport = { ...report, analyses: judged.analyses };
 
   if (opts.json) {
-    return pipelineResult(JSON.stringify(finalReport, null, 2), "skill-scan", judged.stages);
+    return pipelineResult(JSON.stringify(finalReport, null, 2), "skill-scan", []);
   }
 
   if (command) {
@@ -109,14 +109,14 @@ export async function runSkillScan(
           : renderCompactSkillSelectionReport(analysis)
         : "No skill analysis available.",
       "skill-scan",
-      judged.stages,
+      [],
     );
   }
 
   return pipelineResult(
     opts.verbose ? renderSkillScanReport(finalReport) : renderCompactSkillScanReport(finalReport),
     "skill-scan",
-    judged.stages,
+    [],
   );
 }
 
@@ -142,7 +142,7 @@ export async function runSkillRecommend(
   const judged = await judgeSkillRecommendationReport(report, pctx);
 
   if (opts.json) {
-    return pipelineResult(JSON.stringify(judged.report, null, 2), "skill-recommend", judged.stages);
+    return pipelineResult(JSON.stringify(judged.report, null, 2), "skill-recommend", []);
   }
 
   return pipelineResult(
@@ -150,6 +150,6 @@ export async function runSkillRecommend(
       ? renderSkillRecommendationReport(judged.report)
       : renderCompactSkillRecommendationReport(judged.report),
     "skill-recommend",
-    judged.stages,
+    [],
   );
 }
