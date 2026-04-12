@@ -71,6 +71,60 @@ export interface SkillSelectionReport {
   selectedSkills: SelectedSkill[];
 }
 
+export interface SkillSearchQuery {
+  query: string;
+  weight: number;
+  reasons: string[];
+}
+
+export interface ExternalSkillCandidate {
+  id: string;
+  slug: string;
+  url: string;
+  installs: number | null;
+  installsLabel?: string;
+}
+
+export interface QueriedExternalSkillCandidate extends ExternalSkillCandidate {
+  matchedQueries: string[];
+}
+
+export interface RecommendedExternalSkill extends QueriedExternalSkillCandidate {
+  provider: string;
+  installCommand: string;
+  score: number;
+  reasons: string[];
+}
+
+export interface SkillRecommendationProviderResult {
+  provider: string;
+  diagnostics: string[];
+  candidates: QueriedExternalSkillCandidate[];
+}
+
+export interface SkillRecommendationProvider {
+  name: string;
+  search(queries: SkillSearchQuery[]): Promise<SkillRecommendationProviderResult>;
+}
+
+export interface SkillRecommendationReport {
+  command: SkillCommand;
+  rootsScanned: SkillRoot[];
+  diagnostics: string[];
+  providerDiagnostics: string[];
+  provider: string;
+  discoveredSkills: DiscoveredSkill[];
+  duplicates: SkillDuplicate[];
+  repoRoot: string;
+  changedFiles: string[];
+  focusPaths: string[];
+  signals: SkillSignal[];
+  selectedSkills: SelectedSkill[];
+  searchQueries: SkillSearchQuery[];
+  recommendedSkills: RecommendedExternalSkill[];
+  skippedInstalledSkillNames: string[];
+}
+
 export interface SkillScanReport {
   rootsScanned: SkillRoot[];
   diagnostics: string[];
