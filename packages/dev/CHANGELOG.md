@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.34.0...forgeflow-dev-v0.35.0) (2026-04-12)
+
+
+### Features
+
+* **dev:** add compact default output for skill commands ([#240](https://github.com/CallumVass/forgeflow/issues/240)) ([b78a5a8](https://github.com/CallumVass/forgeflow/commit/b78a5a86a3a7de26c3bef0dfe8f1dc392642102f))
+
 ## [0.34.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.33.1...forgeflow-dev-v0.34.0) (2026-04-12)
 
 
