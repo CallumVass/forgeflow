@@ -24,7 +24,7 @@ import { resolveReviewChangedFiles, runReview } from "./index.js";
 import { runReviewPipeline, runStandaloneReviewPipeline } from "./orchestrator.js";
 
 describe("runReview composition root", () => {
-  it("resolves changed files for PR targets via the review boundary and falls back when main...HEAD is empty", async () => {
+  it("resolves changed files for PR targets via the review boundary and falls back to the PR base branch when main...HEAD is empty", async () => {
     vi.mocked(resolveDiffTarget).mockResolvedValueOnce({
       diffCmd: "gh pr diff 5",
       prNumber: "5",
@@ -33,7 +33,9 @@ describe("runReview composition root", () => {
     const execFn = mockExecFn({ "gh pr checkout 5": "" });
     const execSafeFn = mockExecFn({
       "git diff --name-only main...HEAD": "",
-      "git diff --name-only HEAD~1...HEAD": "src/foo.ts\nsrc/bar.ts\n",
+      "gh pr view 5 --json baseRefName --jq .baseRefName": "main",
+      'git fetch origin "main" 2>/dev/null || true': "",
+      'git diff --name-only "origin/main"...HEAD': "src/foo.ts\nsrc/bar.ts\n",
     });
     const pctx = mockPipelineContext({ cwd: "/tmp", execFn, execSafeFn });
 
@@ -43,7 +45,32 @@ describe("runReview composition root", () => {
     expect(resolveDiffTarget).toHaveBeenCalledWith("/tmp", "5", pctx.execSafeFn);
     expect(execFn).toHaveBeenCalledWith("gh pr checkout 5", "/tmp");
     expect(execSafeFn).toHaveBeenCalledWith("git diff --name-only main...HEAD", "/tmp");
-    expect(execSafeFn).toHaveBeenCalledWith("git diff --name-only HEAD~1...HEAD", "/tmp");
+    expect(execSafeFn).toHaveBeenCalledWith("gh pr view 5 --json baseRefName --jq .baseRefName", "/tmp");
+    expect(execSafeFn).toHaveBeenCalledWith('git fetch origin "main" 2>/dev/null || true', "/tmp");
+    expect(execSafeFn).toHaveBeenCalledWith('git diff --name-only "origin/main"...HEAD', "/tmp");
+    expect(execSafeFn).not.toHaveBeenCalledWith("git diff --name-only HEAD~1...HEAD", "/tmp");
+  });
+
+  it("returns no changed files for PR targets when it cannot resolve a reliable PR-wide fallback", async () => {
+    vi.mocked(resolveDiffTarget).mockResolvedValueOnce({
+      diffCmd: "gh pr diff 5",
+      prNumber: "5",
+      setupCmds: ["gh pr checkout 5"],
+    });
+    const execFn = mockExecFn({ "gh pr checkout 5": "" });
+    const execSafeFn = mockExecFn({
+      "git diff --name-only main...HEAD": "",
+      "gh pr view 5 --json baseRefName --jq .baseRefName": "",
+    });
+    const pctx = mockPipelineContext({ cwd: "/tmp", execFn, execSafeFn });
+
+    const changedFiles = await resolveReviewChangedFiles("5", pctx);
+
+    expect(changedFiles).toEqual([]);
+    expect(execSafeFn).toHaveBeenCalledWith("gh pr view 5 --json baseRefName --jq .baseRefName", "/tmp");
+    expect(execSafeFn).not.toHaveBeenCalledWith('git fetch origin "main" 2>/dev/null || true', "/tmp");
+    expect(execSafeFn).not.toHaveBeenCalledWith('git diff --name-only "origin/main"...HEAD', "/tmp");
+    expect(execSafeFn).not.toHaveBeenCalledWith("git diff --name-only HEAD~1...HEAD", "/tmp");
   });
 
   it("resolves changed files for branch targets via the review boundary", async () => {

@@ -29,6 +29,21 @@ async function prepareReviewSkillContext(changedFiles: string[], strict: boolean
 
 type ReviewTarget = Awaited<ReturnType<typeof resolveDiffTarget>>;
 
+async function resolvePrBaseChangedFiles(target: ReviewTarget, pctx: PipelineContext): Promise<string> {
+  if (!target.prNumber) return "";
+
+  const baseRef = (
+    await pctx.execSafeFn(`gh pr view ${target.prNumber} --json baseRefName --jq .baseRefName`, pctx.cwd)
+  ).trim();
+  if (!baseRef) return "";
+
+  const quotedBaseRef = JSON.stringify(baseRef);
+  const quotedRemoteBaseRef = JSON.stringify(`origin/${baseRef}`);
+
+  await pctx.execSafeFn(`git fetch origin ${quotedBaseRef} 2>/dev/null || true`, pctx.cwd);
+  return pctx.execSafeFn(`git diff --name-only ${quotedRemoteBaseRef}...HEAD`, pctx.cwd);
+}
+
 async function resolveChangedFilesForTarget(target: ReviewTarget, pctx: PipelineContext): Promise<string[]> {
   for (const cmd of target.setupCmds) {
     await pctx.execFn(cmd, pctx.cwd);
@@ -36,9 +51,7 @@ async function resolveChangedFilesForTarget(target: ReviewTarget, pctx: Pipeline
 
   const output =
     (await pctx.execSafeFn("git diff --name-only main...HEAD", pctx.cwd)) ||
-    (target.diffCmd.includes("gh pr diff")
-      ? await pctx.execSafeFn("git diff --name-only HEAD~1...HEAD", pctx.cwd)
-      : "");
+    (target.diffCmd.includes("gh pr diff") ? await resolvePrBaseChangedFiles(target, pctx) : "");
   return parseChangedFiles(output);
 }
 
