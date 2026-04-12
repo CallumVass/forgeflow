@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.28.0...forgeflow-pm-v0.29.0) (2026-04-12)
+
+
+### Features
+
+* document sdk-backed stage sessions and handoffs ([#225](https://github.com/CallumVass/forgeflow/issues/225)) ([67e256d](https://github.com/CallumVass/forgeflow/commit/67e256d89de6a7596be936e6458ca54f597c8b01))
+
 ## [0.28.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.27.0...forgeflow-pm-v0.28.0) (2026-04-12)
 
 
