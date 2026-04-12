@@ -1,7 +1,8 @@
 import { extractFlags, splitFirstToken } from "@callumvass/forgeflow-shared/arg-parsing";
 import type { CommandDefinition } from "@callumvass/forgeflow-shared/extension";
+import { getRememberedInvocation, withLaunchers } from "./command-launchers/index.js";
 
-export const commands: CommandDefinition[] = [
+const baseCommands: CommandDefinition[] = [
   {
     name: "implement",
     description:
@@ -19,6 +20,28 @@ export const commands: CommandDefinition[] = [
         suffix: issue
           ? "Do not interpret the issue number — pass it as-is."
           : "No issue number provided — the tool will detect it from the current branch. Do NOT ask for an issue number.",
+      };
+    },
+  },
+  {
+    name: "implement-last",
+    description: "Repeat the last /implement target and flags, or fall back to current-branch detection",
+    pipeline: "implement",
+    parseArgs: () => {
+      const last = getRememberedInvocation("implement-last");
+      return {
+        params: {
+          ...(last?.issue ? { issue: last.issue } : {}),
+          ...(last?.skipPlan ? { skipPlan: true } : {}),
+          ...(last?.skipReview ? { skipReview: true } : {}),
+        },
+        suffix: last?.issue
+          ? /^[A-Z]+-\d+$/.test(last.issue)
+            ? "Do not interpret the issue key — pass it as-is."
+            : /^\d+$/.test(last.issue)
+              ? "Do not interpret the issue number — pass it as-is."
+              : undefined
+          : "No remembered issue number found — the tool will detect it from the current branch. Do NOT ask for an issue number.",
       };
     },
   },
@@ -58,6 +81,27 @@ export const commands: CommandDefinition[] = [
         suffix: "Do not interpret the target — pass it as-is.",
       };
     },
+  },
+  {
+    name: "review-last",
+    description: "Repeat the last /review target and strictness, or fall back to the current branch",
+    pipeline: "review",
+    parseArgs: () => {
+      const last = getRememberedInvocation("review-last");
+      return {
+        params: {
+          ...(last?.target ? { target: last.target } : {}),
+          ...(last?.strict ? { strict: true } : {}),
+        },
+        suffix: "Do not interpret the target — pass it as-is.",
+      };
+    },
+  },
+  {
+    name: "review-current-pr",
+    description: "Review the current PR without typing its number",
+    pipeline: "review",
+    parseArgs: () => ({ params: {}, suffix: "Review the current PR if one exists. Do not ask for a target first." }),
   },
   {
     name: "review-lite",
@@ -135,3 +179,5 @@ export const commands: CommandDefinition[] = [
     },
   },
 ];
+
+export const commands: CommandDefinition[] = withLaunchers(baseCommands);

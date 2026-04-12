@@ -9,6 +9,7 @@ import type {
   StageResult,
 } from "../runtime/index.js";
 import { formatUsage } from "./display.js";
+import { stageDescription, stageTitle } from "./stage-meta.js";
 import { appendStageDetail, stageIcon } from "./stage-renderer.js";
 
 // ─── Constants ────────────────────────────────────────────────────────
@@ -55,10 +56,11 @@ function buildListItems(details: PipelineDetails, theme: ForgeflowTheme): Select
     const icon = stageIcon(stage, theme);
     const running = stage.status === "running" ? theme.fg("warning", " (running)") : "";
     const usage = formatUsage(stage.usage, stage.model);
-    const description = usage || (stage.status === "pending" ? "pending" : "");
+    const meta = stageDescription(stage.name);
+    const description = [meta, usage || (stage.status === "pending" ? "pending" : "")].filter(Boolean).join(" · ");
     return {
       value: String(index),
-      label: `${icon} ${theme.fg("toolTitle", stage.name)}${running}`,
+      label: `${icon} ${theme.fg("toolTitle", stageTitle(stage.name))}${running}`,
       description,
     };
   });
@@ -98,20 +100,25 @@ function buildListContainer(details: PipelineDetails, theme: ForgeflowTheme, sel
  * - the ctx is non-interactive (`hasUI === false`)
  * - no forgeflow pipeline tool result exists in the current branch
  */
-export async function openStagesOverlay(ctx: ForgeflowContext, toolNames: string[]): Promise<void> {
+export async function openStagesOverlay(
+  ctx: ForgeflowContext,
+  toolNames: string[],
+  detailsOverride?: PipelineDetails,
+): Promise<void> {
   if (!ctx.hasUI) {
     ctx.ui.notify(UNAVAILABLE_NOTIFICATION, "info");
     return;
   }
 
-  const initialDetails = findLatestPipelineDetails(ctx.sessionManager.getBranch(), toolNames);
+  const initialDetails = detailsOverride ?? findLatestPipelineDetails(ctx.sessionManager.getBranch(), toolNames);
   if (!initialDetails) {
     ctx.ui.notify(NO_PIPELINE_NOTIFICATION, "info");
     return;
   }
 
   await ctx.ui.custom<undefined>(
-    (tui, theme, _keybindings, done) => createStagesOverlayComponent(ctx, toolNames, initialDetails, tui, theme, done),
+    (tui, theme, _keybindings, done) =>
+      createStagesOverlayComponent(ctx, toolNames, initialDetails, tui, theme, done, detailsOverride == null),
     {
       overlay: true,
       overlayOptions: {
@@ -135,6 +142,7 @@ function createStagesOverlayComponent(
   tui: ForgeflowTui,
   theme: ForgeflowTheme,
   done: (result: undefined) => void,
+  liveUpdates: boolean,
 ): ForgeflowCustomComponent {
   let details: PipelineDetails = initialDetails;
   let mode: "list" | "detail" = "list";
@@ -177,7 +185,7 @@ function createStagesOverlayComponent(
   };
 
   const interval = setInterval(() => {
-    if (disposed) return;
+    if (disposed || !liveUpdates) return;
     const latest = findLatestPipelineDetails(ctx.sessionManager.getBranch(), toolNames);
     if (!latest) return;
     // Either a brand-new PipelineDetails object or an in-place mutation:

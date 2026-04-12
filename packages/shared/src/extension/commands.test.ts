@@ -23,7 +23,12 @@ describe("registerForgeflowCommands", () => {
     const [name1, opts1] = pi.registerCommand.mock.calls[0]!;
     expect(name1).toBe("alpha-cmd");
     expect(opts1.description).toBe("Run alpha");
-    await opts1.handler("42");
+    await opts1.handler("42", mockForgeflowContext());
+    expect(pi.appendEntry).toHaveBeenCalledWith("forgeflow-command", {
+      toolName: "forgeflow-test",
+      command: "alpha-cmd",
+      params: { issue: "42" },
+    });
     expect(pi.sendUserMessage).toHaveBeenCalledWith(
       'Call the forgeflow-test tool now with these exact parameters: pipeline="alpha", issue="42". Do not interpret.',
     );
@@ -34,10 +39,40 @@ describe("registerForgeflowCommands", () => {
     // biome-ignore lint/style/noNonNullAssertion: test accessing mock call by known index
     const [name2, opts2] = pi.registerCommand.mock.calls[1]!;
     expect(name2).toBe("beta-cmd");
-    await opts2.handler("");
+    await opts2.handler("", mockForgeflowContext());
     expect(pi.sendUserMessage).toHaveBeenCalledWith(
       'Call the forgeflow-test tool now with these exact parameters: pipeline="beta".',
     );
+  });
+
+  it("uses an interactive launcher when a command is invoked without args", async () => {
+    const pi = mockPi();
+    const launch = vi.fn(async () => ({ params: { issue: "42" }, suffix: "Do not interpret." }));
+    const config = mockExtensionConfig({
+      commands: [{ name: "alpha-cmd", description: "Run alpha", pipeline: "alpha", launch }],
+    });
+    registerForgeflowCommands(pi as never, config);
+
+    const [, opts] = pi.registerCommand.mock.calls[0] ?? [];
+    await opts.handler("", mockForgeflowContext({ hasUI: true }));
+
+    expect(launch).toHaveBeenCalled();
+    expect(pi.sendUserMessage).toHaveBeenCalledWith(
+      'Call the forgeflow-test tool now with these exact parameters: pipeline="alpha", issue="42". Do not interpret.',
+    );
+  });
+
+  it("wires getArgumentCompletions through to pi.registerCommand", () => {
+    const pi = mockPi();
+    const getArgumentCompletions = vi.fn(() => [{ value: "--flag", label: "--flag" }]);
+    const config = mockExtensionConfig({
+      commands: [{ name: "alpha-cmd", description: "Run alpha", pipeline: "alpha", getArgumentCompletions }],
+    });
+    registerForgeflowCommands(pi as never, config);
+
+    const [, opts] = pi.registerCommand.mock.calls[0] ?? [];
+    expect(opts.getArgumentCompletions("--f")).toEqual([{ value: "--flag", label: "--flag" }]);
+    expect(getArgumentCompletions).toHaveBeenCalledWith("--f");
   });
 
   it("registers /stages and Ctrl+Shift+S exactly once across two extensions and the handler sees both tool names", async () => {

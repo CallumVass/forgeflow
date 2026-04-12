@@ -58,6 +58,18 @@ That updates `PRD.md` with `## Done` / `## Next`, QAs the next phase, then creat
 | `/atlassian-logout` | Remove stored Atlassian MCP credentials |
 | `/atlassian-read` | Read a Jira issue or Confluence page by URL |
 
+## Shared Pi UX
+
+The PM extension shares the same Pi runtime and stage UX as forgeflow-dev.
+
+That means PM runs now benefit from the same improved pipeline chrome:
+- richer live status while a pipeline is running
+- clearer stage titles and descriptions in rendered output
+- `/stages` and `Ctrl+Shift+S` to drill into the latest forgeflow pipeline
+- better session naming and stage timing visibility during long-running PM flows
+
+This is especially useful for longer PRD, investigation, and issue-creation runs where you want to inspect what each stage actually did without leaving Pi.
+
 ## What a good greenfield PRD should contain
 
 After `/prd-qa`, a greenfield PRD should usually include:

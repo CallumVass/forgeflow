@@ -47,7 +47,7 @@ describe("renderExpanded", () => {
     const joined = lines.join("\n");
     expect(joined).toContain("forgeflow-dev");
     expect(joined).toContain("implement");
-    expect(joined).toContain("planner");
+    expect(joined).toContain("Plan implementation");
     expect(joined).toContain("ls");
     expect(joined).toContain("3t");
   });
@@ -82,9 +82,9 @@ describe("renderCollapsed", () => {
     const joined = renderCollapsed(details, theme, "forgeflow-dev").render(200).join("\n");
 
     // Running stage: icon + name on one line.
-    expect(joined).toContain("[warning]⟳ [toolTitle]architecture-reviewer");
+    expect(joined).toContain("[warning]⟳ [toolTitle]Review plan boundaries");
     // Pending stage: muted icon + name on one line.
-    expect(joined).toContain("[muted]○ [toolTitle]next-stage");
+    expect(joined).toContain("[muted]○ [toolTitle]Next Stage");
 
     // No pipeline header — it is already shown by renderCall.
     expect(joined).not.toContain("forgeflow-dev");
@@ -141,7 +141,7 @@ describe("renderCollapsed", () => {
     expect(joined).not.toContain("   first preview line");
 
     // Usage stats stay on the same rendered line as the planner stage header (no newline between them).
-    const headerWithUsage = lines.find((line) => line.includes("planner") && line.includes("2t"));
+    const headerWithUsage = lines.find((line) => line.includes("Plan implementation") && line.includes("2t"));
     expect(headerWithUsage).toBeDefined();
 
     // Failed stage's first preview line is wrapped in the error colour.

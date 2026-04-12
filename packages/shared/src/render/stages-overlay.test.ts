@@ -227,15 +227,15 @@ describe("openStagesOverlay", () => {
     const component = mountStagesComponent(capture, ctx.ui.theme);
 
     const joined = component.render(120).join("\n");
-    expect(joined).toContain("planner");
-    expect(joined).toContain("implementor");
-    expect(joined).toContain("reviewer");
+    expect(joined).toContain("Plan imp");
+    expect(joined).toContain("Implemen");
+    expect(joined).toContain("Reviewer");
     // Status icons from the mock theme.
     expect(joined).toContain("[success]✓");
     expect(joined).toContain("[warning]⟳");
     expect(joined).toContain("[muted]○");
-    // The in-progress stage is marked as running.
-    expect(joined).toContain("(running)");
+    // The in-progress stage is marked via the warning icon.
+    expect(joined).toContain("[warning]⟳");
 
     // Clean up the overlay so the awaited promise resolves.
     component.dispose?.();
@@ -263,7 +263,7 @@ describe("openStagesOverlay", () => {
     component.handleInput("\r");
 
     const detailJoined = component.render(120).join("\n");
-    expect(detailJoined).toContain("planner");
+    expect(detailJoined).toContain("Plan implementation");
     // Tool call rendered via formatToolCall.
     expect(detailJoined).toContain("ls -la");
     // Markdown final output is present.
@@ -299,9 +299,9 @@ describe("openStagesOverlay", () => {
     // Esc → back to list view (all stage names visible again).
     component.handleInput("\x1b");
     const listAgain = component.render(120).join("\n");
-    expect(listAgain).toContain("planner");
-    expect(listAgain).toContain("implementor");
-    expect(listAgain).toContain("reviewer");
+    expect(listAgain).toContain("Plan imp");
+    expect(listAgain).toContain("Implemen");
+    expect(listAgain).toContain("Reviewer");
     expect(listAgain).not.toContain("Do the thing.");
 
     // Esc again → close the overlay.
@@ -373,7 +373,7 @@ describe("openStagesOverlay", () => {
 
     const after = component.render(120).join("\n");
     // The reviewer is now the running stage.
-    expect(after).toMatch(/\[warning\]⟳ reviewer|reviewer.*\(running\)/);
+    expect(after).toMatch(/\[warning\]⟳ Reviewer|Reviewer.*\(running\)/);
 
     // Dispose should clear the interval: no further requestRender calls.
     component.dispose?.();

@@ -15,7 +15,17 @@ import type { ExtensionConfig } from "./types.js";
 
 export { registerAtlassianCommands } from "./atlassian.js";
 export { buildSendMessage } from "./message.js";
-export type { CommandDefinition, ExtensionConfig, ParamDef, PipelineDefinition } from "./types.js";
+export type {
+  CommandAutocompleteItem,
+  CommandDefinition,
+  CommandExecResult,
+  CommandHelpers,
+  CommandInvocation,
+  ExtensionConfig,
+  ParamDef,
+  PipelineDefinition,
+  PostRunActionHelpers,
+} from "./types.js";
 
 // ─── Factory ─────────────────────────────────────────────────────────
 
