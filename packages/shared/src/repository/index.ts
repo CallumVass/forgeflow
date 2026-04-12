@@ -1,6 +1,8 @@
 import type { PipelineExecRuntime } from "../runtime/pipeline-context/exec.js";
 
 export type RepositoryExecRuntime = Pick<PipelineExecRuntime, "cwd" | "execFn" | "execSafeFn">;
+type ExecRuntime = Pick<RepositoryExecRuntime, "cwd" | "execFn">;
+type SafeExecRuntime = Pick<RepositoryExecRuntime, "cwd" | "execSafeFn">;
 
 export type ReviewTarget =
   | { kind: "pr"; prNumber: string }
@@ -13,8 +15,22 @@ export interface GitHubIssueDetails {
   body: string;
 }
 
-interface GitHubIssueListEntry {
-  number?: unknown;
+function parseJson(raw: string): unknown | null {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function isGitHubIssueDetails(value: unknown): value is GitHubIssueDetails {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    typeof (value as { number?: unknown }).number === "number" &&
+    typeof (value as { title?: unknown }).title === "string" &&
+    typeof (value as { body?: unknown }).body === "string"
+  );
 }
 
 function splitLines(output: string): string[] {
@@ -24,27 +40,18 @@ function splitLines(output: string): string[] {
     .filter(Boolean);
 }
 
-async function checkoutPullRequest(
-  prNumber: string,
-  runtime: Pick<RepositoryExecRuntime, "cwd" | "execFn">,
-): Promise<void> {
+async function checkoutPullRequest(prNumber: string, runtime: ExecRuntime): Promise<void> {
   await runtime.execFn(`gh pr checkout ${prNumber}`, runtime.cwd);
 }
 
-async function readPrBaseRef(
-  prNumber: string,
-  runtime: Pick<RepositoryExecRuntime, "cwd" | "execSafeFn">,
-): Promise<string | undefined> {
+async function readPrBaseRef(prNumber: string, runtime: SafeExecRuntime): Promise<string | undefined> {
   const baseRef = (
     await runtime.execSafeFn(`gh pr view ${prNumber} --json baseRefName --jq .baseRefName`, runtime.cwd)
   ).trim();
   return baseRef || undefined;
 }
 
-async function ensureBranchAvailable(
-  branch: string,
-  runtime: Pick<RepositoryExecRuntime, "cwd" | "execFn">,
-): Promise<void> {
+async function ensureBranchAvailable(branch: string, runtime: ExecRuntime): Promise<void> {
   const quotedBranch = JSON.stringify(branch);
   const quotedRemoteBranch = JSON.stringify(`origin/${branch}`);
 
@@ -55,10 +62,7 @@ async function ensureBranchAvailable(
   );
 }
 
-async function listChangedFilesAgainstBaseRef(
-  baseRef: string,
-  runtime: Pick<RepositoryExecRuntime, "cwd" | "execSafeFn">,
-): Promise<string[]> {
+async function listChangedFilesAgainstBaseRef(baseRef: string, runtime: SafeExecRuntime): Promise<string[]> {
   const quotedBaseRef = JSON.stringify(baseRef);
   const quotedRemoteBaseRef = JSON.stringify(`origin/${baseRef}`);
 
@@ -66,29 +70,20 @@ async function listChangedFilesAgainstBaseRef(
   return splitLines(await runtime.execSafeFn(`git diff --name-only ${quotedRemoteBaseRef}...HEAD`, runtime.cwd));
 }
 
-export async function readCurrentPrNumber(
-  runtime: Pick<RepositoryExecRuntime, "cwd" | "execSafeFn">,
-): Promise<string | undefined> {
+export async function readCurrentPrNumber(runtime: SafeExecRuntime): Promise<string | undefined> {
   const prNumber = (await runtime.execSafeFn("gh pr view --json number --jq .number", runtime.cwd)).trim();
   return prNumber || undefined;
 }
 
-export async function listChangedFilesAgainstMain(
-  runtime: Pick<RepositoryExecRuntime, "cwd" | "execSafeFn">,
-): Promise<string[]> {
+export async function listChangedFilesAgainstMain(runtime: SafeExecRuntime): Promise<string[]> {
   return splitLines(await runtime.execSafeFn("git diff --name-only main...HEAD", runtime.cwd));
 }
 
-export async function readUnifiedDiffAgainstMain(
-  runtime: Pick<RepositoryExecRuntime, "cwd" | "execFn">,
-): Promise<string> {
+export async function readUnifiedDiffAgainstMain(runtime: ExecRuntime): Promise<string> {
   return runtime.execFn("git diff main...HEAD", runtime.cwd);
 }
 
-export async function readReviewDiff(
-  target: ReviewTarget,
-  runtime: Pick<RepositoryExecRuntime, "cwd" | "execFn">,
-): Promise<string> {
+export async function readReviewDiff(target: ReviewTarget, runtime: ExecRuntime): Promise<string> {
   if (target.kind === "pr") {
     await checkoutPullRequest(target.prNumber, runtime);
     return runtime.execFn(`gh pr diff ${target.prNumber}`, runtime.cwd);
@@ -101,9 +96,7 @@ export async function readReviewDiff(
   return readUnifiedDiffAgainstMain(runtime);
 }
 
-export async function readRepositoryNameWithOwner(
-  runtime: Pick<RepositoryExecRuntime, "cwd" | "execFn">,
-): Promise<string> {
+export async function readRepositoryNameWithOwner(runtime: ExecRuntime): Promise<string> {
   return runtime.execFn("gh repo view --json nameWithOwner --jq .nameWithOwner", runtime.cwd);
 }
 
@@ -127,55 +120,33 @@ export async function resolveReviewChangedFiles(
   return listChangedFilesAgainstMain(runtime);
 }
 
-export async function listTrackedFiles(runtime: Pick<RepositoryExecRuntime, "cwd" | "execSafeFn">): Promise<string[]> {
+export async function listTrackedFiles(runtime: SafeExecRuntime): Promise<string[]> {
   return splitLines(await runtime.execSafeFn("git ls-files", runtime.cwd));
 }
 
-export async function listOpenAutoGeneratedIssueNumbers(
-  runtime: Pick<RepositoryExecRuntime, "cwd" | "execSafeFn">,
-): Promise<number[] | null> {
+export async function listOpenAutoGeneratedIssueNumbers(runtime: SafeExecRuntime): Promise<number[] | null> {
   const raw = await runtime.execSafeFn(
     'gh issue list --state open --label "auto-generated" --limit 500 --json number',
     runtime.cwd,
   );
   if (!raw.trim()) return null;
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-
+  const parsed = parseJson(raw);
   if (!Array.isArray(parsed)) return null;
   return parsed.flatMap((item) =>
-    typeof (item as GitHubIssueListEntry).number === "number" ? [(item as GitHubIssueListEntry).number as number] : [],
+    typeof item === "object" && item != null && typeof (item as { number?: unknown }).number === "number"
+      ? [(item as { number: number }).number]
+      : [],
   );
 }
 
 export async function readGitHubIssue(
   issueNumber: number,
-  runtime: Pick<RepositoryExecRuntime, "cwd" | "execSafeFn">,
+  runtime: SafeExecRuntime,
 ): Promise<GitHubIssueDetails | null> {
   const raw = await runtime.execSafeFn(`gh issue view ${issueNumber} --json number,title,body`, runtime.cwd);
   if (!raw.trim()) return null;
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-
-  if (
-    typeof parsed !== "object" ||
-    parsed == null ||
-    typeof (parsed as { number?: unknown }).number !== "number" ||
-    typeof (parsed as { title?: unknown }).title !== "string" ||
-    typeof (parsed as { body?: unknown }).body !== "string"
-  ) {
-    return null;
-  }
-
-  return parsed as GitHubIssueDetails;
+  const parsed = parseJson(raw);
+  return isGitHubIssueDetails(parsed) ? parsed : null;
 }
