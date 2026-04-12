@@ -17,7 +17,9 @@ export {
   parseSkillsFindOutput,
   parseSkillsListOutput,
   renderCompactSkillRecommendationReport,
+  renderCompactSkillRecommendationScanReport,
   renderSkillRecommendationReport,
+  renderSkillRecommendationScanReport,
 } from "./recommendation/index.js";
 export type {
   DiscoveredSkill,
@@ -35,6 +37,7 @@ export type {
   SkillRecommendationProvider,
   SkillRecommendationProviderResult,
   SkillRecommendationReport,
+  SkillRecommendationScanReport,
   SkillRoot,
   SkillScanReport,
   SkillSearchQuery,

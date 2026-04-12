@@ -155,7 +155,7 @@ const baseCommands: CommandDefinition[] = [
   {
     name: "skill-recommend",
     description:
-      "Recommend missing skills from skills.sh for the current repo and stage. Usage: /skill-recommend [--for <implement|review|architecture|...>] [--path <path>] [--issue <text>] [--target <review-target>] [--limit <n>] [--verbose] [--json]",
+      "Recommend missing skills from skills.sh for the current repo across all stages by default, or a single filtered stage with --for. Usage: /skill-recommend [--for <implement|review|architecture|...>] [--path <path>] [--issue <text>] [--target <review-target>] [--limit <n>] [--verbose] [--json]",
     pipeline: "skill-recommend",
     parseArgs: (args) => {
       const { flags } = extractFlags(args, {

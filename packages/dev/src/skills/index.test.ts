@@ -38,7 +38,9 @@ vi.mock("@callumvass/forgeflow-shared/skills", async (importOriginal) => {
       skippedInstalledSkillNames: ["tailwind"],
     })),
     renderCompactSkillRecommendationReport: vi.fn(() => "rendered compact recommendation report"),
+    renderCompactSkillRecommendationScanReport: vi.fn(() => "rendered compact recommendation scan report"),
     renderSkillRecommendationReport: vi.fn(() => "rendered verbose recommendation report"),
+    renderSkillRecommendationScanReport: vi.fn(() => "rendered verbose recommendation scan report"),
   };
 });
 
@@ -47,9 +49,11 @@ import {
   buildSkillScanReport,
   createSkillsCliRecommendationProvider,
   renderCompactSkillRecommendationReport,
+  renderCompactSkillRecommendationScanReport,
   renderCompactSkillScanReport,
   renderCompactSkillSelectionReport,
   renderSkillRecommendationReport,
+  renderSkillRecommendationScanReport,
   renderSkillScanReport,
   renderSkillSelectionReport,
 } from "@callumvass/forgeflow-shared/skills";
@@ -74,7 +78,9 @@ describe("repo skill pipelines", () => {
     vi.mocked(renderCompactSkillSelectionReport).mockClear();
     vi.mocked(renderCompactSkillScanReport).mockClear();
     vi.mocked(renderCompactSkillRecommendationReport).mockClear();
+    vi.mocked(renderCompactSkillRecommendationScanReport).mockClear();
     vi.mocked(renderSkillRecommendationReport).mockClear();
+    vi.mocked(renderSkillRecommendationScanReport).mockClear();
     vi.mocked(renderSkillSelectionReport).mockClear();
     vi.mocked(renderSkillScanReport).mockClear();
     vi.mocked(judgeSkillScanReport).mockClear();
@@ -141,5 +147,38 @@ describe("repo skill pipelines", () => {
     expect(verboseTextResult.details.stages).toEqual([]);
     expect(renderCompactSkillRecommendationReport).toHaveBeenCalled();
     expect(renderSkillRecommendationReport).toHaveBeenCalled();
+  });
+
+  it("defaults skill recommendations to all stages when no command filter is passed", async () => {
+    const pctx = skillRuntime();
+    vi.mocked(buildSkillRecommendationReport).mockImplementation(async (_cwd, _skillsConfig, input) => ({
+      command: input.command,
+      repoRoot: "/repo",
+      provider: "skills.sh",
+      rootsScanned: [],
+      diagnostics: [],
+      providerDiagnostics: [],
+      discoveredSkills: [],
+      duplicates: [],
+      changedFiles: [],
+      focusPaths: [],
+      signals: [],
+      selectedSkills: [],
+      searchQueries: [],
+      recommendedSkills: [],
+      skippedInstalledSkillNames: [],
+    }));
+
+    const textResult = await runSkillRecommend({}, pctx);
+    const verboseResult = await runSkillRecommend({ verbose: true }, pctx);
+
+    expect(resolveReviewChangedFiles).toHaveBeenCalledWith("", pctx);
+    expect(buildSkillRecommendationReport).toHaveBeenCalledTimes(16);
+    expect(renderCompactSkillRecommendationScanReport).toHaveBeenCalled();
+    expect(renderSkillRecommendationScanReport).toHaveBeenCalled();
+    expect(textResult.content[0]?.text).toBe("rendered compact recommendation scan report");
+    expect(verboseResult.content[0]?.text).toBe("rendered verbose recommendation scan report");
+    expect(textResult.details.stages).toEqual([]);
+    expect(verboseResult.details.stages).toEqual([]);
   });
 });

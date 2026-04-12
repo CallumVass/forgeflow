@@ -12,12 +12,16 @@ import {
   defaultSkillScanInputs,
   prepareSkillContext,
   renderCompactSkillRecommendationReport,
+  renderCompactSkillRecommendationScanReport,
   renderCompactSkillScanReport,
   renderCompactSkillSelectionReport,
   renderSkillRecommendationReport,
+  renderSkillRecommendationScanReport,
   renderSkillScanReport,
   renderSkillSelectionReport,
   type SkillCommand,
+  type SkillRecommendationReport,
+  type SkillRecommendationScanReport,
 } from "@callumvass/forgeflow-shared/skills";
 import { resolveReviewChangedFiles } from "../pipelines/review/index.js";
 import { judgeSkillRecommendationReport, judgeSkillScanReport } from "./judge.js";
@@ -124,7 +128,7 @@ export async function runSkillRecommend(
   opts: RepoSkillOptions,
   pctx: PipelineExecRuntime & PipelineSkillRuntime & PipelineAgentRuntime,
 ) {
-  const command = opts.command ? (isSkillCommand(opts.command) ? opts.command : undefined) : "implement";
+  const command = opts.command ? (isSkillCommand(opts.command) ? opts.command : undefined) : undefined;
   if (opts.command && !command) {
     return pipelineResult(`Unknown command for skill recommendation: ${opts.command}`, "skill-recommend", [], true);
   }
@@ -133,22 +137,52 @@ export async function runSkillRecommend(
   }
 
   const changedFiles =
-    command === "review" || command === "review-lite" ? await resolveReviewChangedFiles(opts.target ?? "", pctx) : [];
-  const [input] = buildSelectionInputs(command, opts, changedFiles);
-  if (!input) return pipelineResult("No skill recommendation input available.", "skill-recommend", [], true);
+    command === "review" || command === "review-lite" || !command
+      ? await resolveReviewChangedFiles(opts.target ?? "", pctx)
+      : [];
+  const inputs = buildSelectionInputs(command, opts, changedFiles);
+  if (inputs.length === 0) {
+    return pipelineResult("No skill recommendation input available.", "skill-recommend", [], true);
+  }
 
   const provider = createSkillsCliRecommendationProvider(pctx.execSafeFn, pctx.cwd);
-  const report = await buildSkillRecommendationReport(pctx.cwd, pctx.skillsConfig, input, provider, opts.limit);
-  const judged = await judgeSkillRecommendationReport(report, pctx);
+  const judgedReports: SkillRecommendationReport[] = [];
+  for (const input of inputs) {
+    const report = await buildSkillRecommendationReport(pctx.cwd, pctx.skillsConfig, input, provider, opts.limit);
+    const judged = await judgeSkillRecommendationReport(report, pctx);
+    judgedReports.push(judged.report);
+  }
+
+  if (command) {
+    const [report] = judgedReports;
+    if (!report) {
+      return pipelineResult("No skill recommendation input available.", "skill-recommend", [], true);
+    }
+
+    if (opts.json) {
+      return pipelineResult(JSON.stringify(report, null, 2), "skill-recommend", []);
+    }
+
+    return pipelineResult(
+      opts.verbose ? renderSkillRecommendationReport(report) : renderCompactSkillRecommendationReport(report),
+      "skill-recommend",
+      [],
+    );
+  }
+
+  const scanReport: SkillRecommendationScanReport = {
+    repoRoot: judgedReports[0]?.repoRoot ?? pctx.cwd,
+    reports: judgedReports,
+  };
 
   if (opts.json) {
-    return pipelineResult(JSON.stringify(judged.report, null, 2), "skill-recommend", []);
+    return pipelineResult(JSON.stringify(scanReport, null, 2), "skill-recommend", []);
   }
 
   return pipelineResult(
     opts.verbose
-      ? renderSkillRecommendationReport(judged.report)
-      : renderCompactSkillRecommendationReport(judged.report),
+      ? renderSkillRecommendationScanReport(scanReport)
+      : renderCompactSkillRecommendationScanReport(scanReport),
     "skill-recommend",
     [],
   );

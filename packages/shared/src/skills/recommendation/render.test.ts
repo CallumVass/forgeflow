@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { SkillRecommendationReport } from "../types.js";
-import { renderCompactSkillRecommendationReport, renderSkillRecommendationReport } from "./render.js";
+import type { SkillRecommendationReport, SkillRecommendationScanReport } from "../types.js";
+import {
+  renderCompactSkillRecommendationReport,
+  renderCompactSkillRecommendationScanReport,
+  renderSkillRecommendationReport,
+  renderSkillRecommendationScanReport,
+} from "./render.js";
 
 describe("renderSkillRecommendationReport", () => {
   const report: SkillRecommendationReport = {
@@ -101,5 +106,23 @@ describe("renderSkillRecommendationReport", () => {
     expect(text).toContain("Already relevant installed skills:");
     expect(text).toContain("- vitest — already useful during implement");
     expect(text).toContain("Use --verbose");
+  });
+
+  it("renders multi-stage recommendation summaries", () => {
+    const scanReport: SkillRecommendationScanReport = {
+      repoRoot: "/repo",
+      reports: [report, { ...report, command: "review", recommendedSkills: [], selectedSkills: [] }],
+    };
+
+    const compact = renderCompactSkillRecommendationScanReport(scanReport);
+    const verbose = renderSkillRecommendationScanReport(scanReport);
+
+    expect(compact).toContain("Skill recommendations summary");
+    expect(compact).toContain("- implement:");
+    expect(compact).toContain("community/skills@vitest — useful for implement");
+    expect(compact).toContain("- review:");
+    expect(compact).toContain("No strong external skill recommendations for this stage.");
+    expect(verbose).toContain("Skill recommendations (implement)");
+    expect(verbose).toContain("Skill recommendations (review)");
   });
 });
