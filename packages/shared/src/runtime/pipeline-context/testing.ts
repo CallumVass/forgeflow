@@ -132,13 +132,15 @@ export function mockPipelineSkillRuntime(
  * tests never spawn real sub-processes or shell commands.
  */
 export function mockPipelineContext(overrides?: Partial<PipelineContext>): PipelineContext {
+  const uiRuntime = mockPipelineUiRuntime(overrides?.ctx ? { ctx: overrides.ctx } : undefined);
+  const sessionRuntime = mockPipelineSessionRuntime({ ...overrides, ctx: overrides?.ctx ?? uiRuntime.ctx });
+
   return {
     ...mockPipelineAgentRuntime(overrides),
     ...mockPipelineExecRuntime(overrides),
-    ...mockPipelineUiRuntime(overrides),
-    ...mockPipelineSessionRuntime(overrides),
-    skillsConfig: { enabled: true, extraPaths: [], maxSelected: 4 },
-    selectedSkills: [],
+    ...mockPipelineSkillRuntime(overrides),
+    ...uiRuntime,
+    ...sessionRuntime,
     ...overrides,
   };
 }
