@@ -81,10 +81,10 @@ export type RunAgentOpts = {
    */
   sessionPath?: string;
   /**
-   * When set, spawn the sub-agent as `pi --fork <forkFrom>`, inheriting
+   * When set, start the sub-agent from a fork of `forkFrom`, inheriting
    * the source session's conversation history as prior tool results and
    * assistant turns. The sub-agent still writes to its own
-   * `sessionPath` — fork and session paths are orthogonal and both may
+   * `sessionPath`, so fork and session paths are orthogonal and both may
    * be supplied. Used by the chain-builder to share context across
    * build-chain phases.
    */

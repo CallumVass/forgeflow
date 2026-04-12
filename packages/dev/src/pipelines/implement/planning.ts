@@ -81,9 +81,9 @@ async function appendUserTurnToSession(sessionPath: string, message: string, pct
  *
  * Owns session-path allocation explicitly instead of going through the
  * chain-builder: the interactive edit and unresolved-question flows
- * mutate session state mid-run via `pi --session`, which does not fit
- * the generic chain API. Returns the final session path so the caller
- * can thread it into the build chain as `initialForkFrom`.
+ * mutate session state mid-run, which does not fit the generic chain
+ * API. Returns the final session path so the caller can thread it into
+ * the build chain as `initialForkFrom`.
  */
 export async function runPlanning(
   issueContext: string,

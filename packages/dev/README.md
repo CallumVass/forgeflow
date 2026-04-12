@@ -197,7 +197,11 @@ Set `sessions.persist` to `false` for sensitive projects where you do not want s
 
 ## Sessions
 
-Sub-agent sessions are stored under `.forgeflow/run/<runId>/` so runs are resumable.
+Sub-agent stages now run through the Pi SDK rather than by spawning nested Pi processes.
+Forgeflow still persists deterministic stage sessions under `.forgeflow/run/<runId>/`, so runs stay resumable and fork lineage stays inspectable on disk.
+
+Each persisted stage appends a hidden handoff note with its final output plus the main files, searches, edits, and shell commands it used. Downstream forked stages inherit that note and are prompted to use it before re-reading the same files.
+
 Successful runs are archived; failed runs are left in place for inspection.
 
 ## Atlassian MCP

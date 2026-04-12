@@ -193,8 +193,12 @@ Valid `thinkingLevel` values: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`
 
 ## Sessions
 
-PM pipelines keep resumable sub-agent sessions under `.forgeflow/run/<runId>/`.
-On success they are archived; on failure they are left in place so you can inspect or resume them.
+PM sub-agent stages now run through the Pi SDK rather than by spawning nested Pi processes.
+They still keep resumable session files under `.forgeflow/run/<runId>/`, so you can inspect the exact stage lineage on disk when needed.
+
+Each persisted stage appends a hidden handoff note with its final output plus the main files, searches, edits, and shell commands it used. Later forked stages inherit that note as context, which reduces avoidable rediscovery across a run.
+
+On success runs are archived; on failure they are left in place so you can inspect or resume them.
 
 ## See also
 

@@ -90,9 +90,9 @@ export type RunOutcome =
 /**
  * Run the build chain (planner → architecture-reviewer → implementor →
  * refactorer) followed by the review chain (code-reviewer → review-judge
- * → fix-findings). Chains share context via `pi --fork`; the review
- * chain starts cold (`resetFork: true`) to preserve adversarial
- * independence from the build chain's reasoning.
+ * → fix-findings). Chains share context through persisted forked
+ * sessions; the review chain starts cold (`resetFork: true`) to
+ * preserve adversarial independence from the build chain's reasoning.
  *
  * Dynamic fix-findings handling lives here rather than in `runChain`:
  * after the review chain returns, inspect the judge's validated
