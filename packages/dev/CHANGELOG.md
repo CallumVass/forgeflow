@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.29.0...forgeflow-dev-v0.29.1) (2026-04-12)
+
+
+### Bug Fixes
+
+* improve skill recommendation output readability ([#212](https://github.com/CallumVass/forgeflow/issues/212)) ([c4b5821](https://github.com/CallumVass/forgeflow/commit/c4b582136d82b9d2669fb6fa9a8dbef6c9dec9e7))
+
 ## [0.29.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.28.0...forgeflow-dev-v0.29.0) (2026-04-12)
 
 
