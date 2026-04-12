@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.33.1...forgeflow-dev-v0.34.0) (2026-04-12)
+
+
+### Features
+
+* **dev:** add skill judge for skill scan and recommend ([#238](https://github.com/CallumVass/forgeflow/issues/238)) ([ac5202f](https://github.com/CallumVass/forgeflow/commit/ac5202fca58fdac182f0c89130b373a52c11c83f))
+
 ## [0.33.1](https://github.com/CallumVass/forgeflow/compare/forgeflow-dev-v0.33.0...forgeflow-dev-v0.33.1) (2026-04-12)
 
 
