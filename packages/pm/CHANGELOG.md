@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.29.0...forgeflow-pm-v0.30.0) (2026-04-12)
+
+
+### Features
+
+* improve pi pipeline UX for implement and review ([#227](https://github.com/CallumVass/forgeflow/issues/227)) ([9dc30bb](https://github.com/CallumVass/forgeflow/commit/9dc30bbf1dd7db5dfe0164970691a1657b3180c3))
+
 ## [0.29.0](https://github.com/CallumVass/forgeflow/compare/forgeflow-pm-v0.28.0...forgeflow-pm-v0.29.0) (2026-04-12)
 
 
